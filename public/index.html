@@ -94,6 +94,7 @@
     <div class="room-status" id="roomStatus"></div>
     <div class="room-actions">
       <button class="btn" id="roomHero">更换卡牌师</button>
+      <button class="btn" id="roomDeck">卡组</button>
       <button class="btn btn-gold btn-lg" id="roomReady">准备</button>
     </div>
     <aside class="chat-box room-chat">
@@ -101,6 +102,56 @@
       <form class="chat-form" id="roomChatForm"><input id="roomChatIn" maxlength="120" placeholder="和对手打个招呼…" autocomplete="off"><button class="btn" type="submit">发送</button></form>
     </aside>
   </main>
+</section>
+
+<!-- ======================= 卡组 ======================= -->
+<section class="screen" id="scrDecks" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="decksBack">‹ 返回</button>
+    <div class="brand-mini">我的卡组</div>
+    <div class="topbar-r"><span class="chip" id="dkQuota">卡组 0 / 30</span></div>
+  </header>
+  <main class="decks">
+    <aside class="dk-side">
+      <div class="dk-label">卡牌师</div>
+      <div class="dk-heroes" id="dkHeroes"></div>
+      <div class="dk-label">卡组列表</div>
+      <div class="dk-list" id="dkList"></div>
+      <div class="dk-side-btns">
+        <button class="btn btn-primary" id="dkNew">＋ 新建卡组</button>
+        <button class="btn" id="dkImport">导入代码</button>
+      </div>
+    </aside>
+    <section class="dk-pool">
+      <div class="dk-filters">
+        <input id="dkSearch" placeholder="搜索卡牌名称或效果" autocomplete="off">
+        <div class="seg-inline" id="dkKind"><button data-v="all" class="on">全部</button><button data-v="unit">单位</button><button data-v="spell">法术</button></div>
+        <div class="seg-inline" id="dkCost"><button data-v="all" class="on">全部费用</button><button data-v="0">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6+</button></div>
+      </div>
+      <div class="dk-cards" id="dkCards"></div>
+    </section>
+    <aside class="dk-cur">
+      <label class="dk-label" for="dkName">卡组名称</label>
+      <input id="dkName" maxlength="16" placeholder="给卡组起个名字" autocomplete="off">
+      <div class="deck-count" id="dkCount"></div>
+      <div class="curve" id="dkCurve"></div>
+      <div class="deck-mix" id="dkMix"></div>
+      <div class="dk-status" id="dkStatus"></div>
+      <div class="dk-items" id="dkItems"></div>
+      <div class="dk-btns">
+        <button class="btn btn-gold" id="dkSave">保存</button>
+        <button class="btn btn-primary" id="dkActive">设为出战</button>
+        <button class="btn" id="dkSaveAs">另存为</button>
+        <button class="btn" id="dkExport">导出代码</button>
+        <button class="btn" id="dkFill">自动补全</button>
+        <button class="btn" id="dkClear">清空</button>
+        <button class="btn btn-danger wide" id="dkDelete">删除卡组</button>
+      </div>
+    </aside>
+  </main>
+  <nav class="dk-tabs" id="dkTabs">
+    <button data-t="list">卡组列表</button><button data-t="pool" class="on">卡牌库</button><button data-t="deck">我的卡组</button>
+  </nav>
 </section>
 
 <!-- ======================= 对局 ======================= -->
@@ -249,29 +300,6 @@
   <div class="panel-acts"><button class="btn" id="cfNo">取消</button><button class="btn btn-danger" id="cfYes">确定</button></div>
 </div></div>
 
-<div class="modal" id="mDeck" hidden><div class="panel deck-panel">
-  <div class="deck-head">
-    <h2>编辑卡组</h2>
-    <div class="deck-heroes" id="deckHeroes"></div>
-  </div>
-  <div class="deck-body">
-    <div class="deck-cards" id="deckCards"></div>
-    <aside class="deck-side">
-      <div class="deck-count" id="deckCount"></div>
-      <div class="curve" id="deckCurve"></div>
-      <div class="deck-mix" id="deckMix"></div>
-      <div class="deck-msg" id="deckMsg"></div>
-      <div class="deck-btns">
-        <button class="btn" id="deckReset">恢复默认</button>
-        <button class="btn" id="deckClear">清空</button>
-        <button class="btn" id="deckFill">自动补全</button>
-        <button class="btn" data-close>取消</button>
-        <button class="btn btn-gold" id="deckSave">保存卡组</button>
-      </div>
-    </aside>
-  </div>
-</div></div>
-
 <div class="modal" id="mRules" hidden><div class="panel wide rules">
   <h2>玩法说明</h2>
   <div class="rules-grid">
@@ -300,6 +328,7 @@
 <script src="js/audio.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/cardview.js"></script>
+<script src="js/decks.js"></script>
 <script src="js/game-ui.js"></script>
 <script src="js/app.js"></script>
 </body>

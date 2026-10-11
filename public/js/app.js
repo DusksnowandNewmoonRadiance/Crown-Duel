@@ -17,9 +17,9 @@ const store={
    ============================================================ */
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
-  ["#scrHome","#scrLobby","#scrRoom","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrGame"].forEach(s=>$(s).hidden=s!==id);
   if(id==="#scrGame")GameUI.fit();
-  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom")Audio2.music("menu");
+  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks")Audio2.music("menu");
 }
 function openModal(id){$(id).hidden=false;}
 function closeModal(id){$(id).hidden=true;}
@@ -45,11 +45,8 @@ const Me={
   set nick(v){store.set("nick",v);},
   get hero(){const h=store.get("hero","苏苏");return C.PROFILES[h]?h:"苏苏";},
   set hero(v){store.set("hero",v);},
-  deck(h){
-    try{const d=JSON.parse(store.get("deck."+h,"null"));if(d&&!C.deckError(h,d))return d;}catch(e){}
-    return C.defaultDeck(h);
-  },
-  saveDeck(h,list){store.set("deck."+h,JSON.stringify(list));},
+  deck(h){return Decks.activeCards(h);},
+  deckName(h){return Decks.active(h).name;},
   get cid(){let c=store.get("cid","");if(!/^[A-Za-z0-9_-]{8,64}$/.test(c)){c=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9-]/g,"");store.set("cid",c);}return c;}
 };
 
@@ -60,6 +57,11 @@ function heroTile(h,on){
   const info=C.HERO_INFO[h],p=C.PROFILES[h];
   return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}${crest(h)}<strong>${V.esc(h)}</strong><small>${V.esc(info.title)}</small><span class="stars" title="上手难度">${stars(info.difficulty)}</span></button>`;
 }
+function deckSelectHTML(h){
+  const act=Decks.active(h).id;
+  const opts=[{id:"default:"+h,name:"官方推荐"}].concat(Decks.list(h).filter(d=>!Decks.error(d)).sort((a,b)=>b.updatedAt-a.updatedAt));
+  return`<select id="homeDeck">${opts.map(d=>`<option value="${V.esc(d.id)}"${d.id===act?" selected":""}>${V.esc(d.name)}</option>`).join("")}</select>`;
+}
 function renderHome(){
   const cur=Me.hero;
   $("#heroGrid").innerHTML=HEROES.map(h=>heroTile(h,h===cur)).join("");
@@ -67,17 +69,24 @@ function renderHome(){
   const d=$("#heroDetail");d.style.setProperty("--hcr",V.heroRgb(cur));
   d.innerHTML=`${crest(cur)}<div><h3>${V.esc(cur)}<small>${V.esc(info.title)}</small></h3>
     <div class="meta"><span>阵营 <b>${V.esc(p.faction)}</b></span><span>风格 <b>${V.esc(p.style)}</b></span><span>生命 <b>${p.hp}</b></span><span>难度 <b style="color:var(--gold)">${stars(info.difficulty)}</b></span></div>
-    <p class="tip">${V.esc(info.tip)}</p></div>`;
+    <p class="tip">${V.esc(info.tip)}</p>
+    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button></div></div>`;
   $("#homeNickTxt").textContent=Me.nick||"设置昵称";
   $("#homeSound").classList.toggle("off",!Audio2.musicOn&&!Audio2.sfxOn);
 }
 $("#heroGrid").addEventListener("click",e=>{const b=e.target.closest(".htile");if(!b)return;Me.hero=b.dataset.hero;Audio2.sfx("select");renderHome();});
+$("#heroDetail").addEventListener("change",e=>{
+  if(e.target.id!=="homeDeck")return;
+  Decks.setActive(Me.hero,e.target.value);Audio2.sfx("select");Net.profile();
+  toast("出战卡组：「"+Me.deckName(Me.hero)+"」",true);
+});
+$("#heroDetail").addEventListener("click",e=>{if(e.target.closest("#homeDeckEdit"))openDecks(Me.hero);});
 $("#homeNick").addEventListener("click",()=>askNick());
 $("#homeSound").addEventListener("click",()=>{const on=!(Audio2.musicOn||Audio2.sfxOn);Audio2.setSfx(on);Audio2.setMusic(on);if(on)Audio2.music("menu");toast(on?"声音已开启":"声音已关闭",true);renderHome();});
 $("#btnRules").addEventListener("click",()=>openModal("#mRules"));
 $("#rulesCoach").addEventListener("click",()=>{closeModal("#mRules");if(!$("#scrGame").hidden&&GameUI.active){$("#pause").hidden=true;GameUI.openCoach();}else{store.del("coach");toast("下次对局开始时会重新显示新手引导",true);}});
 $("#btnSolo").addEventListener("click",openSolo);
-$("#btnDeck").addEventListener("click",()=>openDeck(Me.hero));
+$("#btnDeck").addEventListener("click",()=>openDecks(Me.hero));
 $("#btnOnline").addEventListener("click",async()=>{if(!Me.nick&&!(await askNick()))return;Net.enterLobby();});
 
 function askNick(){
@@ -95,7 +104,7 @@ function askNick(){
 const Solo={opp:store.get("soloOpp",""),level:store.get("soloLevel","normal")};
 function openSolo(){
   const me=Me.hero;
-  $("#soloMe").innerHTML=`${crest(me)}<span style="--hcr:${V.heroRgb(me)}">${V.esc(me)}</span><button class="btn" id="soloChange">更换</button>`;
+  $("#soloMe").innerHTML=`${crest(me)}<span style="--hcr:${V.heroRgb(me)}">${V.esc(me)}<small class="muted" style="display:block;font:500 12px var(--sans)">卡组：${V.esc(Me.deckName(me))}</small></span><button class="btn" id="soloChange">更换</button>`;
   $("#soloMe").style.setProperty("--hcr",V.heroRgb(me));
   $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();});
   if(Solo.opp===me)Solo.opp="";
@@ -214,61 +223,22 @@ function pickHero(cb){
 $("#heroGrid2").addEventListener("click",e=>{const b=e.target.closest(".htile");if(!b)return;closeModal("#mHero");Audio2.sfx("select");const cb=pickCb;pickCb=null;cb&&cb(b.dataset.hero);});
 
 /* ============================================================
-   卡组编辑器
+   卡组页面（见 decks.js）
    ============================================================ */
-let DW=null; // {hero, list}
-function openDeck(hero){
-  DW={hero,list:Me.deck(hero).slice()};
-  renderDeck();openModal("#mDeck");
+function openDecks(hero,deckId){
+  const ret=!$("#scrLobby").hidden?"#scrLobby":!$("#scrRoom").hidden?"#scrRoom":"#scrHome";
+  show("#scrDecks");
+  Decks.open(hero,{
+    toast,confirm:confirmBox,
+    onChange(){Net.profile();},
+    onClose(){
+      show(ret);renderHome();
+      if(ret==="#scrLobby")renderLobby();
+      if(ret==="#scrRoom"&&Net.room)renderRoom();
+      Live.afterGame();
+    }
+  },deckId);
 }
-function renderDeck(){
-  const h=DW.hero,cards=C.PROFILES[h].cards;
-  $("#deckHeroes").innerHTML=HEROES.map(x=>`<button data-h="${V.esc(x)}" class="${x===h?"on":""}" style="--hcr:${V.heroRgb(x)}">${V.esc(x)}</button>`).join("");
-  const cnt={};DW.list.forEach(id=>cnt[id]=(cnt[id]||0)+1);
-  $("#deckCards").innerHTML=cards.slice().sort((a,b)=>a.cost-b.cost||(a.kind<b.kind?1:-1)).map(c=>{
-    const n=cnt[c.id]||0;
-    return`<div class="dc${n?"":" zero"}" data-id="${V.esc(c.id)}">${V.card(Object.assign({hero:h},c))}<div class="dc-ctrl"><button data-a="-" ${n<=0?"disabled":""}>−</button><span>${n}<small> / ${c.limit}</small></span><button data-a="+" ${n>=c.limit||DW.list.length>=C.DECK_SIZE?"disabled":""}>＋</button></div></div>`;
-  }).join("");
-  const total=DW.list.length,err=C.deckError(h,DW.list);
-  const dc=$("#deckCount");dc.className="deck-count "+(err?"bad":"ok");dc.innerHTML=`${total}<small> / ${C.DECK_SIZE}</small>`;
-  const curve=[0,0,0,0,0,0,0,0];let units=0,spells=0;
-  DW.list.forEach(id=>{const c=cards.find(x=>x.id===id);curve[Math.min(7,c.cost)]++;if(c.kind==="unit")units++;else spells++;});
-  const mx=Math.max(1,...curve);
-  $("#deckCurve").innerHTML=curve.map((n,i)=>`<div><b>${n||""}</b><i style="height:${n/mx*70}%"></i>${i===7?"7+":i}</div>`).join("");
-  $("#deckMix").innerHTML=`<span>单位<b>${units}</b></span><span>法术<b>${spells}</b></span>`;
-  $("#deckMsg").textContent=err||"卡组合法，可以保存";
-  $("#deckMsg").style.color=err?"":"var(--green)";
-  $("#deckSave").disabled=!!err;
-}
-$("#deckHeroes").addEventListener("click",e=>{const b=e.target.closest("button");if(!b||b.dataset.h===DW.hero)return;DW={hero:b.dataset.h,list:Me.deck(b.dataset.h).slice()};renderDeck();});
-$("#deckCards").addEventListener("click",e=>{
-  const b=e.target.closest("button[data-a]");const row=e.target.closest(".dc");if(!row)return;
-  const id=row.dataset.id,c=C.PROFILES[DW.hero].cards.find(x=>x.id===id);
-  const n=DW.list.filter(x=>x===id).length;
-  if(b&&b.dataset.a==="-"){const i=DW.list.lastIndexOf(id);if(i>=0)DW.list.splice(i,1);}
-  else if(b||e.target.closest(".card")){
-    if(n>=c.limit){toast(`【${c.name}】最多携带 ${c.limit} 张`);return;}
-    if(DW.list.length>=C.DECK_SIZE){toast(`卡组已满 ${C.DECK_SIZE} 张`);return;}
-    DW.list.push(id);
-  }
-  Audio2.sfx("click");
-  const top=$("#deckCards").scrollTop;renderDeck();$("#deckCards").scrollTop=top;
-});
-$("#deckReset").addEventListener("click",()=>{DW.list=C.defaultDeck(DW.hero);renderDeck();});
-$("#deckClear").addEventListener("click",()=>{DW.list=[];renderDeck();});
-$("#deckFill").addEventListener("click",()=>{
-  const cards=C.PROFILES[DW.hero].cards.slice().sort((a,b)=>a.cost-b.cost);
-  let guard=0;
-  while(DW.list.length<C.DECK_SIZE&&guard++<200){
-    const c=cards.find(x=>DW.list.filter(y=>y===x.id).length<x.limit);if(!c)break;DW.list.push(c.id);
-  }
-  renderDeck();
-});
-$("#deckSave").addEventListener("click",()=>{
-  const err=C.deckError(DW.hero,DW.list);if(err){toast(err);return;}
-  Me.saveDeck(DW.hero,DW.list);closeModal("#mDeck");toast("卡组已保存",true);Audio2.sfx("select");
-  Net.profile();
-});
 
 /* ============================================================
    联机
@@ -387,9 +357,9 @@ function chatLine(box,m){
 function renderLobby(){
   const me=Me.hero;
   const mc=$("#lobbyMe");mc.style.setProperty("--hcr",V.heroRgb(me));
-  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>当前卡牌师：${V.esc(me)} · ${V.esc(C.HERO_INFO[me].title)}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
+  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)} · ${V.esc(C.HERO_INFO[me].title)} · 卡组：${V.esc(Me.deckName(me))}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
   $("#lobbyHero").onclick=()=>pickHero(h=>{Me.hero=h;Net.profile();renderLobby();renderHome();});
-  $("#lobbyDeck").onclick=()=>openDeck(Me.hero);
+  $("#lobbyDeck").onclick=()=>openDecks(Me.hero);
   const L=Net.lobby;
   $("#lobbyOnline").textContent=L?`在线 ${L.online}${L.queue?` · 匹配中 ${L.queue}`:""}`:"连接中…";
   const box=$("#roomList");
@@ -444,6 +414,7 @@ function renderRoom(){
   else st.textContent="双方都准备后自动开始";
 }
 $("#roomReady").addEventListener("click",()=>{const r=Net.room;if(!r)return;const me=r.seats[r.you];Audio2.sfx("click");Net.socket.emit("room:ready",!(me&&me.ready));});
+$("#roomDeck").addEventListener("click",()=>openDecks(Me.hero));
 $("#roomHero").addEventListener("click",()=>pickHero(h=>{Me.hero=h;Net.profile();renderHome();}));
 $("#roomLeave").addEventListener("click",()=>{Net.socket&&Net.socket.emit("room:leave");});
 $("#roomCodeBtn").addEventListener("click",async()=>{
@@ -474,7 +445,7 @@ const Live={
   },
   applyContent(c){
     if(c.rev===this.rev)return;
-    if(this.inGame()||!$("#mDeck").hidden){this.pendingContent=true;return;}
+    if(this.inGame()||!$("#scrDecks").hidden){this.pendingContent=true;return;}
     C.applyOverrides(c.overrides||{},c.rev);
     const changed=this.rev!==null;this.rev=c.rev;this.pendingContent=false;
     renderHome();if(Net.inLobby&&!Net.room)renderLobby();
@@ -545,7 +516,6 @@ function sysMsg(kind,text,o){
 $("#homeNews").addEventListener("click",()=>Live.openNews());
 $("#lobbyNews").addEventListener("click",()=>Live.openNews());
 $("#newsList").addEventListener("click",e=>{const b=e.target.closest(".news-item");if(b)Live.renderNews(b.dataset.id);});
-$("#mDeck").addEventListener("click",()=>setTimeout(()=>{if($("#mDeck").hidden&&Live.pendingContent)Live.loadContent(false);},0));
 
 /* ============================================================
    启动
