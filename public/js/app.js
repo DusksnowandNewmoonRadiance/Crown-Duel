@@ -120,7 +120,7 @@ class LocalController{
     this.push(true);
     this.game.mulligan(1,this.ai.mulligan(this.game,1));
     this.push(false);
-    if(Math.random()<.5)setTimeout(()=>!this.dead&&GameUI.showEmote("foe",0),1600);
+    setTimeout(()=>!this.dead&&GameUI.showChat("foe","你好，请多指教！",this.game.players[1].name),1600);
   }
   push(full){
     const ev=this.game.takeEvents();
@@ -141,9 +141,13 @@ class LocalController{
     if(r.ok){this.push(false);this.runAI();}
     return r;
   }
-  emote(id){
-    GameUI.showEmote("me",id);
-    if(Math.random()<.6)setTimeout(()=>{if(!this.dead)GameUI.showEmote("foe",[0,1,2,3,4,5][[0,2,2,3,4,1][id]]);},1300);
+  /* 单人练习里的聊天：电脑偶尔回一句 */
+  async chat(text){
+    GameUI.showChat("me",text);
+    const reply=/再来|再打/.test(text)?"好啊，随时奉陪":/稳|厉害|打得好|漂亮/.test(text)?"谢谢夸奖！":/你好|嗨|hi/i.test(text)?"你好！":/稍等|想想/.test(text)?"不急，慢慢来":
+      ["哈哈","有意思","接招！","承让了","继续吧"][Math.floor(Math.random()*5)];
+    if(Math.random()<.55)setTimeout(()=>{if(!this.dead)GameUI.showChat("foe",reply,this.game.players[1].name);},900+Math.random()*900);
+    return{ok:true};
   }
   async runAI(){
     if(this.running)return;this.running=true;
@@ -294,7 +298,7 @@ const Net={
     s.on("room:chat",m=>chatLine("#roomChatLog",m));
     s.on("match:status",d=>{this.searching=d.searching;if(d.searching){this.searchSince=Date.now();openModal("#mMatch");}else closeModal("#mMatch");});
     s.on("game",u=>this.onGame(u));
-    s.on("game:emote",d=>GameUI.showEmote(d.who,d.id));
+    s.on("game:chat",d=>GameUI.showChat(d.who,d.text,d.nick));
     s.on("game:notice",d=>GameUI.notice(d.text,d.ok));
     s.on("toast",d=>toast(d.text,true,3500));
     s.on("announce",d=>Live.onAnnounce(d));
@@ -353,7 +357,11 @@ const Net={
       this.socket.emit("game:action",a,r=>{clearTimeout(t);res(r||{ok:false});});
     });
   },
-  ctl:{act:a=>Net.act(a),emote:id=>Net.socket&&Net.socket.emit("game:emote",id)},
+  ctl:{act:a=>Net.act(a),chat:text=>new Promise(res=>{
+    if(!Net.socket||!Net.socket.connected)return res({ok:false,error:"与服务器的连接已断开"});
+    const t=setTimeout(()=>res({ok:false,error:"服务器无响应"}),6000);
+    Net.socket.emit("game:chat",text,r=>{clearTimeout(t);res(r||{ok:false});});
+  })},
   backToRoomAfterGame(){
     this.gameOn=false;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
     if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}

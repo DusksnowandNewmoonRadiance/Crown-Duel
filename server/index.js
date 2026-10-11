@@ -402,10 +402,16 @@ io.on("connection",socket=>{
 
   socket.on("game:sync",()=>{const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(r&&r.match)r.match.sendTo(u.id);});
 
-  socket.on("game:emote",id=>{
-    const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(!r||!r.match)return;
-    if(!isInt(id)||id>20||limited(u,"_em",1500))return;
-    r.seats.forEach(sid=>{if(sid)send(users.get(sid),"game:emote",{who:sid===u.id?"me":"foe",id});});
+  /* 局内聊天：同时记入房间聊天记录，对局结束回到房间后还能看到 */
+  socket.on("game:chat",(text,cb)=>{
+    const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
+    if(!r||!r.match||!r.seats.includes(u.id))return reply(cb,{ok:false,error:"当前不在对局中"});
+    const t=clean(text,60);if(!t)return reply(cb,{ok:false,error:"消息不能为空"});
+    if(limited(u,"_gc",1200))return reply(cb,{ok:false,error:"发言太快了，稍等一下"});
+    const m={nick:u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();
+    io.to("room:"+r.id).emit("room:chat",m);
+    r.seats.forEach(sid=>{if(sid)send(users.get(sid),"game:chat",{who:sid===u.id?"me":"foe",nick:u.nick,text:t,ts:m.ts});});
+    reply(cb,{ok:true});
   });
 
   socket.on("disconnect",()=>{

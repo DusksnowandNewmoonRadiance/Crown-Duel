@@ -1,14 +1,15 @@
 /* 对局界面：渲染服务器/本地引擎给出的视图，处理拖拽、点选与动画
-   控制器接口：ctl.act(action) -> Promise<{ok,error}>，ctl.emote(id) */
+   控制器接口：ctl.act(action) -> Promise<{ok,error}>，ctl.chat(text) -> Promise<{ok,error}> */
 const GameUI=(()=>{
   const E=window.DuelEngine,C=window.DuelCards,V=CardView;
   const $=s=>document.querySelector(s);
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-  const EMOTES=["你好！","打得好！","谢谢","哎呀…","让我想想…","这波稳了"];
+  const QUICK=["你好！","打得好！","谢谢","哎呀…","让我想想…","这波稳了","稍等一下","再来一局？"];
 
   const S={ctl:null,mode:"solo",opts:{},view:null,queue:[],processing:false,waiters:[],
     sel:null,cast:null,press:null,drag:null,inflight:false,prev:{},timer:null,scale:1,
-    mulOut:new Set(),resultShown:false,pvT:0,hoverT:0,coach:null,turnBanner:-1};
+    mulOut:new Set(),resultShown:false,pvT:0,hoverT:0,coach:null,turnBanner:-1,
+    chat:{log:[],unread:0,sending:false}};
 
   /* ============================================================
      布局
@@ -31,8 +32,9 @@ const GameUI=(()=>{
     S.ctl=ctl;S.mode=mode;S.opts=opts||{};
     S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
     ["#meRow","#foeRow","#hand","#foeHand","#fx","#logList"].forEach(s=>$(s).innerHTML="");
-    ["#mulligan","#pick","#option","#result","#pause","#castBar","#preview","#reveal","#emoteMenu","#netNotice","#coach","#aim"].forEach(s=>$(s).hidden=true);
+    ["#mulligan","#pick","#option","#result","#pause","#castBar","#preview","#reveal","#chatPanel","#netNotice","#coach","#aim"].forEach(s=>$(s).hidden=true);
     $("#logPanel").classList.add("closed");
+    S.chat={log:[],unread:0,sending:false};renderChat();
     $("#pRestart").hidden=mode!=="solo";
     $("#pQuit").textContent=mode==="solo"?"返回主页":"认输并离开";
     buildHero("foe");buildHero("me");
@@ -580,7 +582,7 @@ const GameUI=(()=>{
   /* ============================================================
      输入：拖拽 / 点击 / 长按
      ============================================================ */
-  function blocked(t){return!!t.closest(".overlay,#coach,#castBar,#sideR,#logPanel,#emoteMenu");}
+  function blocked(t){return!!t.closest(".overlay,#coach,#castBar,#sideR,#logPanel,#chatPanel");}
   function onDown(e){
     if(!S.view||e.button>0||S.press)return;
     if(blocked(e.target))return;
@@ -729,7 +731,7 @@ const GameUI=(()=>{
   }
 
   /* ============================================================
-     提示 / 表情 / 引导
+     提示 / 聊天 / 引导
      ============================================================ */
   function gtoast(msg,info,ms){
     const t=$("#gToast");t.textContent=msg;t.className="on"+(info?" info":"");
@@ -739,15 +741,52 @@ const GameUI=(()=>{
     const n=$("#netNotice");n.textContent=text;n.className=ok?"ok":"";n.hidden=false;
     clearTimeout(n._t);if(ok)n._t=setTimeout(()=>{n.hidden=true;},2500);
   }
-  function showEmote(who,id){
-    const text=EMOTES[id];if(!text)return;
-    const box=$(`#${who==="me"?"me":"foe"}Hero`);
+  /* ---------- 局内聊天 ---------- */
+  const chatMuted=()=>{try{return localStorage.getItem("cd.chatMute")==="1";}catch(e){return false;}};
+  function chatOpen(){return!$("#chatPanel").hidden;}
+  function showChat(who,text,nick){
+    text=String(text||"").slice(0,60);if(!text)return;
+    if(who==="foe"&&chatMuted())return;
+    S.chat.log.push({who,text,nick:who==="me"?"你":(nick||(S.view&&S.view.foe.name)||"对手")});
+    if(S.chat.log.length>60)S.chat.log.shift();
+    if(who==="foe"&&!chatOpen())S.chat.unread++;
+    renderChat();bubble(who,text);
+  }
+  function renderChat(){
+    const b=$("#chatBadge");b.hidden=!S.chat.unread;b.textContent=S.chat.unread>9?"9+":S.chat.unread;
+    const log=$("#chatLog");
+    log.innerHTML=S.chat.log.length?S.chat.log.map(m=>`<div class="cm ${m.who}"><b>${V.esc(m.nick)}</b>${V.esc(m.text)}</div>`).join("")
+      :`<div class="empty-c">还没有消息，打个招呼吧</div>`;
+    log.scrollTop=log.scrollHeight;
+  }
+  function toggleChat(open){
+    const p=$("#chatPanel");
+    open=open===undefined?p.hidden:open;
+    p.hidden=!open;
+    if(open){
+      S.chat.unread=0;
+      $("#chatQuick").innerHTML=QUICK.map(t=>`<button type="button">${V.esc(t)}</button>`).join("");
+      $("#chatMute").checked=chatMuted();
+      renderChat();
+      if(matchMedia("(hover:hover)").matches)setTimeout(()=>$("#chatIn").focus(),30);
+    }else $("#chatIn").blur();
+  }
+  async function sendChat(text){
+    text=String(text||"").trim().slice(0,60);
+    if(!text||!S.ctl||!S.ctl.chat||S.chat.sending)return;
+    S.chat.sending=true;
+    let r;try{r=await S.ctl.chat(text);}catch(e){r={ok:false,error:"发送失败"};}
+    S.chat.sending=false;
+    if(r&&r.ok)$("#chatIn").value="";
+    else gtoast((r&&r.error)||"发送失败");
+  }
+  function bubble(who,text){
     const st=$("#stage");
     st.querySelectorAll(`.emote-bubble.${who}`).forEach(x=>x.remove());
     const b=document.createElement("div");b.className="emote-bubble "+who;b.textContent=text;
-    b.style.top=(who==="me"?600:60)+"px";
+    b.style.top=(who==="me"?400:60)+"px";
     st.appendChild(b);Audio2.sfx("emote");
-    setTimeout(()=>b.remove(),2700);
+    setTimeout(()=>b.remove(),4300);
   }
 
   const COACH=[
@@ -819,15 +858,14 @@ const GameUI=(()=>{
     $("#optCancel").addEventListener("click",()=>{$("#option").hidden=true;});
     $("#gLog").addEventListener("click",()=>{const p=$("#logPanel");p.classList.toggle("closed");if(!p.classList.contains("closed"))renderLog();});
     $("#logClose").addEventListener("click",()=>$("#logPanel").classList.add("closed"));
-    $("#gEmote").addEventListener("click",()=>{
-      const m=$("#emoteMenu");
-      if(!m.hidden){m.hidden=true;return;}
-      m.innerHTML=EMOTES.map((t,i)=>`<button data-i="${i}">${t}</button>`).join("");m.hidden=false;
-    });
-    $("#emoteMenu").addEventListener("click",e=>{
-      const b=e.target.closest("button");if(!b)return;$("#emoteMenu").hidden=true;
-      if(S.ctl&&S.ctl.emote)S.ctl.emote(+b.dataset.i);
-    });
+    $("#gChat").addEventListener("click",()=>toggleChat());
+    $("#chatClose").addEventListener("click",()=>toggleChat(false));
+    $("#chatQuick").addEventListener("click",e=>{const b=e.target.closest("button");if(b)sendChat(b.textContent);});
+    $("#chatForm").addEventListener("submit",e=>{e.preventDefault();sendChat($("#chatIn").value);});
+    $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();toggleChat(false);}});
+    $("#chatMute").addEventListener("change",e=>{try{localStorage.setItem("cd.chatMute",e.target.checked?"1":"0");}catch(_){}
+      if(e.target.checked){S.chat.log=S.chat.log.filter(m=>m.who!=="foe");S.chat.unread=0;$("#stage").querySelectorAll(".emote-bubble.foe").forEach(x=>x.remove());}
+      renderChat();});
     $("#gMenu").addEventListener("click",()=>{Audio2.sfx("click");openPause();});
     $("#pResume").addEventListener("click",()=>$("#pause").hidden=true);
     $("#pSfx").addEventListener("click",()=>{Audio2.setSfx(!Audio2.sfxOn);syncPause();});
@@ -840,6 +878,7 @@ const GameUI=(()=>{
       if(e.target.closest("input"))return;
       if(e.key==="Escape"){
         if(S.coach)endCoach();
+        else if(chatOpen())toggleChat(false);
         else if(!$("#pause").hidden)$("#pause").hidden=true;
         else if(!$("#option").hidden)$("#option").hidden=true;
         else if(S.cast)cancelCast();
@@ -868,6 +907,6 @@ const GameUI=(()=>{
   }
   bind();
 
-  return{start,stop,push,idle,fit,showEmote,notice,gtoast,openCoach(){S.opts.tutorial=true;S.opts.forceCoach=true;maybeCoach();},
+  return{start,stop,push,idle,fit,showChat,notice,gtoast,openCoach(){S.opts.tutorial=true;S.opts.forceCoach=true;maybeCoach();},
     get view(){return S.view;},get mode(){return S.mode;},get opts(){return S.opts;},get active(){return!!S.ctl;}};
 })();

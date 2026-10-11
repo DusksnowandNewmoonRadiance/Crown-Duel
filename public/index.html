@@ -125,7 +125,7 @@
       <div class="side-btns">
         <button class="round-btn" id="gMenu" title="菜单">☰</button>
         <button class="round-btn" id="gLog" title="战斗记录">☷</button>
-        <button class="round-btn" id="gEmote" title="表情">☺</button>
+        <button class="round-btn" id="gChat" title="聊天">💬<span class="badge-n" id="chatBadge" hidden></span></button>
       </div>
       <div class="pile foe" id="foePile"></div>
       <div class="turn-box">
@@ -136,7 +136,12 @@
       <div class="pile me" id="mePile"></div>
     </div>
 
-    <div id="emoteMenu" hidden></div>
+    <div id="chatPanel" hidden>
+      <header><b>聊天</b><label class="mute"><input type="checkbox" id="chatMute">屏蔽对手</label><button class="x" id="chatClose" title="关闭">✕</button></header>
+      <div id="chatLog"></div>
+      <div id="chatQuick"></div>
+      <form id="chatForm"><input id="chatIn" maxlength="60" placeholder="输入消息，回车发送" autocomplete="off" enterkeyhint="send"><button class="btn btn-gold" type="submit">发送</button></form>
+    </div>
     <div id="castBar" hidden><div class="cb-card" id="cbCard"></div><div class="cb-txt"><b id="cbLabel"></b><span id="cbCount"></span></div><button class="btn btn-gold" id="cbOk">确定</button><button class="btn" id="cbCancel">取消</button></div>
 
     <svg id="aim" hidden viewBox="0 0 1280 720"><defs><marker id="arrowHead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffd27a"/></marker></defs><path id="aimPath" d="" marker-end="url(#arrowHead)"/></svg>

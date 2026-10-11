@@ -4,6 +4,7 @@ process.env.PORT="3918";process.env.HOST="127.0.0.1";
 process.env.DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),"cd-live-"));
 process.env.ADMIN_TOKEN="test-admin-token-123";
 const {io}=require("socket.io-client");
+const realExit=process.exit.bind(process);
 let exited=null;process.exit=code=>{exited=code;};   // 拦截平滑重启时的退出
 const srv=require("../server/index.js");
 const URL="http://127.0.0.1:3918",H={"content-type":"application/json","x-admin-token":process.env.ADMIN_TOKEN};
@@ -48,5 +49,5 @@ const results=[];const check=(name,ok,extra)=>{results.push(ok);console.log((ok?
   check("平滑重启：无对局时自动退出",exited===0);
   s.close();srv.io.close();srv.server.close();
   const pass=results.every(Boolean);console.log(pass?"LIVE TEST PASSED":"LIVE TEST FAILED");
-  process.exitCode=pass?0:1;setTimeout(()=>process.kill(process.pid),300);
-})().catch(e=>{console.error(e);process.exitCode=1;process.kill(process.pid);});
+  setTimeout(()=>realExit(pass?0:1),300);
+})().catch(e=>{console.error(e);realExit(1);});
