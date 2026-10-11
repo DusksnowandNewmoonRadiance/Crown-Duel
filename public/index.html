@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b1014">
+<meta name="description" content="皇冠对决：8 位卡牌师、快节奏的网页卡牌对战，支持单人练习与联机大厅。">
+<title>皇冠对决</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1014'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23e2b467'%3E♛%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ======================= 主页 ======================= -->
+<section class="screen" id="scrHome">
+  <header class="topbar">
+    <div class="brand-mini"><span class="crown">♛</span> 皇冠对决</div>
+    <div class="topbar-r">
+      <button class="chip" id="homeNick" title="修改昵称"><span class="dot"></span><span id="homeNickTxt">设置昵称</span> ✎</button>
+      <button class="icon-btn" id="homeSound" title="声音">♪</button>
+    </div>
+  </header>
+  <main class="home">
+    <div class="home-left">
+      <div class="brand">
+        <div class="eyebrow">TACTICAL CARD DUEL</div>
+        <h1>皇冠对决</h1>
+        <p class="tagline">8 位风格迥异的卡牌师 · 一局 10 分钟的快节奏对决</p>
+      </div>
+      <div class="home-actions">
+        <button class="btn btn-gold btn-xl" id="btnOnline"><span class="bi">⚔</span><span><b>联机对战</b><small>进入大厅，与真人对决</small></span></button>
+        <button class="btn btn-primary btn-xl" id="btnSolo"><span class="bi">♟</span><span><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span></button>
+        <div class="home-actions-row">
+          <button class="btn" id="btnDeck">编辑卡组</button>
+          <button class="btn" id="btnRules">玩法说明</button>
+        </div>
+      </div>
+    </div>
+    <div class="home-right">
+      <div class="section-label">选择你的卡牌师</div>
+      <div class="hero-grid" id="heroGrid"></div>
+      <div class="hero-detail" id="heroDetail"></div>
+    </div>
+  </main>
+</section>
+
+<!-- ======================= 大厅 ======================= -->
+<section class="screen" id="scrLobby" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="lobbyBack">‹ 返回</button>
+    <div class="brand-mini">联机大厅</div>
+    <div class="topbar-r">
+      <span class="net-dot" id="netDot" title="连接状态"></span>
+      <span class="muted" id="lobbyOnline">在线 0</span>
+    </div>
+  </header>
+  <main class="lobby">
+    <div class="lobby-main">
+      <div class="me-card" id="lobbyMe"></div>
+      <div class="lobby-tools">
+        <button class="btn btn-gold" id="btnQuick">⚡ 快速匹配</button>
+        <button class="btn btn-primary" id="btnCreate">＋ 创建房间</button>
+        <form class="join-code" id="joinCodeForm"><input id="joinCode" inputmode="numeric" maxlength="8" placeholder="输入房间号"><button class="btn" type="submit">加入</button></form>
+      </div>
+      <div class="room-list" id="roomList"></div>
+    </div>
+    <aside class="chat-box">
+      <div class="chat-head">大厅聊天</div>
+      <div class="chat-log" id="lobbyChatLog"></div>
+      <form class="chat-form" id="lobbyChatForm"><input id="lobbyChatIn" maxlength="120" placeholder="说点什么…" autocomplete="off"><button class="btn" type="submit">发送</button></form>
+    </aside>
+  </main>
+</section>
+
+<!-- ======================= 房间 ======================= -->
+<section class="screen" id="scrRoom" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="roomLeave">‹ 离开房间</button>
+    <div class="brand-mini" id="roomTitle">房间</div>
+    <div class="topbar-r"><button class="chip" id="roomCodeBtn" title="复制邀请链接">房间号 <b id="roomCode">------</b> ⧉</button></div>
+  </header>
+  <main class="room">
+    <div class="seats">
+      <div class="seat" id="seat0"></div>
+      <div class="vs-badge">VS</div>
+      <div class="seat" id="seat1"></div>
+    </div>
+    <div class="room-status" id="roomStatus"></div>
+    <div class="room-actions">
+      <button class="btn" id="roomHero">更换卡牌师</button>
+      <button class="btn btn-gold btn-lg" id="roomReady">准备</button>
+    </div>
+    <aside class="chat-box room-chat">
+      <div class="chat-log" id="roomChatLog"></div>
+      <form class="chat-form" id="roomChatForm"><input id="roomChatIn" maxlength="120" placeholder="和对手打个招呼…" autocomplete="off"><button class="btn" type="submit">发送</button></form>
+    </aside>
+  </main>
+</section>
+
+<!-- ======================= 对局 ======================= -->
+<section class="screen" id="scrGame" hidden>
+  <div id="rotate"><div class="phone"></div><h2>请横屏游玩</h2><p>旋转手机后自动继续</p></div>
+  <div id="stageWrap"><div id="stage">
+    <div class="table-bg"></div>
+
+    <!-- 左：英雄 -->
+    <div class="hero-block foe" id="foeHero"></div>
+    <div class="hero-block me" id="meHero"></div>
+
+    <!-- 中：战场 -->
+    <div id="foeHand"></div>
+    <div class="lane foe" id="foeLane"><div class="row" id="foeRow"></div></div>
+    <div id="midline"><span id="midText"></span></div>
+    <div class="lane me" id="meLane"><div class="row" id="meRow"></div><div class="drop-hint" id="dropHint">松手出牌</div></div>
+    <div id="hand"></div>
+
+    <!-- 右：控制 -->
+    <div id="sideR">
+      <div class="side-btns">
+        <button class="round-btn" id="gMenu" title="菜单">☰</button>
+        <button class="round-btn" id="gLog" title="战斗记录">☷</button>
+        <button class="round-btn" id="gEmote" title="表情">☺</button>
+      </div>
+      <div class="pile foe" id="foePile"></div>
+      <div class="turn-box">
+        <div class="turn-no" id="turnNo">第 1 回合</div>
+        <button id="endBtn">结束回合</button>
+        <div class="timer" id="timerBar" hidden><i></i></div>
+      </div>
+      <div class="pile me" id="mePile"></div>
+    </div>
+
+    <div id="emoteMenu" hidden></div>
+    <div id="castBar" hidden><div class="cb-card" id="cbCard"></div><div class="cb-txt"><b id="cbLabel"></b><span id="cbCount"></span></div><button class="btn btn-gold" id="cbOk">确定</button><button class="btn" id="cbCancel">取消</button></div>
+
+    <svg id="aim" hidden viewBox="0 0 1280 720"><defs><marker id="arrowHead" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffd27a"/></marker></defs><path id="aimPath" d="" marker-end="url(#arrowHead)"/></svg>
+    <div id="fx"></div>
+    <div id="preview" hidden></div>
+    <div id="reveal" hidden></div>
+    <div id="banner"></div>
+    <div id="gToast"></div>
+    <div id="netNotice" hidden></div>
+
+    <!-- 调度 -->
+    <div class="overlay" id="mulligan" hidden>
+      <h2>调度起手牌</h2>
+      <p id="mulSub"></p>
+      <div class="ov-cards" id="mulCards"></div>
+      <div class="ov-acts"><button class="btn btn-gold btn-lg" id="mulOk">确认</button></div>
+      <p class="muted" id="mulWait"></p>
+    </div>
+    <!-- 发现 / 查看牌库 -->
+    <div class="overlay" id="pick" hidden><h2 id="pickTitle"></h2><p id="pickHint"></p><div class="ov-cards" id="pickCards"></div></div>
+    <!-- 二选一 -->
+    <div class="overlay" id="option" hidden><h2 id="optTitle"></h2><div class="ov-opts" id="optBtns"></div><button class="btn" id="optCancel">取消</button></div>
+    <!-- 结果 -->
+    <div class="overlay result" id="result" hidden>
+      <div class="res-crown" id="resCrown">♛</div>
+      <h2 id="resTitle"></h2>
+      <p id="resText"></p>
+      <div class="res-stats" id="resStats"></div>
+      <div class="ov-acts"><button class="btn btn-gold btn-lg" id="resAgain">再来一局</button><button class="btn btn-lg" id="resBack">返回</button></div>
+    </div>
+    <!-- 暂停 -->
+    <div class="overlay dim" id="pause" hidden>
+      <div class="panel">
+        <h2>菜单</h2>
+        <div class="grid2">
+          <button class="btn btn-primary" id="pResume">继续</button>
+          <button class="btn" id="pRules">玩法说明</button>
+          <button class="btn" id="pSfx">音效：开</button>
+          <button class="btn" id="pMusic">音乐：开</button>
+          <button class="btn" id="pFull">全屏</button>
+          <button class="btn" id="pRestart">重新开始</button>
+        </div>
+        <button class="btn btn-danger" id="pQuit">认输并离开</button>
+      </div>
+    </div>
+    <!-- 新手引导 -->
+    <div id="coach" hidden><div class="coach-hole" id="coachHole"></div><div class="coach-tip" id="coachTip"><p id="coachText"></p><div class="coach-acts"><span class="muted" id="coachStep"></span><button class="btn btn-ghost" id="coachSkip">跳过</button><button class="btn btn-gold" id="coachNext">下一步</button></div></div></div>
+    <!-- 战斗记录 -->
+    <div id="logPanel" class="closed"><header><b>战斗记录</b><button class="btn btn-ghost" id="logClose">✕</button></header><div id="logList"></div></div>
+  </div></div>
+</section>
+
+<!-- ======================= 弹窗 ======================= -->
+<div class="modal" id="mSolo" hidden><div class="panel">
+  <h2>单人练习</h2>
+  <div class="field"><label>你的卡牌师</label><div class="solo-me" id="soloMe"></div></div>
+  <div class="field"><label>对手</label><div class="opp-grid" id="soloOpp"></div></div>
+  <div class="field"><label>电脑难度</label><div class="seg" id="soloLevel">
+    <button data-v="easy">简单</button><button data-v="normal">普通</button><button data-v="hard">困难</button>
+  </div></div>
+  <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold btn-lg" id="soloGo">开始对战</button></div>
+</div></div>
+
+<div class="modal" id="mHero" hidden><div class="panel wide">
+  <h2>选择卡牌师</h2>
+  <div class="hero-grid compact" id="heroGrid2"></div>
+  <div class="panel-acts"><button class="btn" data-close>关闭</button></div>
+</div></div>
+
+<div class="modal" id="mCreate" hidden><div class="panel">
+  <h2>创建房间</h2>
+  <div class="field"><label>房间名称</label><input id="crName" maxlength="16" placeholder="不填则使用默认名称"></div>
+  <div class="field"><label>房间密码（可选）</label><input id="crPass" maxlength="16" placeholder="留空表示公开房间"></div>
+  <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold" id="crGo">创建</button></div>
+</div></div>
+
+<div class="modal" id="mPass" hidden><div class="panel">
+  <h2>输入房间密码</h2>
+  <div class="field"><input id="passIn" maxlength="16" placeholder="密码"></div>
+  <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold" id="passGo">加入</button></div>
+</div></div>
+
+<div class="modal" id="mNick" hidden><div class="panel">
+  <h2>你的昵称</h2>
+  <p class="muted">联机时对手会看到这个名字（最多 12 个字）</p>
+  <div class="field"><input id="nickIn" maxlength="12" placeholder="输入昵称"></div>
+  <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold" id="nickGo">确定</button></div>
+</div></div>
+
+<div class="modal" id="mMatch" hidden><div class="panel center">
+  <div class="spinner"></div>
+  <h2>正在匹配对手…</h2>
+  <p class="muted" id="matchTime">已等待 0 秒</p>
+  <p class="muted small">没人匹配？试试创建房间，把房间号发给朋友</p>
+  <div class="panel-acts center"><button class="btn" id="matchCancel">取消匹配</button></div>
+</div></div>
+
+<div class="modal" id="mConfirm" hidden><div class="panel">
+  <h2 id="cfTitle"></h2><p id="cfText"></p>
+  <div class="panel-acts"><button class="btn" id="cfNo">取消</button><button class="btn btn-danger" id="cfYes">确定</button></div>
+</div></div>
+
+<div class="modal" id="mDeck" hidden><div class="panel deck-panel">
+  <div class="deck-head">
+    <h2>编辑卡组</h2>
+    <div class="deck-heroes" id="deckHeroes"></div>
+  </div>
+  <div class="deck-body">
+    <div class="deck-cards" id="deckCards"></div>
+    <aside class="deck-side">
+      <div class="deck-count" id="deckCount"></div>
+      <div class="curve" id="deckCurve"></div>
+      <div class="deck-mix" id="deckMix"></div>
+      <div class="deck-msg" id="deckMsg"></div>
+      <div class="deck-btns">
+        <button class="btn" id="deckReset">恢复默认</button>
+        <button class="btn" id="deckClear">清空</button>
+        <button class="btn" id="deckFill">自动补全</button>
+        <button class="btn" data-close>取消</button>
+        <button class="btn btn-gold" id="deckSave">保存卡组</button>
+      </div>
+    </aside>
+  </div>
+</div></div>
+
+<div class="modal" id="mRules" hidden><div class="panel wide rules">
+  <h2>玩法说明</h2>
+  <div class="rules-grid">
+    <div class="rule"><i>♥</i><div><b>目标</b><p>把对手的生命值打到 0。部分卡牌师还有特殊胜利方式（如猪瘟鱼偷够 25 元后「逃跑」）。</p></div></div>
+    <div class="rule"><i>◆</i><div><b>费用</b><p>每个回合费用上限 +1（最多 10），并回满。打出卡牌需要消耗左上角数字的费用。</p></div></div>
+    <div class="rule"><i>✋</i><div><b>出牌</b><p>把<span class="hl">发光</span>的手牌拖到战场松手；或点一下选中，再点一下打出。需要选目标的牌会提示你点选。</p></div></div>
+    <div class="rule"><i>⚔</i><div><b>攻击</b><p>把<span class="hl">发光</span>的单位拖向敌方单位或英雄。交战时双方互相造成等于攻击力的伤害。</p></div></div>
+    <div class="rule"><i>⛨</i><div><b>嘲讽</b><p>对手场上有嘲讽单位时，必须先攻击它（「无视嘲讽」的单位除外）。</p></div></div>
+    <div class="rule"><i>➹</i><div><b>冲锋</b><p>普通单位打出后下回合才能攻击；带「冲锋」的单位当回合就能攻击。</p></div></div>
+    <div class="rule"><i>⟳</i><div><b>调度</b><p>开局可以把不想要的起手牌换掉。先手 4 张、后手 5 张，先手第一回合不抽牌。</p></div></div>
+    <div class="rule"><i>⏱</i><div><b>联机计时</b><p>联机每回合 75 秒，超时自动结束回合。断线 60 秒内重新打开网页即可回到对局。</p></div></div>
+    <div class="rule"><i>⛁</i><div><b>疲劳</b><p>牌库抽空后，每次抽牌受到递增的伤害。手牌上限 10 张，超出的牌会被弃掉。</p></div></div>
+    <div class="rule"><i>∅</i><div><b>awa 卡</b><p>苏苏、七星、下水的卡组每局会随机混入一张 awa 卡（停摆 / 即兴演出 / 选角）。</p></div></div>
+  </div>
+  <div class="panel-acts"><button class="btn" id="rulesCoach">重看新手引导</button><button class="btn btn-gold" data-close>明白了</button></div>
+</div></div>
+
+<div id="toast"></div>
+<div id="connBanner" hidden>与服务器的连接中断，正在重连…</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/shared/cards.js"></script>
+<script src="/shared/engine.js"></script>
+<script src="/shared/ai.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/cardview.js"></script>
+<script src="js/game-ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+[Unit]
+Description=Crown Duel (皇冠对决) game server
+After=network.target
+
+[Service]
+Type=simple
+User=crownduel
+Group=crownduel
+WorkingDirectory=/opt/crown-duel
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+ExecStart=/usr/bin/env node server/index.js
+Restart=always
+RestartSec=3
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/opt/crown-duel
+
+[Install]
+WantedBy=multi-user.target
