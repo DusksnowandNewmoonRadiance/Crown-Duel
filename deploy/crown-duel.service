@@ -10,15 +10,20 @@ WorkingDirectory=/opt/crown-duel
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=HOST=127.0.0.1
+# 公告、数值等运营数据保存在 /var/lib/crown-duel（更新程序不会覆盖）
+Environment=DATA_DIR=/var/lib/crown-duel
+StateDirectory=crown-duel
+# 后台口令 ADMIN_TOKEN 等私密配置
+EnvironmentFile=-/etc/crown-duel.env
 ExecStart=/usr/bin/env node server/index.js
+# 平滑更新时程序会主动退出，由 systemd 立即用新代码拉起
 Restart=always
-RestartSec=3
+RestartSec=1
 # 安全加固
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadOnlyPaths=/opt/crown-duel
 
 [Install]
 WantedBy=multi-user.target

@@ -556,3 +556,37 @@ input{font:inherit;color:var(--text)}
   .htile{padding:8px 4px}
   .htile small{display:none}
 }
+
+/* ---------- 公告 / 系统消息 / 版本 ---------- */
+.news-btn{position:relative}
+.red-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ff5a3d;box-shadow:0 0 8px #ff5a3d;border:2px solid var(--bg)}
+.ver{font-size:11.5px;color:#5f7178;letter-spacing:.05em}
+.ver a{color:var(--muted);cursor:pointer;text-decoration:underline}
+.news-panel{height:min(640px,100%);padding:16px 18px}
+.news-head{display:flex;justify-content:space-between;align-items:center}
+.news-body{flex:1;min-height:0;display:grid;grid-template-columns:260px 1fr;gap:14px}
+.news-list{overflow:auto;display:flex;flex-direction:column;gap:6px;padding-right:4px}
+.news-item{text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--bg2);padding:9px 11px;display:flex;flex-direction:column;gap:3px;position:relative}
+.news-item.on{border-color:var(--gold);background:linear-gradient(180deg,rgba(226,180,103,.14),var(--bg2))}
+.news-item b{font:700 14px var(--serif);line-height:1.35}
+.news-item small{font-size:11px;color:var(--muted)}
+.news-item .red-dot{top:8px;right:8px;border-color:var(--bg2)}
+.ntag{display:inline-block;font:600 11px var(--sans);padding:1px 7px;border-radius:7px;margin-right:6px;vertical-align:1px}
+.ntag.t公告{background:rgba(111,182,220,.16);color:#9fd2ea}
+.ntag.t更新{background:rgba(111,208,138,.16);color:#a8f0b8}
+.ntag.t活动{background:rgba(226,180,103,.18);color:var(--gold2)}
+.ntag.t维护{background:rgba(224,102,79,.18);color:#ffb3a3}
+.news-detail{overflow:auto;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02);padding:16px 18px}
+.news-detail h3{margin:0 0 4px;font:700 20px var(--serif)}
+.news-detail .when{font-size:12px;color:var(--muted);margin-bottom:12px}
+.news-detail .txt{white-space:pre-wrap;line-height:1.85;font-size:14.5px;color:#d6e0de}
+#sysBar{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top));transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(720px,94vw)}
+.sys-msg{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:9px 16px;border-radius:14px;font-size:14px;line-height:1.5;box-shadow:0 8px 26px rgba(0,0,0,.5);animation:sysIn .3s ease}
+.sys-msg.bc{background:rgba(30,40,48,.97);border:1px solid var(--gold);color:var(--gold2)}
+.sys-msg.maint{background:rgba(107,46,34,.97);border:1px solid #e98a76;color:#ffd9cf}
+.sys-msg.upd{background:rgba(26,70,48,.97);border:1px solid var(--green);color:#d4f8dc}
+.sys-msg .btn{padding:5px 12px;font-size:13px}
+.sys-msg .x{background:none;border:none;color:inherit;opacity:.7;font-size:16px;padding:0 2px}
+@keyframes sysIn{from{opacity:0;transform:translateY(-12px)}}
+.maint-box{border:1px solid #a8503f;background:rgba(107,46,34,.35);color:#ffd9cf;border-radius:12px;padding:10px 14px;font-size:14px}
+@media (max-width:700px){.news-body{grid-template-columns:1fr;grid-template-rows:auto 1fr}.news-list{max-height:170px}}

@@ -178,7 +178,7 @@ function startSolo(){
 }
 function exitGame(){
   if(solo){solo.dispose();solo=null;}
-  GameUI.stop();
+  GameUI.stop();setTimeout(()=>Live.afterGame(),0);
   if(Net.room){show("#scrRoom");renderRoom();}
   else if(Net.inLobby){show("#scrLobby");}
   else{show("#scrHome");renderHome();}
@@ -279,6 +279,7 @@ const Net={
       $("#netDot").classList.add("on");$("#connBanner").hidden=true;
       s.emit("hello",{clientId:Me.cid,nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)},r=>{
         if(!r||!r.ok)return;this.myId=r.id;
+        Live.checkBuild(r.build);Live.setMaint(r.maintenance);
         if(r.nick&&r.nick!==Me.nick){Me.nick=r.nick;renderHome();}
         if(this.pendingJoin){const c=this.pendingJoin;this.pendingJoin=null;this.joinRoom({code:c});}
       });
@@ -295,6 +296,12 @@ const Net={
     s.on("game",u=>this.onGame(u));
     s.on("game:emote",d=>GameUI.showEmote(d.who,d.id));
     s.on("game:notice",d=>GameUI.notice(d.text,d.ok));
+    s.on("toast",d=>toast(d.text,true,3500));
+    s.on("announce",d=>Live.onAnnounce(d));
+    s.on("broadcast",d=>sysMsg("bc","📣 "+d.text,{ms:15000}));
+    s.on("maintenance",m=>Live.setMaint(m));
+    s.on("content",()=>Live.loadContent(false));
+    s.on("build",d=>Live.checkBuild(d.build));
     return true;
   },
   profile(){if(this.socket&&this.socket.connected)this.socket.emit("profile",{nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)});},
@@ -348,11 +355,11 @@ const Net={
   },
   ctl:{act:a=>Net.act(a),emote:id=>Net.socket&&Net.socket.emit("game:emote",id)},
   backToRoomAfterGame(){
-    this.gameOn=false;GameUI.stop();
+    this.gameOn=false;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
     if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
   },
   backToLobbyAfterGame(){
-    this.gameOn=false;GameUI.stop();
+    this.gameOn=false;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
     if(this.room)this.socket.emit("room:leave");
     show("#scrLobby");renderLobby();
   }
@@ -440,10 +447,104 @@ $("#roomCodeBtn").addEventListener("click",async()=>{
 $("#roomChatForm").addEventListener("submit",e=>{e.preventDefault();const t=$("#roomChatIn").value.trim();if(!t||!Net.socket)return;Net.socket.emit("room:chat",t);$("#roomChatIn").value="";});
 
 /* ============================================================
+   运营：版本热更新 / 数值热更新 / 公告 / 广播 / 维护
+   ============================================================ */
+const Live={
+  build:null,version:"",rev:null,news:[],pendingContent:false,updateReady:false,maint:{on:false},
+  inGame(){return GameUI.active&&!$("#scrGame").hidden&&GameUI.view&&GameUI.view.phase!=="over";},
+  async boot(){
+    await this.loadContent(true);
+    await this.loadNews(true);
+    setInterval(()=>{if(!(Net.socket&&Net.socket.connected))this.loadContent(false);},5*60000);
+  },
+  async loadContent(first){
+    let c;try{const r=await fetch("/api/content",{cache:"no-store"});if(!r.ok)return;c=await r.json();}catch(e){return;}
+    if(first){this.build=c.build;this.version=c.version;$("#verLabel").innerHTML=`v${V.esc(c.version)} · <a id="verNews">更新日志</a>`;$("#verNews").onclick=()=>this.openNews(this.news.find(n=>n.type==="更新"));}
+    else this.checkBuild(c.build);
+    this.applyContent(c);
+    this.setMaint(c.maintenance);
+  },
+  applyContent(c){
+    if(c.rev===this.rev)return;
+    if(this.inGame()||!$("#mDeck").hidden){this.pendingContent=true;return;}
+    C.applyOverrides(c.overrides||{},c.rev);
+    const changed=this.rev!==null;this.rev=c.rev;this.pendingContent=false;
+    renderHome();if(Net.inLobby&&!Net.room)renderLobby();
+    if(changed)toast("卡牌数值已更新，新对局将使用最新数值",true,3000);
+  },
+  checkBuild(b){
+    if(!b||!this.build||b===this.build||this.updateReady)return;
+    this.updateReady=true;this.showUpdate();
+  },
+  showUpdate(){
+    if(!this.updateReady||this.inGame()||$("#sysUpd"))return;
+    sysMsg("upd",`游戏已更新到新版本`,{id:"sysUpd",action:"立即刷新",onAction:()=>location.reload(),sticky:true});
+  },
+  /* 对局结束、回到菜单时调用：补上延后的更新 */
+  afterGame(){if(this.pendingContent)this.loadContent(false);this.showUpdate();},
+  setMaint(m){
+    this.maint=m||{on:false};
+    const old=$("#sysMaint");if(old)old.remove();
+    if(this.maint.on&&!m.restarting)sysMsg("maint","🔧 "+this.maint.message,{id:"sysMaint",sticky:true});
+    if(m&&m.restarting)sysMsg("maint","服务器正在重启更新，几秒后会自动重新连接…",{id:"sysMaint",sticky:true});
+    const lm=$("#lobbyMaint");lm.hidden=!this.maint.on;lm.textContent="🔧 "+(this.maint.message||"");
+    $("#btnQuick").disabled=$("#btnCreate").disabled=!!this.maint.on;
+  },
+  /* ---------- 公告 ---------- */
+  seen(){try{return new Set(JSON.parse(store.get("seenNews","[]")));}catch(e){return new Set();}},
+  markSeen(id){const s=this.seen();s.add(id);store.set("seenNews",JSON.stringify([...s].slice(-200)));this.renderDots();},
+  async loadNews(first){
+    try{const r=await fetch("/api/announcements",{cache:"no-store"});if(!r.ok)return;this.news=await r.json();}catch(e){return;}
+    this.renderDots();
+    if(first){const seen=this.seen();const pop=this.news.find(n=>n.popup&&!seen.has(n.id+"@"+n.updatedAt));if(pop&&!this.inGame())setTimeout(()=>this.openNews(pop),600);}
+    if(!$("#mNews").hidden)this.renderNews(this.cur);
+  },
+  unread(){const s=this.seen();return this.news.filter(n=>!s.has(n.id+"@"+n.updatedAt));},
+  renderDots(){const u=this.unread().length>0;$$(".news-btn .red-dot").forEach(d=>d.hidden=!u);},
+  openNews(item){
+    if(!this.news.length){toast("暂时没有公告",true);return;}
+    this.renderNews((item||this.unread()[0]||this.news[0]).id);openModal("#mNews");
+  },
+  renderNews(id){
+    const seen=this.seen();const cur=this.news.find(n=>n.id===id)||this.news[0];this.cur=cur.id;
+    this.markSeen(cur.id+"@"+cur.updatedAt);
+    const fmt=t=>new Date(t).toLocaleDateString("zh-CN",{year:"numeric",month:"long",day:"numeric"});
+    $("#newsList").innerHTML=this.news.map(n=>`<button class="news-item${n.id===cur.id?" on":""}" data-id="${V.esc(n.id)}">${!seen.has(n.id+"@"+n.updatedAt)&&n.id!==cur.id?'<span class="red-dot"></span>':""}<b><span class="ntag t${V.esc(n.type)}">${V.esc(n.type)}</span>${n.pinned?"📌 ":""}${V.esc(n.title)}</b><small>${fmt(n.createdAt)}</small></button>`).join("");
+    $("#newsDetail").innerHTML=`<h3>${V.esc(cur.title)}</h3><div class="when"><span class="ntag t${V.esc(cur.type)}">${V.esc(cur.type)}</span>${new Date(cur.createdAt).toLocaleString("zh-CN",{hour12:false})}${cur.updatedAt>cur.createdAt+60000?" · 已编辑":""}</div><div class="txt">${V.esc(cur.body)}</div>`;
+    $("#newsDetail").scrollTop=0;
+  },
+  /* 来自服务器的推送 */
+  onAnnounce(d){
+    this.loadNews(false).then(()=>{
+      if(!d||!d.latest)return;
+      if(d.latest.popup&&!this.inGame())this.openNews(this.news.find(n=>n.id===d.latest.id));
+      else sysMsg("bc",`📢 新公告：${d.latest.title}`,{action:"查看",onAction:()=>this.openNews(this.news.find(n=>n.id===d.latest.id))});
+    });
+  }
+};
+/* 屏幕顶部的系统消息条 */
+function sysMsg(kind,text,o){
+  o=o||{};
+  if(o.id&&$("#"+o.id))$("#"+o.id).remove();
+  const d=document.createElement("div");d.className="sys-msg "+kind;if(o.id)d.id=o.id;
+  const t=document.createElement("span");t.textContent=text;d.appendChild(t);
+  if(o.action){const b=document.createElement("button");b.className="btn";b.textContent=o.action;b.onclick=()=>{o.onAction();if(!o.sticky)d.remove();};d.appendChild(b);}
+  const x=document.createElement("button");x.className="x";x.textContent="✕";x.onclick=()=>d.remove();d.appendChild(x);
+  $("#sysBar").appendChild(d);
+  if(!o.sticky)setTimeout(()=>d.remove(),o.ms||12000);
+  return d;
+}
+$("#homeNews").addEventListener("click",()=>Live.openNews());
+$("#lobbyNews").addEventListener("click",()=>Live.openNews());
+$("#newsList").addEventListener("click",e=>{const b=e.target.closest(".news-item");if(b)Live.renderNews(b.dataset.id);});
+$("#mDeck").addEventListener("click",()=>setTimeout(()=>{if($("#mDeck").hidden&&Live.pendingContent)Live.loadContent(false);},0));
+
+/* ============================================================
    启动
    ============================================================ */
 renderHome();
 show("#scrHome");
+Live.boot();
 const qs=new URLSearchParams(location.search);
 const inviteCode=qs.get("room");
 if(!inviteCode&&store.get("online","")==="1"&&Me.nick)Net.enterLobby();
@@ -454,5 +555,5 @@ if(inviteCode&&/^\d{4,10}$/.test(inviteCode)){
     Net.pendingJoin=inviteCode;Net.enterLobby();
   })();
 }
-window.__cd={Me,Net,GameUI,startSolo,get solo(){return solo;}};
+window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;}};
 })();

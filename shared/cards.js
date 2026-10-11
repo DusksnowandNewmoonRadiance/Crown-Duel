@@ -297,5 +297,48 @@ function deckError(hero,list){
   return null;
 }
 
-return{MAX_BOARD,MAX_HAND,ESCAPE_TARGET,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,defaultDeck,deckError};
+/* ============================================================
+   数值热更新：overrides = { "卡牌师:卡牌id": {cost, atk, hp, limit, n, name, text, flavor} }
+   每次应用都先恢复原始数值，因此删除某条覆盖即可还原
+   ============================================================ */
+const PATCHABLE={cost:"num",atk:"num",hp:"num",limit:"num",n:"num",name:"str",text:"str",flavor:"str"};
+const BASE={};
+for(const h in PROFILES)PROFILES[h].cards.forEach(c=>{const b={};for(const k in PATCHABLE)if(c[k]!==undefined)b[k]=c[k];BASE[h+":"+c.id]=b;});
+function findCard(key){
+  const i=String(key).lastIndexOf(":");if(i<0)return null;
+  const h=key.slice(0,i),id=key.slice(i+1);
+  return PROFILES[h]?PROFILES[h].cards.find(c=>c.id===id)||null:null;
+}
+/* 校验覆盖表，返回错误列表（空数组表示合法） */
+function checkOverrides(map){
+  const errs=[];
+  if(!map||typeof map!=="object"||Array.isArray(map))return["数值表必须是一个对象 { \"卡牌师:卡牌id\": {...} }"];
+  for(const key in map){
+    const c=findCard(key);if(!c){errs.push(`找不到卡牌：${key}`);continue;}
+    const o=map[key];if(!o||typeof o!=="object"){errs.push(`${key}：必须是对象`);continue;}
+    for(const f in o){
+      const t=PATCHABLE[f];
+      if(!t){errs.push(`${key}：不支持修改字段「${f}」`);continue;}
+      if(t==="num"&&!(Number.isInteger(o[f])&&o[f]>=0&&o[f]<=99))errs.push(`${key}.${f}：必须是 0~99 的整数`);
+      if(t==="str"&&!(typeof o[f]==="string"&&o[f].length<=120))errs.push(`${key}.${f}：必须是 120 字以内的文字`);
+      if((f==="atk"||f==="hp")&&c.kind!=="unit")errs.push(`${key}：法术牌没有 ${f}`);
+      if(f==="hp"&&o[f]<1)errs.push(`${key}.hp：生命值至少为 1`);
+      if(f==="limit"&&o[f]<1)errs.push(`${key}.limit：携带上限至少为 1`);
+    }
+  }
+  for(const h in PROFILES){
+    let sum=0;PROFILES[h].cards.forEach(c=>{const o=map[h+":"+c.id];sum+=o&&o.limit!==undefined?o.limit:BASE[h+":"+c.id].limit;});
+    if(sum<DECK_SIZE)errs.push(`${h}：所有卡牌的携带上限加起来只有 ${sum}，不足 ${DECK_SIZE} 张`);
+  }
+  return errs;
+}
+let overridesRev="";
+function applyOverrides(map,rev){
+  for(const key in BASE){const c=findCard(key);if(!c)continue;for(const k in PATCHABLE)delete c[k];Object.assign(c,BASE[key]);}
+  for(const key in (map||{})){const c=findCard(key);if(!c)continue;Object.assign(c,map[key]);}
+  overridesRev=rev||"";
+}
+
+return{MAX_BOARD,MAX_HAND,ESCAPE_TARGET,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,defaultDeck,deckError,
+  PATCHABLE,checkOverrides,applyOverrides,baseOf:key=>BASE[key],get overridesRev(){return overridesRev;}};
 });

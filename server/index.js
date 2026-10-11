@@ -10,6 +10,9 @@ const express=require("express");
 const {Server}=require("socket.io");
 const C=require("../shared/cards.js");
 const E=require("../shared/engine.js");
+const Store=require("./store.js");
+const adminRouter=require("./admin.js");
+const VERSION=require("../package.json").version;
 
 const PORT=+process.env.PORT||3000;
 const HOST=process.env.HOST||"0.0.0.0";
@@ -19,17 +22,43 @@ const RECONNECT_MS=60000;
 const ROOM_GRACE_MS=20000;
 const COUNTDOWN_MS=3000;
 const MAX_ROOMS=300;
+const DRAIN_CHECK_MS=3000;
+
+/* 本次部署的版本号：程序版本 + 前端/共享代码内容摘要。客户端发现版本变化就提示刷新 */
+function computeBuild(){
+  const fs=require("fs"),h=crypto.createHash("sha1");
+  const walk=d=>fs.readdirSync(d,{withFileTypes:true}).sort((a,b)=>a.name<b.name?-1:1).forEach(e=>{
+    const p=path.join(d,e.name);if(e.isDirectory())walk(p);else h.update(e.name).update(fs.readFileSync(p));});
+  ["public","shared"].forEach(d=>walk(path.join(__dirname,"..",d)));
+  let ver=VERSION;try{ver=JSON.parse(fs.readFileSync(path.join(__dirname,"..","package.json"),"utf8")).version;}catch(e){}
+  return ver+"-"+h.digest("hex").slice(0,8);
+}
+let BUILD=computeBuild();
+/* 部署新前端后无需重启：定时检查文件变化，并通知所有在线玩家 */
+setInterval(()=>{let b;try{b=computeBuild();}catch(e){return;}if(b!==BUILD){BUILD=b;console.log("[皇冠对决] 检测到新版本 "+b);io.emit("build",{build:b});}},15000).unref();
+{const b=Store.balance();if(b.overrides&&!C.checkOverrides(b.overrides).length)C.applyOverrides(b.overrides,b.rev);}
 
 /* ============================================================
    HTTP
    ============================================================ */
 const app=express();
 app.disable("x-powered-by");
-app.set("trust proxy",true);
+app.set("trust proxy","loopback");
 const noCache={etag:true,lastModified:true,setHeaders:res=>res.setHeader("Cache-Control","no-cache")};
 app.use(express.static(path.join(__dirname,"..","public"),noCache));
 app.use("/shared",express.static(path.join(__dirname,"..","shared"),noCache));
-app.get("/healthz",(req,res)=>res.json({ok:true,online:onlineCount(),rooms:rooms.size,uptime:process.uptime()|0}));
+app.get("/healthz",(req,res)=>res.json({ok:true,build:BUILD,online:onlineCount(),rooms:rooms.size,uptime:process.uptime()|0}));
+app.get("/api/announcements",(req,res)=>{res.setHeader("Cache-Control","no-cache");res.json(Store.announcements().slice(0,30));});
+app.get("/api/content",(req,res)=>{res.setHeader("Cache-Control","no-cache");const b=Store.balance();res.json({build:BUILD,version:VERSION,rev:b.rev,overrides:b.overrides||{},maintenance:maintView()});});
+app.use("/admin",adminRouter({
+  status:()=>({build:BUILD,version:VERSION,uptime:process.uptime()|0,online:onlineCount(),queue:queue.length,rooms:rooms.size,
+    matches:activeMatches(),maintenance:maintView(),dataDir:Store.DATA_DIR}),
+  announcementsChanged:a=>io.emit("announce",{latest:a?{id:a.id,type:a.type,title:a.title,popup:a.popup}:null}),
+  broadcast:text=>io.emit("broadcast",{text,ts:Date.now()}),
+  setMaintenance:(on,msg)=>setMaintenance(on,msg),
+  drain:(min,msg)=>startDrain(min,msg),
+  contentChanged:()=>io.emit("content",{rev:Store.balance().rev})
+}));
 
 const server=http.createServer(app);
 const io=new Server(server,{pingInterval:10000,pingTimeout:20000,maxHttpBufferSize:64*1024});
@@ -43,6 +72,33 @@ const isInt=v=>Number.isInteger(v)&&v>=0&&v<1e9;
 function randomCode(){
   for(let i=0;i<50;i++){const c=String(100000+crypto.randomInt(900000));if(![...rooms.values()].some(r=>r.code===c))return c;}
   return String(crypto.randomInt(1e9));
+}
+
+/* ============================================================
+   维护模式 / 平滑更新
+   开启维护后不能开始新对局；drain 会等进行中的对局结束（或超时）后退出进程，
+   由 systemd 自动用新代码重启
+   ============================================================ */
+const MAINT={on:false,message:"",drainUntil:0,timer:null};
+function maintView(){return{on:MAINT.on,message:MAINT.message,drainUntil:MAINT.drainUntil||0};}
+function activeMatches(){let n=0;for(const r of rooms.values())if(r.match&&!r.match.over)n++;return n;}
+function setMaintenance(on,message){
+  MAINT.on=!!on;MAINT.message=on?(message||"服务器维护中，暂时无法开始新对局"):"";
+  if(!on){MAINT.drainUntil=0;clearInterval(MAINT.timer);MAINT.timer=null;}
+  else{for(const r of rooms.values())cancelCountdown(r);queue.forEach(id=>send(users.get(id),"match:status",{searching:false}));queue=[];}
+  io.emit("maintenance",maintView());lobbyChanged();
+}
+function startDrain(minutes,message){
+  MAINT.drainUntil=now()+minutes*60000;
+  setMaintenance(true,message||`服务器即将更新：进行中的对局可以正常打完，之后会自动重启（最多 ${minutes} 分钟）`);
+  clearInterval(MAINT.timer);
+  MAINT.timer=setInterval(()=>{
+    if(activeMatches()>0&&now()<MAINT.drainUntil)return;
+    clearInterval(MAINT.timer);
+    console.log("[皇冠对决] 对局已全部结束，正在重启以完成更新");
+    io.emit("maintenance",Object.assign(maintView(),{restarting:true}));
+    setTimeout(()=>process.exit(0),1500);
+  },DRAIN_CHECK_MS);
 }
 
 /* ============================================================
@@ -117,6 +173,7 @@ function roomSys(r,text){const m={sys:true,text,ts:now()};r.chat.push(m);if(r.ch
 function cancelCountdown(r){if(r.countdownT){clearTimeout(r.countdownT);r.countdownT=null;r.countdownAt=0;if(r.status==="countdown")r.status="waiting";}}
 function checkStart(r){
   if(r.status!=="waiting")return;
+  if(MAINT.on){if(r.ready.every(Boolean))roomSys(r,"服务器维护中，暂时无法开始新对局");return;}
   const ok=r.seats.every(Boolean)&&r.ready.every(Boolean)&&r.seats.every(id=>users.get(id)&&users.get(id).connected);
   if(!ok)return;
   r.status="countdown";r.countdownAt=now()+COUNTDOWN_MS;
@@ -134,6 +191,7 @@ function startMatch(r){
 /* ---------- 快速匹配 ---------- */
 function dequeue(u){const n=queue.length;queue=queue.filter(id=>id!==u.id);if(queue.length!==n){send(u,"match:status",{searching:false});lobbyChanged();}}
 function enqueue(u){
+  if(MAINT.on){send(u,"toast",{text:MAINT.message});return;}
   if(u.roomId)leaveRoom(u,true);
   if(queue.includes(u.id))return;
   queue=queue.filter(id=>{const x=users.get(id);return x&&x.connected&&!x.roomId;});
@@ -253,7 +311,7 @@ io.on("connection",socket=>{
     u.socket=socket;u.connected=true;socket.data.uid=cid;
     if(u.dcTimer){clearTimeout(u.dcTimer);u.dcTimer=null;}
     const r=u.roomId&&rooms.get(u.roomId);
-    reply(cb,{ok:true,id:cid,nick:u.nick});
+    reply(cb,{ok:true,id:cid,nick:u.nick,build:BUILD,version:VERSION,maintenance:maintView()});
     if(r){
       socket.join("room:"+r.id);
       send(u,"room",roomView(r,u.id));send(u,"room:chatlog",r.chat);
@@ -294,6 +352,7 @@ io.on("connection",socket=>{
     const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
     if(limited(u,"_rc",1500))return reply(cb,{ok:false,error:"操作太快了"});
     if(rooms.size>=MAX_ROOMS)return reply(cb,{ok:false,error:"房间数量已达上限，请稍后再试"});
+    if(MAINT.on)return reply(cb,{ok:false,error:MAINT.message});
     d=d||{};dequeue(u);
     const r=createRoom(u,d.name,d.password,false);
     joinRoom(u,r);reply(cb,{ok:true});

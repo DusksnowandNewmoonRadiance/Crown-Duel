@@ -18,6 +18,7 @@
   <header class="topbar">
     <div class="brand-mini"><span class="crown">♛</span> 皇冠对决</div>
     <div class="topbar-r">
+      <button class="chip news-btn" id="homeNews" title="公告">📢 公告<span class="red-dot" hidden></span></button>
       <button class="chip" id="homeNick" title="修改昵称"><span class="dot"></span><span id="homeNickTxt">设置昵称</span> ✎</button>
       <button class="icon-btn" id="homeSound" title="声音">♪</button>
     </div>
@@ -36,6 +37,7 @@
           <button class="btn" id="btnDeck">编辑卡组</button>
           <button class="btn" id="btnRules">玩法说明</button>
         </div>
+        <div class="ver" id="verLabel"></div>
       </div>
     </div>
     <div class="home-right">
@@ -52,6 +54,7 @@
     <button class="btn btn-ghost" id="lobbyBack">‹ 返回</button>
     <div class="brand-mini">联机大厅</div>
     <div class="topbar-r">
+      <button class="chip news-btn" id="lobbyNews">📢<span class="red-dot" hidden></span></button>
       <span class="net-dot" id="netDot" title="连接状态"></span>
       <span class="muted" id="lobbyOnline">在线 0</span>
     </div>
@@ -59,6 +62,7 @@
   <main class="lobby">
     <div class="lobby-main">
       <div class="me-card" id="lobbyMe"></div>
+      <div class="maint-box" id="lobbyMaint" hidden></div>
       <div class="lobby-tools">
         <button class="btn btn-gold" id="btnQuick">⚡ 快速匹配</button>
         <button class="btn btn-primary" id="btnCreate">＋ 创建房间</button>
@@ -230,6 +234,11 @@
   <div class="panel-acts center"><button class="btn" id="matchCancel">取消匹配</button></div>
 </div></div>
 
+<div class="modal" id="mNews" hidden><div class="panel wide news-panel">
+  <div class="news-head"><h2>公告</h2><button class="btn btn-ghost" data-close>✕</button></div>
+  <div class="news-body"><div class="news-list" id="newsList"></div><article class="news-detail" id="newsDetail"></article></div>
+</div></div>
+
 <div class="modal" id="mConfirm" hidden><div class="panel">
   <h2 id="cfTitle"></h2><p id="cfText"></p>
   <div class="panel-acts"><button class="btn" id="cfNo">取消</button><button class="btn btn-danger" id="cfYes">确定</button></div>
@@ -276,6 +285,7 @@
 </div></div>
 
 <div id="toast"></div>
+<div id="sysBar"></div>
 <div id="connBanner" hidden>与服务器的连接中断，正在重连…</div>
 
 <script src="/socket.io/socket.io.js"></script>

@@ -1,13 +1,13 @@
 {
   "name": "crown-duel",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "皇冠对决 · 网页联机卡牌对战",
   "private": true,
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node test/sim.js && node test/online.js"
+    "test": "node test/sim.js && node test/online.js && node test/live.js"
   },
   "engines": {
     "node": ">=18"
