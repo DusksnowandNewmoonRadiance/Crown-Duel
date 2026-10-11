@@ -112,7 +112,12 @@ const Decks=(()=>{
   function startWork(d,opts){
     opts=opts||{};
     hero=d.hero;
-    W={id:opts.fresh?null:d.id,hero:d.hero,name:d.name,cards:d.cards.slice(),virtual:!!d.virtual,dirty:!!opts.dirty};
+    // 游戏更新后可能删除了某些卡牌：自动清理并提示，避免卡组里出现删不掉的“幽灵卡”
+    const known=new Set(cardsOf(d.hero).map(c=>c.id));
+    const valid=d.cards.filter(id=>known.has(id));
+    const removed=d.cards.length-valid.length;
+    W={id:opts.fresh?null:d.id,hero:d.hero,name:d.name,cards:valid,virtual:!!d.virtual,dirty:!!opts.dirty||removed>0};
+    if(removed>0&&host)setTimeout(()=>host.toast(`有 ${removed} 张卡牌在游戏更新后已不存在，已从卡组中移除，请补全后保存`),0);
   }
   function loadDefault(h){startWork(virtualDeck(h));}
   function pickInitial(h){

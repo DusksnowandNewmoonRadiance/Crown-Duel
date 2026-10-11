@@ -17,9 +17,9 @@ const store={
    ============================================================ */
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
-  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrGame"].forEach(s=>$(s).hidden=s!==id);
   if(id==="#scrGame")GameUI.fit();
-  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks")Audio2.music("menu");
+  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex")Audio2.music("menu");
 }
 function openModal(id){$(id).hidden=false;}
 function closeModal(id){$(id).hidden=true;}
@@ -70,7 +70,7 @@ function renderHome(){
   d.innerHTML=`${crest(cur)}<div><h3>${V.esc(cur)}<small>${V.esc(info.title)}</small></h3>
     <div class="meta"><span>阵营 <b>${V.esc(p.faction)}</b></span><span>风格 <b>${V.esc(p.style)}</b></span><span>生命 <b>${p.hp}</b></span><span>难度 <b style="color:var(--gold)">${stars(info.difficulty)}</b></span></div>
     <p class="tip">${V.esc(info.tip)}</p>
-    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button></div></div>`;
+    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div></div>`;
   $("#homeNickTxt").textContent=Me.nick||"设置昵称";
   $("#homeSound").classList.toggle("off",!Audio2.musicOn&&!Audio2.sfxOn);
 }
@@ -80,7 +80,11 @@ $("#heroDetail").addEventListener("change",e=>{
   Decks.setActive(Me.hero,e.target.value);Audio2.sfx("select");Net.profile();
   toast("出战卡组：「"+Me.deckName(Me.hero)+"」",true);
 });
-$("#heroDetail").addEventListener("click",e=>{if(e.target.closest("#homeDeckEdit"))openDecks(Me.hero);});
+$("#heroDetail").addEventListener("click",e=>{
+  if(e.target.closest("#homeDeckEdit"))openDecks(Me.hero);
+  else if(e.target.closest("#homeLore"))openCodex({person:Me.hero});
+});
+$("#btnCodex").addEventListener("click",()=>openCodex());
 $("#homeNick").addEventListener("click",()=>askNick());
 $("#homeSound").addEventListener("click",()=>{const on=!(Audio2.musicOn||Audio2.sfxOn);Audio2.setSfx(on);Audio2.setMusic(on);if(on)Audio2.music("menu");toast(on?"声音已开启":"声音已关闭",true);renderHome();});
 $("#btnRules").addEventListener("click",()=>openModal("#mRules"));
@@ -225,6 +229,16 @@ $("#heroGrid2").addEventListener("click",e=>{const b=e.target.closest(".htile");
 /* ============================================================
    卡组页面（见 decks.js）
    ============================================================ */
+/* 图鉴：只从主页进入，返回主页 */
+function openCodex(opts){
+  show("#scrCodex");
+  Codex.open({
+    toast,
+    onClose(){show("#scrHome");renderHome();},
+    useHero(h){Me.hero=h;Net.profile();show("#scrHome");renderHome();toast("已选择卡牌师："+h,true);},
+    openDecks(h){show("#scrHome");openDecks(h);}
+  },opts);
+}
 function openDecks(hero,deckId){
   const ret=!$("#scrLobby").hidden?"#scrLobby":!$("#scrRoom").hidden?"#scrRoom":"#scrHome";
   show("#scrDecks");

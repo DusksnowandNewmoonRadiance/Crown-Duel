@@ -156,6 +156,39 @@ const FX=(()=>{
       const b=add(`position:absolute;left:${t.x}px;top:${t.y}px;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:4px solid #e8d5ff;box-shadow:0 0 50px #a98fd9,inset 0 0 25px #fff;z-index:202;animation:burst .9s ease-out forwards`);
       Audio2.sfx("core");shake();setTimeout(()=>b.remove(),950);out(dark,400);
     },
+    async decay(d,el){
+      if(!el)return;const p=pos(el);
+      particles(p.x,p.y,16,["#b48ae0","#5a2c7a","#2a1238"],120,10,800);
+      const t=add(`left:${p.x}px;top:${p.y-10}px`);t.className="float decay";t.textContent="☠ 衰减 -"+(d&&d.n||0);
+      Audio2.sfx("hit");setTimeout(()=>t.remove(),1150);await sleep(500);
+    },
+    async decayMark(d,el){
+      if(!el)return;const p=pos(el);
+      const m=add(`position:absolute;left:${p.x}px;top:${p.y}px;font:900 76px var(--serif);color:#c9a2f0;text-shadow:0 0 26px #7a3fb0,0 0 60px #4a2070;transform:translate(-50%,-50%);z-index:205;animation:bigText 1.1s ease-out forwards`,"☠");
+      particles(p.x,p.y,14,["#b48ae0","#7a3fb0"],110,9,800);
+      Audio2.sfx("spell");setTimeout(()=>m.remove(),1150);await sleep(450);
+    },
+    async lock(d,el){
+      if(!el)return;const p=pos(el);
+      const r=add(`position:absolute;left:${p.x}px;top:${p.y}px;width:140px;height:140px;margin:-70px 0 0 -70px;border-radius:50%;border:4px dashed #a98fd9;box-shadow:0 0 36px #8a6bc4,inset 0 0 26px rgba(138,107,196,.6);z-index:204;animation:gravPull 1.2s ease-out reverse forwards`);
+      const m=add(`position:absolute;left:${p.x}px;top:${p.y}px;font:900 54px var(--serif);color:#dccbff;text-shadow:0 0 20px #8a6bc4;transform:translate(-50%,-50%);z-index:205;animation:bigText 1.1s ease-out forwards`,"⛓");
+      Audio2.sfx("spell");setTimeout(()=>{r.remove();m.remove();},1250);await sleep(500);
+    },
+    async fade(d,el){
+      if(!el)return;const p=pos(el);
+      particles(p.x,p.y,20,["#e8d5ff","#b39ce8","#fff"],150,10,900);
+      Audio2.sfx("die");await sleep(350);
+    },
+    async artillery(){
+      bigText("全亚洲炮兵总司令","#ffd9a8","#d9634d",50,1500,36);
+      await E.aoe5();
+    },
+    async breakthrough(){
+      const l=fadeLayer("radial-gradient(circle at 50% 30%,rgba(255,200,120,.35),rgba(5,8,9,.7) 65%)");
+      particles(W/2,150,24,["#ffd9a8","#ffb36a","#fff"],240,9,800);
+      bigText("突 破","#ffe0a8","#e08a40",70,1000,40);
+      Audio2.sfx("core");shake();out(l,900);await sleep(600);
+    },
     async lowHp(){
       const l=add("position:absolute;inset:0;z-index:206;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(224,102,79,.6) 100%)");
       requestAnimationFrame(()=>l.style.opacity="1");

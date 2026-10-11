@@ -9,13 +9,15 @@ crown-duel/
 ├─ server/index.js      联机服务器（Express + Socket.IO，大厅 / 房间 / 匹配 / 计时 / 断线重连 / 维护）
 ├─ server/admin.*       运营后台（公告、广播、维护、数值热更新）
 ├─ server/store.js      运营数据存储（公告、数值，保存为 JSON）
+├─ docs/                设定集存档与设定数据说明
 ├─ shared/              浏览器与服务器共用的代码
+│  ├─ lore.js           设定数据（人物档案、世界观），图鉴与剧情模式共用
 │  ├─ cards.js          全部卡牌数据、默认卡组、卡组校验
 │  ├─ engine.js         规则引擎（联机时由服务器裁决，防作弊）
 │  └─ ai.js             电脑对手
 ├─ public/              网页前端（无需构建）
 ├─ deploy/              部署脚本：setup.sh / systemd 服务 / nginx 配置
-└─ test/                自动化测试（AI 对战模拟 + 联机冒烟测试）
+└─ test/                自动化测试（规则 / 卡组 / 对战模拟 / 联机 / 运营 / 聊天）+ 调参脚本
 ```
 
 ## 本地运行
@@ -54,6 +56,10 @@ sudo systemctl status crown-duel     # 查看状态
 sudo journalctl -u crown-duel -f     # 实时日志
 sudo systemctl restart crown-duel    # 重启
 ```
+
+## 图鉴
+
+主页点「图鉴」：人物档案（42 人，外貌 / 背景 / 卡组）、世界观原文、全部卡牌。设定数据来自作者的设定集（`shared/lore.js`），可使用的卡牌师会标注「可使用」，并能直接跳到卡组页。
 
 ## 卡组
 

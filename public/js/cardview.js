@@ -11,7 +11,7 @@ const CardView=(()=>{
   const heroRgb=hero=>rgb(C.COLORS[hero]||"#e2b467");
   const glyph=n=>n==="045"?"045":String(n||"?")[0];
   /* 卡牌说明里的关键字加粗 */
-  const KW_RE=/(冲锋|无视嘲讽|嘲讽|部署|策反)/g;
+  const KW_RE=/(冲锋|无视嘲讽|嘲讽|部署|策反|亡语|限时|【衰减】)/g;
   const richText=t=>esc(t).replace(KW_RE,"<b>$1</b>");
 
   function kwChips(c){
@@ -21,6 +21,7 @@ const CardView=(()=>{
     if(c.ignoreTaunt)h+=`<i class="kw pierce">无视嘲讽</i>`;
     if(c.untargetable)h+=`<i class="kw hide">隐匿</i>`;
     if(c.strikes>1)h+=`<i class="kw multi">连击</i>`;
+    if(c.lifespan>0)h+=`<i class="kw multi">限时</i>`;
     if(c.core)h+=`<i class="kw core">核心</i>`;
     return h?`<div class="kws">${h}</div>`:"";
   }
@@ -55,6 +56,11 @@ const CardView=(()=>{
     if(c.ignoreTaunt)out.push(K.ignoreTaunt);
     if(c.untargetable)out.push(K.untargetable);
     if(c.strikes>1)out.push(K.strikes);
+    if(/护甲/.test(c.text||""))out.push(K.armor);
+    if(/【衰减】/.test(c.text||""))out.push(K.decay);
+    if(/亡语/.test(c.text||"")||c.deathDmg>0)out.push(K.deathrattle);
+    if(c.lifespan>0)out.push(K.fleeting);
+    if(/出牌封锁|最多只能打出|无法打出法术/.test(c.text||""))out.push(K.lockCards);
     if(/部署/.test(c.text||""))out.push(K.deploy);
     if(/策反/.test(c.text||""))out.push(K.rebel);
     if(/俄布/.test(c.text||"")||(c.id==="red"&&c.hero==="苏苏"))out.push(K.red);

@@ -35,6 +35,7 @@
         <button class="btn btn-primary btn-xl" id="btnSolo"><span class="bi">♟</span><span><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span></button>
         <div class="home-actions-row">
           <button class="btn" id="btnDeck">编辑卡组</button>
+          <button class="btn" id="btnCodex">图鉴</button>
           <button class="btn" id="btnRules">玩法说明</button>
         </div>
         <div class="ver" id="verLabel"></div>
@@ -152,6 +153,38 @@
   <nav class="dk-tabs" id="dkTabs">
     <button data-t="list">卡组列表</button><button data-t="pool" class="on">卡牌库</button><button data-t="deck">我的卡组</button>
   </nav>
+</section>
+
+<!-- ======================= 图鉴 ======================= -->
+<section class="screen" id="scrCodex" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="codexBack">‹ 返回</button>
+    <div class="brand-mini">图鉴</div>
+    <div class="topbar-r"></div>
+  </header>
+  <nav class="cx-tabs" id="cxTabs">
+    <button data-t="people" class="on">人物</button><button data-t="world">世界观</button><button data-t="cards">卡牌</button>
+  </nav>
+  <main class="cx-main">
+    <div class="cx-panel" data-t="people">
+      <div class="cx-ctrl">
+        <input id="cxQ" type="search" placeholder="搜索名字 / 流派 / 势力 / 卡牌名（【】）" autocomplete="off">
+        <div class="cx-chips" id="cxFac"></div>
+        <div class="cx-chips" id="cxTier"></div>
+        <div class="muted small" id="cxCount"></div>
+      </div>
+      <div class="cx-grid" id="cxGrid"></div>
+    </div>
+    <div class="cx-panel" data-t="world" hidden><div class="cx-world" id="cxWorld"></div></div>
+    <div class="cx-panel" data-t="cards" hidden>
+      <div class="cx-ctrl">
+        <input id="cxCardQ" type="search" placeholder="搜索卡牌名称或效果" autocomplete="off">
+        <div class="cx-chips" id="cxHeroChips"></div>
+        <div class="muted small" id="cxCardCount"></div>
+      </div>
+      <div class="cx-cards" id="cxCards"></div>
+    </div>
+  </main>
 </section>
 
 <!-- ======================= 对局 ======================= -->
@@ -295,6 +328,11 @@
   <div class="news-body"><div class="news-list" id="newsList"></div><article class="news-detail" id="newsDetail"></article></div>
 </div></div>
 
+<div class="modal" id="mPerson" hidden><div class="panel wide person">
+  <button class="x-btn" data-close aria-label="关闭">✕</button>
+  <div id="personBody"></div>
+</div></div>
+
 <div class="modal" id="mConfirm" hidden><div class="panel">
   <h2 id="cfTitle"></h2><p id="cfText"></p>
   <div class="panel-acts"><button class="btn" id="cfNo">取消</button><button class="btn btn-danger" id="cfYes">确定</button></div>
@@ -303,7 +341,7 @@
 <div class="modal" id="mRules" hidden><div class="panel wide rules">
   <h2>玩法说明</h2>
   <div class="rules-grid">
-    <div class="rule"><i>♥</i><div><b>目标</b><p>把对手的生命值打到 0。部分卡牌师还有特殊胜利方式（如猪瘟鱼偷够 25 元后「逃跑」）。</p></div></div>
+    <div class="rule"><i>♥</i><div><b>目标</b><p>把对手的生命值打到 0。部分卡牌师还有特殊胜利方式（如猪瘟鱼偷够 300 元后「逃跑」）。</p></div></div>
     <div class="rule"><i>◆</i><div><b>费用</b><p>每个回合费用上限 +1（最多 10），并回满。打出卡牌需要消耗左上角数字的费用。</p></div></div>
     <div class="rule"><i>✋</i><div><b>出牌</b><p>把<span class="hl">发光</span>的手牌拖到战场松手；或点一下选中，再点一下打出。需要选目标的牌会提示你点选。</p></div></div>
     <div class="rule"><i>⚔</i><div><b>攻击</b><p>把<span class="hl">发光</span>的单位拖向敌方单位或英雄。交战时双方互相造成等于攻击力的伤害。</p></div></div>
@@ -311,6 +349,8 @@
     <div class="rule"><i>➹</i><div><b>冲锋</b><p>普通单位打出后下回合才能攻击；带「冲锋」的单位当回合就能攻击。</p></div></div>
     <div class="rule"><i>⟳</i><div><b>调度</b><p>开局可以把不想要的起手牌换掉。先手 4 张、后手 5 张，先手第一回合不抽牌。</p></div></div>
     <div class="rule"><i>⏱</i><div><b>联机计时</b><p>联机每回合 75 秒，超时自动结束回合。断线 60 秒内重新打开网页即可回到对局。</p></div></div>
+    <div class="rule"><i>⛨</i><div><b>护甲</b><p>先于生命值吸收伤害，但会在<span class="hl">你的下个回合开始时清空</span>，主要用来抵挡对手回合的攻击。</p></div></div>
+    <div class="rule"><i>☠</i><div><b>衰减 · 亡语 · 限时</b><p><b>衰减</b>：每个回合开始时受到层数等同的伤害，护甲挡不住。<b>亡语</b>：单位被消灭时触发。<b>限时</b>：只存在到你的下个回合开始。</p></div></div>
     <div class="rule"><i>⛁</i><div><b>疲劳</b><p>牌库抽空后，每次抽牌受到递增的伤害。手牌上限 10 张，超出的牌会被弃掉。</p></div></div>
     <div class="rule"><i>∅</i><div><b>awa 卡</b><p>苏苏、七星、下水的卡组每局会随机混入一张 awa 卡（停摆 / 即兴演出 / 选角）。</p></div></div>
   </div>
@@ -329,6 +369,7 @@
 <script src="js/fx.js"></script>
 <script src="js/cardview.js"></script>
 <script src="js/decks.js"></script>
+<script src="js/codex.js"></script>
 <script src="js/game-ui.js"></script>
 <script src="js/app.js"></script>
 </body>

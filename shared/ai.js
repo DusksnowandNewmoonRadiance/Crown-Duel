@@ -14,7 +14,6 @@ function burnOf(s,c){
   if(c.effect==="unitDamageHero")return s.board.length;
   if(c.effect==="finish")return s.board.length*2;
   if(c.effect==="saturation")return gunCount(s)*2;
-  if(c.effect==="cometImpact")return(s.hp+s.armor>=40)?40:0;
   return BURN[c.effect]||0;
 }
 function faceReach(s,o){
@@ -42,6 +41,8 @@ function scoreCard(s,o,c,lethal){
     if(/^buff|alwei|huiliyi/.test(e))sc+=myN*1.2;
     if(/energyDown|qixing/.test(e))sc+=1.5;
     if(e==="drawHeal")sc+=4;
+    if(e==="decay1")sc+=2.5;
+    if(c.id==="superman")sc+=6;
     if(e==="copySmallCannon")sc+=gunCount(s)*1.5;
     if(e==="baimaoDeploy")sc-=3;
     if(lethal&&burn>0)sc+=300;
@@ -50,13 +51,13 @@ function scoreCard(s,o,c,lethal){
     if(burn)sc+=burn*.8;
     if(lethal&&burn>0)sc+=500;
     if(e==="runaway")return s.money>=ESCAPE_TARGET?20000:-8;
-    if(e==="cometImpact")return(s.hp+s.armor>=40)?99999:-50;
     if(/^(aoe|redDawn)/.test(e)||e==="choose3x2")sc+=enN?enN*3:-100;
     else if(e==="saturation")sc+=gunCount(s)?(enN*2+gunCount(s)*2):-100;
     else if(e==="sacAoe3")sc+=(enN&&myN)?enN*3-2:-100;
     else if(e==="fireShip")sc+=(enN>=2&&myN)?enN*2.5-myN*1.5:-100;
     else if(/^enemyAtkDown/.test(e))sc+=enN?o.board.reduce((a,u)=>a+Math.min(u.attack,2),0)*1.3:-100;
     else if(e==="gravityLock")sc+=enN>=2?4:-100;
+    else if(e==="removeRestrict")sc+=3+(o.heroImmune?4:0)+o.board.filter(u=>u.taunt).length*2;
     else if(/^(remove|adapt)/.test(e))sc+=enN?Math.max(...o.board.map(unitValue))*.9:(e==="adapt"?-2:-100);
     else if(/^(rebel|takeover)/.test(e))sc+=enN?Math.max(...o.board.map(unitValue))*1.1:-100;
     else if(/^(buffAll|pirateBuff|highcommand)/.test(e))sc+=myN?myN*2.4:-100;
@@ -67,7 +68,13 @@ function scoreCard(s,o,c,lethal){
     else if(/^(manaBurn|energyDownDraw)/.test(e))sc+=2;
     else if(e==="costRaise")sc+=o.handCount!==undefined?(o.handCount>=3?4:-100):(o.hand.length>=3?4:-100);
     else if(/^(unitDamageHero|finish)/.test(e))sc+=myN?myN*1.5:-100;
-    else if(/^(filterSuperman|tutorSuperman|scry|tutorCometImpact|foresee)/.test(e))sc+=4;
+    else if(/^(filterSuperman|tutorSuperman|scry|foresee)/.test(e))sc+=4;
+    else if(/^decay/.test(e))sc+=3+(o.decay||0)*(e==="decayDouble"?1.5:1)+(e==="decay2draw"?1.5:0)-(s.hp<=8?3:0);
+    else if(/^lock(Cap|Spell)/.test(e))sc+=((o.handCount!==undefined?o.handCount:o.hand.length)>=3?3.5:-2)+(e==="lockCap1"?1.5:0);
+    else if(e==="energyDown2")sc+=o.maxEnergy>=4?3:-3;
+    else if(e==="revengeDeath")sc+=myN?myN*1.6:-100;
+    else if(e==="artilleryCommand")sc+=enN*2.5+(MAX_BOARD-myN)*1.2;
+    else if(e==="developEnemy")sc+=4;
     else if(e==="awaFreeze")sc+=3;
     else if(e==="awaDiscover")sc+=s.hand.length>=MAX_HAND-1?-100:4;
     else if(e==="awaJazz")sc+=(myN>=MAX_BOARD?-100:5)+((o.hero==="猪瘟鱼"&&o.money>0)?o.money*.4:0);
@@ -75,8 +82,7 @@ function scoreCard(s,o,c,lethal){
     if(/draw|develop|crown|handoff|supply|raid|vaultBurst|traceBoost|nebulaShield2/.test(e))sc+=s.hand.length>=9?-4:2.5;
     if(/steal|Steal|bribeDraw|vaultBurst/.test(e))sc+=3;
     if(/heal|timeShield2/.test(e)){const need=s.maxHp-s.hp;sc+=need>=3?Math.min(need,5)*.8:-3;}
-    if(/armor|traceBoost|nebulaShield2|timeShield2/.test(e))sc+=1.5;
-    if(e==="cometImpact"||/traceBoost|nebulaShield2|timeShield2/.test(e))sc+=(s.hero==="七星"?2:0);
+    if(/armor|traceBoost|nebulaShield2|timeShield2/.test(e))sc+=.8;   // 护甲会在自己的下个回合开始时消散，价值较低
     if(e==="evasion")sc+=s.hp<=12&&o.board.length?4:-3;
     if(e==="disruption")sc+=enN?3:0;
   }

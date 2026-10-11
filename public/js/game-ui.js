@@ -130,7 +130,8 @@ const GameUI=(()=>{
     summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",
     buffAll1:"U:+1/+1",buffAll2:"U:+2/+2",highcommand:"U:+2/+2",buffAll1draw:"U:+1/+1 D1",buffAllCharge:"U:+1/+1",alweiDeploy:"D2 U:+1/+1",pirateBuff:"U:+1攻 D1",
     buffGuns1:"G:+1攻",buffGuns2:"G:+2攻",reload:"G:+3攻 D1",buffGuns2draw:"G:+2攻 D1",buffRed:"R:+2/+2",
-    huiliyiDeploy:"X:+3/+3",buffOneDraw:"X:+2/+2 D1",
+    huiliyiDeploy:"D1",buffOneDraw:"X:+2/+2 D1",revengeDeath:"U:亡语 D1",developEnemy:"D1",summonRandomPirate:"S",
+    decay2draw:"D1",energyDown2:"M-",lockCap1:"M-",removeRestrict:"B",
     choose4:"T",choose2:"T",choose3x2:"T",
     energyDown:"M-",qixingDeploy:"M-",energyDownDraw:"M- D1",manaBurn:"B M-",starClimb:"M+ M-",ramp:"M+ D1",baimaoDeploy:"M+",
     xiashuiDeploy:"B",yuchunDeploy:"K",
@@ -139,12 +140,11 @@ const GameUI=(()=>{
     armor3draw:"A D1",traceBoost:"A D2",timeShield2:"A H",nebulaShield2:"A D2",develop:"D2 A",handoff:"D1 A",crown:"D3 A",supply:"D2 A",draw2armor1:"D2 A",
     damage5:"B",damage6:"B",damage7:"B",unitDamageHero:"B",aoe2:"W B",adapt:"H",
     draw1:"D1",draw3:"D3",raid:"D3",draw1heal2:"D1 H",draw2heal2:"D2 H",heal5draw:"H D1",heal3draw:"H D1",healDraw:"H D1",
-    enemyAtkDown:"F",enemyAtkDown1:"F",filterSuperman:"D1",tutorSuperman:"D1",tutorCometImpact:"D1",rebelWeakest:"D1",runaway:"A B"
+    enemyAtkDown:"F",enemyAtkDown1:"F",filterSuperman:"D1",tutorSuperman:"D1",rebelWeakest:"D1",runaway:"A B"
   };
   function cardFx(e){
     const v=S.view,mine=e.pi===v.you,me=mine?"me":"foe",op=mine?"foe":"me";
     let code=CARD_FX[e.card.effect]||"";
-    if(e.card.effect==="taojinDeploy")code=e.option==="heal"?"H":"B";
     if(e.card.effect==="runaway"&&(mine?v.me:v.foe).money>=C.ESCAPE_TARGET)code="";
     if(!code)return[];
     const casterBoard=(mine?v.me:v.foe).board;
@@ -195,7 +195,9 @@ const GameUI=(()=>{
   async function animFx(e){
     const mine=e.pi===S.view.you;
     let el=null;
-    if(e.name==="rebel"||e.name==="destroy")el=unitEl(e.uid);
+    if(e.name==="rebel"||e.name==="destroy"||e.name==="fade")el=unitEl(e.uid);
+    else if(e.name==="decay")el=heroEl(mine?"me":"foe");
+    else if(e.name==="decayMark"||e.name==="lock")el=heroEl(mine?"foe":"me");
     else if(e.name==="evasion")el=heroEl(mine?"me":"foe");
     else if(e.name==="comet")el=heroEl(mine?"foe":"me");
     await FX.play(e.name,e,el);
@@ -258,7 +260,12 @@ const GameUI=(()=>{
     por.querySelector(".immune").hidden=!p.heroImmune;
     box.querySelector(".nm").textContent=p.name;
     const lock=S.view.lock?`<span class="lock-tag">∅ 停摆</span>`:"";
-    box.querySelector(".hr").innerHTML=V.esc(p.hero)+" "+lock;
+    let st="";
+    if(p.decay>0)st+=`<span class="lock-tag st-decay" title="每个回合开始时受到 ${p.decay} 点伤害">☠ 衰减 ${p.decay}</span>`;
+    if(p.turnCap!=null)st+=`<span class="lock-tag st-lock">封锁 ${p.playedTurn}/${p.turnCap}</span>`;
+    if(p.noSpell)st+=`<span class="lock-tag st-lock">禁法术</span>`;
+    if((p.nextCap!=null||p.nextNoSpell)&&p.turnCap==null&&!p.noSpell)st+=`<span class="lock-tag st-next">下回合受封锁</span>`;
+    box.querySelector(".hr").innerHTML=V.esc(p.hero)+" "+lock+st;
     let gems="";for(let i=0;i<10;i++)gems+=`<i class="${i<p.energy?"":(i<p.maxEnergy?"used":"lock")}"></i>`;
     box.querySelector(".gems").innerHTML=gems;
     box.querySelector(".mn").textContent=`${p.energy}/${p.maxEnergy}`;
@@ -273,6 +280,8 @@ const GameUI=(()=>{
     if(u.charge)kw+=`<i class="charge">冲</i>`;
     if(u.ignoreTaunt)kw+=`<i class="pierce">穿</i>`;
     if(u.untargetable)kw+=`<i class="hide">隐</i>`;
+    if(u.deathDmg>0)kw+=`<i class="death" title="亡语：对敌方英雄造成 ${u.deathDmg} 点伤害">亡</i>`;
+    if(u.lifespan>0)kw+=`<i class="fleet" title="限时：下个回合开始时消散">限</i>`;
     let badge="";
     if(u.stun>0)badge=`<span class="badge stun">💫 眩晕</span>`;
     else if(u.strikes>1)badge=`<span class="badge multi">×${Math.max(0,u.atkLeft)}/${u.strikes}</span>`;
