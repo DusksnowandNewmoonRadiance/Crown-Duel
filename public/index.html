@@ -127,6 +127,7 @@
       <div class="dk-filters">
         <input id="dkSearch" placeholder="搜索卡牌名称或效果" autocomplete="off">
         <div class="seg-inline" id="dkKind"><button data-v="all" class="on">全部</button><button data-v="unit">单位</button><button data-v="spell">法术</button></div>
+        <div class="seg-inline" id="dkRar"><button data-v="all" class="on">全部稀有度</button><button data-v="common" class="r-common">普通</button><button data-v="rare" class="r-rare">稀有</button><button data-v="special" class="r-special">特殊</button><button data-v="elite" class="r-elite">精英</button></div>
         <div class="seg-inline" id="dkCost"><button data-v="all" class="on">全部费用</button><button data-v="0">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6+</button></div>
       </div>
       <div class="dk-cards" id="dkCards"></div>
@@ -177,10 +178,13 @@
     </div>
     <div class="cx-panel" data-t="world" hidden><div class="cx-world" id="cxWorld"></div></div>
     <div class="cx-panel" data-t="cards" hidden>
-      <div class="cx-ctrl">
+      <div class="cx-ctrl" id="cxFilters">
         <input id="cxCardQ" type="search" placeholder="搜索卡牌名称或效果" autocomplete="off">
-        <div class="cx-chips" id="cxHeroChips"></div>
-        <div class="muted small" id="cxCardCount"></div>
+        <div class="cx-frow"><label>角色</label><div class="cx-chips" id="cxFHero"></div></div>
+        <div class="cx-frow"><label>花费</label><div class="cx-chips" id="cxFCost"></div></div>
+        <div class="cx-frow"><label>类型</label><div class="cx-chips" id="cxFKind"></div></div>
+        <div class="cx-frow"><label>稀有度</label><div class="cx-chips" id="cxFRar"></div></div>
+        <div class="cx-fbar"><span class="muted small" id="cxCardCount"></span><button class="btn btn-ghost" id="cxReset">清除筛选</button></div>
       </div>
       <div class="cx-cards" id="cxCards"></div>
     </div>
@@ -333,6 +337,14 @@
   <div id="personBody"></div>
 </div></div>
 
+<div class="modal" id="mCardView" hidden><div class="panel wide cardview">
+  <button class="x-btn" data-close aria-label="关闭">✕</button>
+  <div class="cv-body">
+    <div class="cv-card" id="cvCard"></div>
+    <div class="cv-info" id="cvInfo"></div>
+  </div>
+</div></div>
+
 <div class="modal" id="mConfirm" hidden><div class="panel">
   <h2 id="cfTitle"></h2><p id="cfText"></p>
   <div class="panel-acts"><button class="btn" id="cfNo">取消</button><button class="btn btn-danger" id="cfYes">确定</button></div>
@@ -363,10 +375,12 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/shared/cards.js"></script>
+<script src="/shared/cardfx.js"></script>
 <script src="/shared/engine.js"></script>
 <script src="/shared/ai.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/fx.js"></script>
+<script src="js/cardfx.js"></script>
 <script src="js/cardview.js"></script>
 <script src="js/decks.js"></script>
 <script src="js/codex.js"></script>

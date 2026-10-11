@@ -121,7 +121,24 @@ const GameUI=(()=>{
       const hc=document.querySelector(`.hcard[data-uid="${c.uid}"]`);if(hc)hc.style.opacity="0";
       if(c.kind==="spell"){revealSide(c);await sleep(380);}
     }
-    await FX.cast(cardFx(e));
+    // 特殊 / 精英卡的出牌特效，与按效果生成的通用特效并行播放
+    const recipe=window.DuelCardFX?DuelCardFX.recipeFor(c):null;
+    const run=recipe&&!recipe.native?CardFX.run(recipe,fxCtx(recipe,e)):null;
+    await Promise.all([FX.cast(cardFx(e)),run]);
+  }
+  function fxCtx(r,e){
+    const v=S.view,mine=e.pi===v.you,me=mine?"me":"foe",op=mine?"foe":"me";
+    const P=sel=>{const el=$(sel);return el?FX.pos(el):{x:640,y:360,w:600,h:200};};
+    const from=P(`#${me}Hero .portrait`);
+    let a;
+    switch(r.target){
+      case"me":a=from;break;
+      case"meBoard":a=P(`#${me}Row`);break;
+      case"foeBoard":a=P(`#${op}Row`);break;
+      case"center":a={x:640,y:360,w:600,h:200};break;
+      default:a=P(`#${op}Hero .portrait`);
+    }
+    return{layer:$("#fx"),W:1280,H:720,from,anchor:a,name:e.card.name,shake:FX.shake};
   }
   /* 卡牌效果 → 通用特效。B 弹道打脸 / T 弹道打目标 / W 冲击波 / U 全体增益 / G 火炮增益 / R 俄布增益 / X 目标增益
      H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */

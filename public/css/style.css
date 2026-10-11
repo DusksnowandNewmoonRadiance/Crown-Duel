@@ -756,3 +756,58 @@ input{font:inherit;color:var(--text)}
 /* 单位徽章多时分两列排布，避免挡住名字；英雄状态标签自动换行 */
 .unit .ukw{flex-direction:row;flex-wrap:wrap;max-width:46px;gap:2px}
 .hname small{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:3px;line-height:1.3}
+
+/* ---------- 稀有度 ---------- */
+:root{--r-common:#aab4ba;--r-rare:#4aa3e8;--r-special:#b27be8;--r-elite:#f4c45a}
+.card.r-common{border-color:#8f9aa1}
+.card.r-rare{border-color:var(--r-rare);box-shadow:0 .35em .9em rgba(0,0,0,.55),0 0 .55em rgba(74,163,232,.4)}
+.card.r-special{border-color:var(--r-special);box-shadow:0 .35em .9em rgba(0,0,0,.55),0 0 .75em rgba(178,123,232,.5)}
+.card.r-elite{border-color:var(--r-elite);box-shadow:0 .35em .9em rgba(0,0,0,.55),0 0 1em rgba(244,196,90,.65)}
+.card.r-elite::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(115deg,transparent 38%,rgba(255,244,200,.3) 50%,transparent 62%);transform:translateX(-130%);animation:shine 3.6s ease-in-out infinite}
+@keyframes shine{0%,55%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
+.card .gem{position:absolute;left:50%;bottom:.55em;width:.8em;height:.8em;z-index:2;transform:translateX(-50%) rotate(45deg);border-radius:.14em;border:.09em solid rgba(255,255,255,.75)}
+.gem.r-common{background:var(--r-common)}
+.gem.r-rare{background:var(--r-rare);box-shadow:0 0 .5em var(--r-rare)}
+.gem.r-special{background:var(--r-special);box-shadow:0 0 .6em var(--r-special)}
+.gem.r-elite{background:var(--r-elite);box-shadow:0 0 .8em var(--r-elite)}
+.rar.r-common{color:var(--r-common)}.rar.r-rare{color:var(--r-rare)}.rar.r-special{color:var(--r-special)}.rar.r-elite{color:var(--r-elite)}
+.card .rar{font-weight:700}
+.dk-row .nm.r-rare{color:#9fd0f5}.dk-row .nm.r-special{color:#d2b4f2}.dk-row .nm.r-elite{color:#ffd98a}
+.seg-inline button.r-rare.on{color:var(--r-rare)}.seg-inline button.r-special.on{color:var(--r-special)}.seg-inline button.r-elite.on{color:var(--r-elite)}
+
+/* ---------- 图鉴：四维筛选 / 卡牌详情 ---------- */
+.cx-frow{display:flex;align-items:flex-start;gap:10px}
+.cx-frow label{flex:none;width:52px;padding-top:6px;font-size:12px;letter-spacing:.12em;color:var(--muted)}
+.cx-fbar{display:flex;align-items:center;gap:12px}
+.cx-chips .chip small{opacity:.7;margin-left:3px;font-size:11px}
+.cx-chips .chip.zero{opacity:.38}
+.cx-chips .chip.r-common.on{border-color:var(--r-common);color:#e4e9ec;background:rgba(170,180,186,.2)}
+.cx-chips .chip.r-rare.on{border-color:var(--r-rare);color:#cfe8fb;background:rgba(74,163,232,.2)}
+.cx-chips .chip.r-special.on{border-color:var(--r-special);color:#e6d4f8;background:rgba(178,123,232,.2)}
+.cx-chips .chip.r-elite.on{border-color:var(--r-elite);color:#ffe6a8;background:rgba(244,196,90,.2)}
+.cx-card{cursor:pointer;background:none;border:none;padding:0;transition:transform .15s}
+.cx-card:hover{transform:translateY(-4px)}
+.cx-card small{display:flex;gap:6px;align-items:center}
+.cx-card small .rar{font-weight:700}
+.cx-card small .fxm{font-size:10.5px;padding:0 5px;border-radius:5px;border:1px solid currentColor;opacity:.85}
+.cardview{position:relative;padding:22px 24px 24px}
+.cv-body{display:grid;grid-template-columns:230px 1fr;gap:24px;align-items:start}
+.cv-card .card{font-size:19px;margin:0 auto}
+.cv-info h2{margin:0 0 10px;font:700 26px var(--serif);color:var(--gold2)}
+.cv-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cv-meta span{font-size:12px;padding:3px 10px;border-radius:8px;border:1px solid var(--line2);color:#c2cdd1}
+.cv-meta .r-common{color:var(--r-common);border-color:var(--r-common)}.cv-meta .r-rare{color:var(--r-rare);border-color:var(--r-rare)}
+.cv-meta .r-special{color:var(--r-special);border-color:var(--r-special)}.cv-meta .r-elite{color:var(--r-elite);border-color:var(--r-elite)}
+.cv-sec{margin-top:14px}
+.cv-sec h3{margin:0 0 6px;font-size:12px;letter-spacing:.18em;color:var(--muted)}
+.cv-notes div{padding:7px 10px;margin-bottom:6px;border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.55;color:#c5d0d3}
+.cv-notes b{display:block;color:var(--gold2);font:700 13.5px var(--serif)}
+.fx-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;font-size:14px}
+.fx-line b{color:var(--gold2)}
+.fx-stage{position:relative;width:100%;max-width:560px;aspect-ratio:16/9;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,#1d2b27,#0d1412)}
+.fx-stage .fx-inner{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0}
+.fx-base .ph{position:absolute;border:2px dashed rgba(255,255,255,.14);border-radius:18px;color:rgba(255,255,255,.28);font:700 22px var(--serif);display:grid;place-items:center}
+.fx-base .hero{position:absolute;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;border:4px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font:800 40px var(--serif);display:grid;place-items:center}
+@media (max-width:700px){.cv-body{grid-template-columns:1fr}.cv-card .card{font-size:17px}.cx-frow label{width:46px}}

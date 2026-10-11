@@ -116,7 +116,7 @@ class Game{
   clone(c,hero){
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
-      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member};
+      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||""};
     if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
   }
@@ -691,7 +691,7 @@ class Game{
 
 function pubCard(c){
   const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",effect:c.effect,
-    charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member};
+    charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx};
   if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
   else if(c.lifespan)x.lifespan=c.lifespan;
   return x;

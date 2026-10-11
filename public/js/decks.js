@@ -100,7 +100,7 @@ const Decks=(()=>{
      ============================================================ */
   let host=null;                 // {toast, confirm, onClose, onChange}
   let W=null;                    // 正在编辑的卡组 {id,hero,name,cards,virtual,dirty}
-  let hero=null,kind="all",cost="all",query="",tab="pool";
+  let hero=null,kind="all",cost="all",rar="all",query="",tab="pool";
 
   const stateOf=d=>{
     const err=C.deckError(d.hero,d.cards);
@@ -176,6 +176,7 @@ const Decks=(()=>{
     return cardsOf(hero).filter(c=>{
       if(kind!=="all"&&c.kind!==kind)return false;
       if(cost!=="all"&&(cost==="6"?c.cost<6:c.cost!==+cost))return false;
+      if(rar!=="all"&&c.rarity!==rar)return false;
       if(q&&!(c.name.toLowerCase().includes(q)||String(c.text||"").toLowerCase().includes(q)||String(c.flavor||"").toLowerCase().includes(q)))return false;
       return true;
     }).sort((a,b)=>a.cost-b.cost||(a.kind<b.kind?1:-1)||a.name.localeCompare(b.name,"zh"));
@@ -183,6 +184,7 @@ const Decks=(()=>{
   function renderPool(){
     $$("#dkKind button").forEach(b=>b.classList.toggle("on",b.dataset.v===kind));
     $$("#dkCost button").forEach(b=>b.classList.toggle("on",b.dataset.v===cost));
+    $$("#dkRar button").forEach(b=>b.classList.toggle("on",b.dataset.v===rar));
     const list=filtered();
     const full=W.cards.length>=C.DECK_SIZE;
     $("#dkCards").innerHTML=list.length?list.map(c=>{
@@ -212,7 +214,7 @@ const Decks=(()=>{
     const cnt={};W.cards.forEach(id=>cnt[id]=(cnt[id]||0)+1);
     const rows=Object.keys(cnt).map(id=>cards.find(c=>c.id===id)).filter(Boolean).sort((a,b)=>a.cost-b.cost||a.name.localeCompare(b.name,"zh"));
     $("#dkItems").innerHTML=rows.length?rows.map(c=>`<div class="dk-row" data-id="${V.esc(c.id)}" title="${V.esc(c.text||c.flavor||"")}">
-      <i class="cost">${c.cost}</i><span class="nm">${V.esc(c.name)}</span><b>×${cnt[c.id]}</b>
+      <i class="cost">${c.cost}</i><span class="nm r-${c.rarity}">${V.esc(c.name)}</span><b>×${cnt[c.id]}</b>
       <button data-a="-" aria-label="减少">−</button><button data-a="+" ${cnt[c.id]>=c.limit||W.cards.length>=C.DECK_SIZE?"disabled":""} aria-label="增加">＋</button></div>`).join("")
       :`<div class="muted small" style="padding:14px 4px;text-align:center">还没有卡牌，点击中间的卡牌添加</div>`;
     // 按钮状态
@@ -330,6 +332,7 @@ const Decks=(()=>{
     $("#dkSearch").addEventListener("input",e=>{query=e.target.value;renderPool();});
     $("#dkKind").addEventListener("click",e=>{const b=e.target.closest("button");if(b){kind=b.dataset.v;renderPool();}});
     $("#dkCost").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cost=b.dataset.v;renderPool();}});
+    $("#dkRar").addEventListener("click",e=>{const b=e.target.closest("button");if(b){rar=b.dataset.v;renderPool();}});
     $("#dkCards").addEventListener("click",e=>{
       const row=e.target.closest(".dc");if(!row)return;
       const b=e.target.closest("button[data-a]");
@@ -368,7 +371,7 @@ const Decks=(()=>{
     host=hostApi;bind();
     const d=deckId&&api.get(deckId);
     if(d)startWork(d);else pickInitial(h);
-    kind="all";cost="all";query="";$("#dkSearch").value="";tab="pool";
+    kind="all";cost="all";rar="all";query="";$("#dkSearch").value="";tab="pool";
     renderAll();
   }
   return Object.assign(api,{open,close,get dirty(){return!!(W&&W.dirty);}});

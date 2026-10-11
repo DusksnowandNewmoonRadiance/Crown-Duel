@@ -36,15 +36,19 @@ const CardView=(()=>{
     if(c.cost>base)cls.push("costup");else if(c.cost<base)cls.push("costdown");
     if(c.core)cls.push("core");
     if(c.owner==="awa")cls.push("awa");
+    const rar=C.RARITY&&C.RARITY[c.rarity]?c.rarity:"";
+    if(rar)cls.push("r-"+rar);
     let stats="";
     if(c.kind==="unit"){
       const baseAtk=def?def.atk:atk;
       stats=`<div class="stats"><b class="stat atk${atk>baseAtk?" buff":""}">${atk}</b><b class="stat hp${hp<maxHp?" dmg":(def&&maxHp>def.hp?" buff":"")}">${hp}</b></div>`;
     }
     const tag=c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":c.hero;
-    const type=c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(tag?" · "+esc(tag):"");
+    const type=(c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(tag?" · "+esc(tag):""))
+      +(rar?` · <span class="rar r-${rar}">${C.RARITY[rar].name}</span>`:"");
+    const gem=rar?`<i class="gem r-${rar}" title="${C.RARITY[rar].name}"></i>`:"";
     const body=richText(c.text)+(c.flavor?`<i class="flv">${esc(c.flavor)}</i>`:"");
-    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art"><span>${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${body}</div>${stats}</div>`;
+    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art"><span>${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${body}</div>${gem}${stats}</div>`;
   }
   function back(costUp){return`<div class="card-back${costUp?" up":""}">♛</div>`;}
 

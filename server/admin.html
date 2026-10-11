@@ -102,7 +102,7 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
     <h2>数值平衡（热更新）</h2>
     <p class="hint">在这里修改卡牌的费用、攻击、生命、携带上限、名称或描述，保存后<b>新开的对局立即生效</b>（进行中的对局不受影响），无需重启。
       格式：<code>{"卡牌师:卡牌id": {"cost": 3, "atk": 4, "hp": 5, "limit": 2, "text": "..."}}</code>。删掉某一条即可恢复原始数值。
-      可修改的字段：cost、atk、hp、limit、n（默认卡组张数）、name、text、flavor。</p>
+      可修改的字段：cost、atk、hp、limit、n（默认卡组张数）、name、text、flavor、rarity（common / rare / special / elite，改稀有度会同步改携带上限）。</p>
     <textarea class="code" id="balJson" spellcheck="false"></textarea>
     <div class="inline"><button class="btn btn-gold" id="balSave">保存并生效</button><button class="btn" id="balFmt">格式化</button><input id="balSearch" placeholder="查找卡牌（名称或 id）" style="width:220px"></div>
     <div class="msg" id="balMsg"></div>
