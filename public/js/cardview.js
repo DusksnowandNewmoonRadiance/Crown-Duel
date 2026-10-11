@@ -11,14 +11,14 @@ const CardView=(()=>{
   const heroRgb=hero=>rgb(C.COLORS[hero]||"#e2b467");
   const glyph=n=>n==="045"?"045":String(n||"?")[0];
   /* 卡牌说明里的关键字加粗 */
-  const KW_RE=/(冲锋|嘲讽|无视嘲讽|部署|策反|每回合可攻击两次)/g;
+  const KW_RE=/(冲锋|无视嘲讽|嘲讽|部署|策反)/g;
   const richText=t=>esc(t).replace(KW_RE,"<b>$1</b>");
 
   function kwChips(c){
     let h="";
     if(c.charge)h+=`<i class="kw charge">冲锋</i>`;
     if(c.taunt)h+=`<i class="kw taunt">嘲讽</i>`;
-    if(c.ignoreTaunt)h+=`<i class="kw pierce">穿透</i>`;
+    if(c.ignoreTaunt)h+=`<i class="kw pierce">无视嘲讽</i>`;
     if(c.untargetable)h+=`<i class="kw hide">隐匿</i>`;
     if(c.strikes>1)h+=`<i class="kw multi">连击</i>`;
     if(c.core)h+=`<i class="kw core">核心</i>`;
@@ -40,8 +40,10 @@ const CardView=(()=>{
       const baseAtk=def?def.atk:atk;
       stats=`<div class="stats"><b class="stat atk${atk>baseAtk?" buff":""}">${atk}</b><b class="stat hp${hp<maxHp?" dmg":(def&&maxHp>def.hp?" buff":"")}">${hp}</b></div>`;
     }
-    const type=c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(c.hero?" · "+esc(c.hero):"");
-    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art"><span>${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${richText(c.text)}</div>${stats}</div>`;
+    const tag=c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":c.hero;
+    const type=c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(tag?" · "+esc(tag):"");
+    const body=richText(c.text)+(c.flavor?`<i class="flv">${esc(c.flavor)}</i>`:"");
+    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art"><span>${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${body}</div>${stats}</div>`;
   }
   function back(costUp){return`<div class="card-back${costUp?" up":""}">♛</div>`;}
 
@@ -54,7 +56,11 @@ const CardView=(()=>{
     if(c.untargetable)out.push(K.untargetable);
     if(c.strikes>1)out.push(K.strikes);
     if(/部署/.test(c.text||""))out.push(K.deploy);
-    if(/策反|叛|夺取/.test(c.text||""))out.push(K.rebel);
+    if(/策反/.test(c.text||""))out.push(K.rebel);
+    if(/俄布/.test(c.text||"")||(c.id==="red"&&c.hero==="苏苏"))out.push(K.red);
+    if(c.gun||/火炮/.test(c.text||""))out.push(K.gun);
+    if(c.member||/架子班成员/.test(c.text||""))out.push(K.member);
+    if(/偷取/.test(c.text||""))out.push(K.stealMoney);
     if(c.core)out.push(K.core);
     if(c.kind==="unit"&&c.fresh&&!c.charge)out.push({name:"刚部署",desc:"本回合不能攻击，下回合即可行动。"});
     if(c.stun>0)out.push({name:"眩晕",desc:"下个回合无法攻击。"});

@@ -222,6 +222,8 @@ input{font:inherit;color:var(--text)}
 .card .type{font-size:.72em;color:rgba(var(--hcr),.95);letter-spacing:.2em;margin:-.1em 0 .25em}
 .card .tx{flex:1;min-height:0;font-size:.86em;line-height:1.38;color:#b9c6c6;overflow:hidden;padding:0 .15em}
 .card .tx b{color:#f2e2bd}
+.card .tx .flv{display:block;color:#8a9a9c;font-style:italic;margin-top:.2em}
+.card .tx:has(.flv:first-child){display:flex;align-items:center;justify-content:center}
 .card .stats{display:flex;justify-content:space-between;align-items:flex-end;margin:0 -.25em -.2em}
 .stat{width:2.3em;height:2.3em;border-radius:50%;display:grid;place-items:center;font:800 1.3em/1 var(--serif);text-shadow:0 .06em .12em rgba(0,0,0,.7)}
 .stat.atk{background:radial-gradient(circle at 35% 30%,#f2cd7f,#a7782d 75%);border:.11em solid #fae6b8;color:#fff}
@@ -420,6 +422,9 @@ input{font:inherit;color:var(--text)}
 #reveal{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:76;pointer-events:none;text-align:center}
 #reveal .rl{font:700 14px var(--serif);letter-spacing:.3em;color:var(--gold2);margin-bottom:10px;text-shadow:0 2px 8px #000}
 #reveal .card{font-size:18px;margin:auto;animation:revealIn .35s cubic-bezier(.2,1.4,.4,1);box-shadow:0 0 50px rgba(226,180,103,.45),0 10px 40px rgba(0,0,0,.7)}
+.reveal-side{position:absolute;left:118px;top:362px;transform:translate(-50%,-50%);z-index:76;animation:revealSide 1.5s ease forwards}
+.reveal-side .card{font-size:10.5px;box-shadow:0 0 30px rgba(226,180,103,.5),0 8px 26px rgba(0,0,0,.7)}
+@keyframes revealSide{0%{opacity:0;transform:translate(-50%,-30%) scale(.6)}15%{opacity:1;transform:translate(-50%,-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(.95)}}
 #reveal.foe .card{box-shadow:0 0 50px rgba(224,102,79,.45),0 10px 40px rgba(0,0,0,.7)}
 @keyframes revealIn{from{transform:scale(.4) translateY(80px);opacity:0}}
 #banner{position:absolute;left:0;right:0;top:50%;margin-top:-44px;height:88px;display:grid;place-items:center;z-index:78;pointer-events:none;opacity:0;
@@ -494,6 +499,10 @@ input{font:inherit;color:var(--text)}
 @keyframes sweep{0%{transform:scaleX(0)}40%{transform:scaleX(1)}100%{transform:scaleX(1);opacity:0}}
 @keyframes gravPull{0%{transform:scale(2);opacity:0}30%{transform:scale(1);opacity:1}100%{transform:scale(.6);opacity:0}}
 @keyframes shatter{0%{transform:scale(.3);opacity:1}100%{transform:scale(4);opacity:0}}
+.float.buff{color:#f6d27a;font-size:22px}.float.mana{color:#9fdcf2;font-size:20px}.float.manadown{color:#c9a2f0;font-size:20px}
+@keyframes auraA{0%{opacity:0;transform:scale(.85)}35%{opacity:1;transform:scale(1.04)}100%{opacity:0;transform:scale(1.12)}}
+@keyframes shieldA{0%{opacity:0;transform:scale(.4)}40%{opacity:1;transform:scale(1.05)}70%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.15)}}
+@keyframes pillarA{0%{opacity:0;transform:scaleX(.2)}30%{opacity:.9;transform:scaleX(1)}100%{opacity:0;transform:scaleX(.4)}}
 @keyframes scan{0%{transform:translateY(-20px)}100%{transform:translateY(20px)}}
 
 /* 旋转提示 */

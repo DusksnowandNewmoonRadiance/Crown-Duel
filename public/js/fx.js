@@ -167,7 +167,142 @@ const FX=(()=>{
       else Audio2.sfx("lose");
     }
   };
+  /* ============================================================
+     通用法术特效（按卡牌效果组合播放）
+     ============================================================ */
+  const P={
+    /* 弹道：从 from 飞向 to，命中后爆开 */
+    async bolt(from,to,color){
+      if(!from||!to)return;
+      const a=pos(from),b=pos(to),c=color||"#ff9a6a";
+      const orb=add(`position:absolute;left:${a.x}px;top:${a.y}px;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;z-index:204;
+        background:radial-gradient(circle,#fff 0,${c} 45%,transparent 72%);box-shadow:0 0 24px ${c},0 0 50px ${c};transition:transform .38s cubic-bezier(.5,0,.8,.6)`);
+      const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+      const tail=add(`position:absolute;left:${a.x}px;top:${a.y}px;width:0;height:6px;margin-top:-3px;transform-origin:0 50%;transform:rotate(${ang}deg);z-index:203;border-radius:3px;
+        background:linear-gradient(90deg,transparent,${c});opacity:.85;transition:width .38s cubic-bezier(.5,0,.8,.6),opacity .3s .3s`);
+      Audio2.sfx("swing");
+      await sleep(20);
+      orb.style.transform=`translate(${b.x-a.x}px,${b.y-a.y}px)`;tail.style.width=Math.hypot(b.x-a.x,b.y-a.y)+"px";tail.style.opacity="0";
+      await sleep(390);
+      orb.remove();tail.remove();
+      const r=add(`position:absolute;left:${b.x}px;top:${b.y}px;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;border:4px solid ${c};box-shadow:0 0 30px ${c};z-index:204;animation:burst .55s ease-out forwards`);
+      particles(b.x,b.y,12,[c,"#fff"],90,8,500);
+      Audio2.sfx("hit");setTimeout(()=>r.remove(),600);
+    },
+    /* 冲击波横扫一整排 */
+    async wave(row,color){
+      if(!row)return;const p=pos(row),c=color||"#ff8a5a";
+      const w=add(`position:absolute;left:${p.x-p.w/2}px;top:${p.y-p.h/2}px;width:${p.w}px;height:${p.h}px;z-index:203;border-radius:18px;
+        background:linear-gradient(90deg,transparent 0,${c} 45%,#fff 50%,${c} 55%,transparent 100%);background-size:40% 100%;background-repeat:no-repeat;background-position:-40% 0;
+        opacity:.75;mix-blend-mode:screen;transition:background-position .5s ease-in,opacity .3s .4s`);
+      await sleep(20);w.style.backgroundPosition="140% 0";w.style.opacity="0";
+      Audio2.sfx("hit");shake();await sleep(460);w.remove();
+    },
+    /* 单位增益：光圈 + 上升光点 */
+    async aura(els,color,text){
+      const c=color||"#f6d27a";
+      els.filter(Boolean).forEach((el,i)=>{
+        if(!el.isConnected)return;const p=pos(el);
+        setTimeout(()=>{
+          const g=add(`position:absolute;left:${p.x-p.w/2-6}px;top:${p.y-p.h/2-6}px;width:${p.w+12}px;height:${p.h+12}px;border-radius:18px;z-index:203;
+            box-shadow:0 0 0 3px ${c},0 0 28px ${c},inset 0 0 26px ${c};opacity:0;animation:auraA .7s ease-out forwards`);
+          for(let k=0;k<7;k++){const s=add(`position:absolute;left:${p.x-p.w/2+Math.random()*p.w}px;top:${p.y+p.h/2-10}px;width:5px;height:5px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};z-index:204;transition:transform .7s ease-out,opacity .7s`);
+            requestAnimationFrame(()=>{s.style.transform=`translateY(${-60-Math.random()*60}px)`;s.style.opacity="0";});setTimeout(()=>s.remove(),750);}
+          if(text){const t=add(`left:${p.x}px;top:${p.y-20}px`);t.className="float buff";t.textContent=text;setTimeout(()=>t.remove(),1150);}
+          setTimeout(()=>g.remove(),750);
+        },i*70);
+      });
+      if(els.length)Audio2.sfx("heal");
+      await sleep(450);
+    },
+    /* 治疗：绿色十字光点 */
+    async heal(el){
+      if(!el)return;const p=pos(el);
+      const g=add(`position:absolute;left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.w}px;margin:${-p.w/2}px 0 0 ${-p.w/2}px;border-radius:50%;z-index:203;
+        background:radial-gradient(circle,rgba(142,230,156,.55),transparent 65%);animation:auraA .8s ease-out forwards`);
+      for(let k=0;k<10;k++){const s=add(`position:absolute;left:${p.x-40+Math.random()*80}px;top:${p.y+10}px;font:700 ${12+Math.random()*10}px var(--sans);color:#8ee69c;text-shadow:0 0 8px #3f9a55;z-index:204;transition:transform .8s ease-out,opacity .8s`,"+");
+        setTimeout(()=>{s.style.transform=`translateY(${-50-Math.random()*50}px)`;s.style.opacity="0";},k*30);setTimeout(()=>s.remove(),1100);}
+      Audio2.sfx("heal");setTimeout(()=>g.remove(),850);await sleep(420);
+    },
+    /* 护甲：护盾展开 */
+    async armor(el){
+      if(!el)return;const p=pos(el);
+      const s=add(`position:absolute;left:${p.x}px;top:${p.y}px;width:150px;height:170px;margin:-85px 0 0 -75px;z-index:203;
+        clip-path:polygon(50% 0,100% 18%,92% 70%,50% 100%,8% 70%,0 18%);background:linear-gradient(160deg,rgba(220,232,236,.6),rgba(120,140,150,.25));
+        box-shadow:inset 0 0 30px #fff;animation:shieldA .75s ease-out forwards`);
+      Audio2.sfx("select");setTimeout(()=>s.remove(),800);await sleep(420);
+    },
+    /* 抽牌：卡背从牌库飞向手牌 */
+    async draw(from,to,n){
+      if(!from||!to)return;const a=pos(from),b=pos(to);
+      for(let i=0;i<Math.min(3,n||1);i++){
+        setTimeout(()=>{
+          const c=add(`position:absolute;left:${a.x}px;top:${a.y}px;z-index:204;transform:translate(-50%,-50%) scale(.9);transition:transform .45s cubic-bezier(.3,.7,.4,1),opacity .45s`,
+            `<div class="card-back" style="font-size:4.5px">♛</div>`);
+          requestAnimationFrame(()=>{c.style.transform=`translate(calc(-50% + ${b.x-a.x+(i-1)*30}px),calc(-50% + ${b.y-a.y}px)) rotate(${(i-1)*12}deg) scale(1.1)`;c.style.opacity=".2";});
+          setTimeout(()=>c.remove(),480);Audio2.sfx("draw");
+        },i*110);
+      }
+      await sleep(380);
+    },
+    /* 偷钱：金币从对方飞到自己 */
+    async coins(from,to){
+      if(!from||!to)return;const a=pos(from),b=pos(to);
+      for(let i=0;i<8;i++){
+        const c=add(`position:absolute;left:${a.x+(Math.random()-.5)*50}px;top:${a.y+(Math.random()-.5)*40}px;font:900 22px var(--serif);color:#f2cf73;text-shadow:0 0 10px #c9a040;z-index:205;
+          transform:translate(-50%,-50%);transition:transform .55s cubic-bezier(.4,0,.6,1) ${i*45}ms,opacity .2s ${i*45+500}ms`,"$");
+        requestAnimationFrame(()=>{c.style.transform=`translate(calc(-50% + ${b.x-a.x}px),calc(-50% + ${b.y-a.y}px)) scale(.7)`;c.style.opacity="0";});
+        setTimeout(()=>c.remove(),900);
+      }
+      Audio2.sfx("coin");await sleep(600);
+    },
+    /* 费用水晶：碎裂（down）或升腾（up） */
+    async mana(el,up){
+      if(!el)return;const p=pos(el),c=up?"#9fdcf2":"#b48ae0";
+      for(let i=0;i<12;i++){
+        const ang=up?(-Math.PI/2+(Math.random()-.5)*1.2):Math.random()*Math.PI*2,d=40+Math.random()*50;
+        const s=add(`position:absolute;left:${p.x}px;top:${p.y}px;width:10px;height:13px;clip-path:polygon(50% 0,100% 38%,50% 100%,0 38%);background:${c};box-shadow:0 0 10px ${c};z-index:205;
+          transform:translate(-50%,-50%);transition:transform .6s ease-out,opacity .6s`);
+        requestAnimationFrame(()=>{s.style.transform=`translate(calc(-50% + ${Math.cos(ang)*d}px),calc(-50% + ${Math.sin(ang)*d}px)) rotate(${Math.random()*360}deg)`;s.style.opacity="0";});
+        setTimeout(()=>s.remove(),650);
+      }
+      const t=add(`left:${p.x}px;top:${p.y-10}px`);t.className="float "+(up?"mana":"manadown");t.textContent=up?"+1 费用":"-1 费用";setTimeout(()=>t.remove(),1150);
+      Audio2.sfx(up?"select":"error");await sleep(450);
+    },
+    /* 冰霜：敌方一排结霜（攻击力降低） */
+    async frost(row){
+      if(!row)return;const p=pos(row);
+      const f=add(`position:absolute;left:${p.x-p.w/2}px;top:${p.y-p.h/2}px;width:${p.w}px;height:${p.h}px;border-radius:18px;z-index:203;
+        background:linear-gradient(180deg,rgba(170,220,255,.35),rgba(120,180,230,.15));box-shadow:inset 0 0 40px rgba(200,235,255,.8);opacity:0;transition:opacity .25s`);
+      requestAnimationFrame(()=>f.style.opacity="1");
+      for(let i=0;i<16;i++){const s=add(`position:absolute;left:${p.x-p.w/2+Math.random()*p.w}px;top:${p.y-p.h/2-10}px;color:#e6f6ff;font-size:${12+Math.random()*12}px;z-index:204;transition:transform .9s linear,opacity .9s`,"❄");
+        requestAnimationFrame(()=>{s.style.transform=`translateY(${p.h*.8}px) rotate(180deg)`;s.style.opacity="0";});setTimeout(()=>s.remove(),950);}
+      Audio2.sfx("spell");setTimeout(()=>{f.style.opacity="0";setTimeout(()=>f.remove(),300);},600);await sleep(550);
+    },
+    /* 召唤：光柱 */
+    async pillar(row,color){
+      if(!row)return;const p=pos(row),c=color||"#f6dca0";
+      const b=add(`position:absolute;left:${p.x-50}px;top:${p.y-p.h/2-60}px;width:100px;height:${p.h+60}px;z-index:203;
+        background:linear-gradient(90deg,transparent,${c},#fff,${c},transparent);opacity:0;filter:blur(2px);animation:pillarA .7s ease-out forwards`);
+      Audio2.sfx("play");setTimeout(()=>b.remove(),750);await sleep(350);
+    },
+    /* 弃掉对方手牌 */
+    async discard(el){
+      if(!el)return;const p=pos(el);
+      particles(p.x,p.y+20,14,["#e0664f","#ffd0a0"],110,9,600);
+      const x=add(`position:absolute;left:${p.x}px;top:${p.y+20}px;transform:translate(-50%,-50%);font:900 46px var(--serif);color:#ff7a62;text-shadow:0 0 16px #a8402f;z-index:205;animation:bigText .9s ease-out forwards`,"✕");
+      Audio2.sfx("die");setTimeout(()=>x.remove(),950);await sleep(400);
+    },
+    /* 自伤 */
+    async selfHit(el){if(!el)return;const p=pos(el);particles(p.x,p.y,10,["#e0664f"],60,7,450);Audio2.sfx("hit");await sleep(250);}
+  };
+  /* steps: [{fx, ...参数}]，全部并行播放，等待最长的一个 */
+  async function cast(steps){
+    if(!steps||!steps.length)return;
+    await Promise.all(steps.map(s=>{try{return P[s.fx]?P[s.fx](...(s.args||[])):null;}catch(e){console.warn(e);return null;}}));
+  }
+
   async function play(name,data,el){if(E[name]){try{await E[name](data,el);}catch(e){console.warn(e);}}}
   function clear(){const r=layerRoot();if(r)r.innerHTML="";}
-  return{setScale,pos,float,ring,shake,shatter,play,clear,sleep};
+  return{setScale,pos,float,ring,shake,shatter,play,cast,clear,sleep};
 })();

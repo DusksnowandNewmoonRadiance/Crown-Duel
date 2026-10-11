@@ -116,9 +116,60 @@ const GameUI=(()=>{
       await reveal(c,"对手打出",c.kind==="spell"?1100:850,true);
     }else{
       Audio2.sfx(c.kind==="unit"?"play":"spell");
-      if(c.kind==="spell")await reveal(c,"施放",520,false);
+      const hc=document.querySelector(`.hcard[data-uid="${c.uid}"]`);if(hc)hc.style.opacity="0";
+      if(c.kind==="spell"){revealSide(c);await sleep(380);}
     }
-    (e.targets||[]).forEach(id=>FX.ring(unitEl(id),"#ffd27a"));
+    await FX.cast(cardFx(e));
+  }
+  /* 卡牌效果 → 通用特效。B 弹道打脸 / T 弹道打目标 / W 冲击波 / U 全体增益 / G 火炮增益 / R 俄布增益 / X 目标增益
+     H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */
+  const CARD_FX={
+    heal2:"H",heal3:"H",draw:"D1",drawHeal1:"D1 H",drawArmor:"D1 A",armor1:"A",armor2:"A",hero1:"B",hero2:"B",hero3:"B",draw2:"D2",
+    summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",
+    buffAll1:"U:+1/+1",buffAll2:"U:+2/+2",highcommand:"U:+2/+2",buffAll1draw:"U:+1/+1 D1",buffAllCharge:"U:+1/+1",alweiDeploy:"D2 U:+1/+1",pirateBuff:"U:+1攻 D1",
+    buffGuns1:"G:+1攻",buffGuns2:"G:+2攻",reload:"G:+3攻 D1",buffGuns2draw:"G:+2攻 D1",buffRed:"R:+2/+2",
+    huiliyiDeploy:"X:+3/+3",buffOneDraw:"X:+2/+2 D1",
+    choose4:"T",choose2:"T",choose3x2:"T",
+    energyDown:"M-",qixingDeploy:"M-",energyDownDraw:"M- D1",manaBurn:"B M-",starClimb:"M+ M-",ramp:"M+ D1",baimaoDeploy:"M+",
+    xiashuiDeploy:"B",yuchunDeploy:"K",
+    steal2:"$",steal3:"$",steal4:"$",steal3hero1:"$ B",steal3draw:"$ D1",steal2armor2:"$ A",steal4draw:"$ D1",steal5draw:"B $ D1",
+    bribeDraw:"D2 Q $",healDrawSteal:"H D1 $",hero2drawSteal:"B D1 $",supplySteal:"D2 A $",vaultBurst:"D3 A $",
+    armor3draw:"A D1",traceBoost:"A D2",timeShield2:"A H",nebulaShield2:"A D2",develop:"D2 A",handoff:"D1 A",crown:"D3 A",supply:"D2 A",draw2armor1:"D2 A",
+    damage5:"B",damage6:"B",damage7:"B",unitDamageHero:"B",aoe2:"W B",adapt:"H",
+    draw1:"D1",draw3:"D3",raid:"D3",draw1heal2:"D1 H",draw2heal2:"D2 H",heal5draw:"H D1",heal3draw:"H D1",healDraw:"H D1",
+    enemyAtkDown:"F",enemyAtkDown1:"F",filterSuperman:"D1",tutorSuperman:"D1",tutorCometImpact:"D1",rebelWeakest:"D1",runaway:"A B"
+  };
+  function cardFx(e){
+    const v=S.view,mine=e.pi===v.you,me=mine?"me":"foe",op=mine?"foe":"me";
+    let code=CARD_FX[e.card.effect]||"";
+    if(e.card.effect==="taojinDeploy")code=e.option==="heal"?"H":"B";
+    if(e.card.effect==="runaway"&&(mine?v.me:v.foe).money>=C.ESCAPE_TARGET)code="";
+    if(!code)return[];
+    const casterBoard=(mine?v.me:v.foe).board;
+    const myHero=heroEl(me),opHero=heroEl(op),myRow=$("#"+me+"Row"),opRow=$("#"+op+"Row");
+    const units=f=>casterBoard.filter(f).map(u=>unitEl(u.uid)).filter(Boolean);
+    const steps=[];
+    code.split(" ").forEach(tok=>{
+      const [k,arg]=tok.split(":");
+      if(k==="B")steps.push({fx:"bolt",args:[myHero,opHero,mine?"#ffb36a":"#ff7a62"]});
+      else if(k==="T")(e.targets||[]).forEach(id=>steps.push({fx:"bolt",args:[myHero,unitEl(id),"#ffb36a"]}));
+      else if(k==="W")steps.push({fx:"wave",args:[opRow]});
+      else if(k==="U")steps.push({fx:"aura",args:[units(()=>true),"#f6d27a",arg]});
+      else if(k==="G")steps.push({fx:"aura",args:[units(u=>u.gun),"#ffb36a",arg]});
+      else if(k==="R")steps.push({fx:"aura",args:[units(u=>u.id==="red"),"#ff8a70",arg]});
+      else if(k==="X")steps.push({fx:"aura",args:[(e.targets||[]).map(unitEl),"#f6d27a",arg]});
+      else if(k==="H")steps.push({fx:"heal",args:[myHero]});
+      else if(k==="A")steps.push({fx:"armor",args:[myHero]});
+      else if(k[0]==="D")steps.push({fx:"draw",args:[$("#"+me+"Pile"),$(mine?"#hand":"#foeHand"),+k.slice(1)||1]});
+      else if(k==="$")steps.push({fx:"coins",args:[opHero,myHero]});
+      else if(k==="M+")steps.push({fx:"mana",args:[$("#"+me+"Hero .mana"),true]});
+      else if(k==="M-")steps.push({fx:"mana",args:[$("#"+op+"Hero .mana"),false]});
+      else if(k==="F")steps.push({fx:"frost",args:[opRow]});
+      else if(k==="S")steps.push({fx:"pillar",args:[myRow]});
+      else if(k==="K")steps.push({fx:"discard",args:[$(mine?"#foeHand":"#hand")]});
+      else if(k==="Q")steps.push({fx:"selfHit",args:[myHero]});
+    });
+    return steps;
   }
   async function animAttack(e){
     const mine=e.pi===S.view.you;
@@ -159,6 +210,11 @@ const GameUI=(()=>{
   async function reveal(card,label,ms,foe){
     const r=$("#reveal");r.className=foe?"foe":"";r.innerHTML=`<div class="rl">${V.esc(label)}</div>${V.card(card)}`;r.hidden=false;
     await sleep(ms);r.hidden=true;
+  }
+  /* 自己打出的法术：在左侧空白处小图展示，不挡住战场 */
+  function revealSide(card){
+    const d=document.createElement("div");d.className="reveal-side";d.innerHTML=V.card(card);
+    $("#fx").appendChild(d);setTimeout(()=>d.remove(),1500);
   }
   async function banner(text,foe,ms){
     const b=$("#banner");b.textContent=text;b.className=foe?"foe":"";void b.offsetWidth;b.classList.add("show");

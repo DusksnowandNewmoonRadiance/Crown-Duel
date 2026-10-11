@@ -24,7 +24,6 @@ function unitValue(u){return u.attack+u.health*.8+(u.taunt?2:0)+(u.cost||0)*.5;}
 function canAttack(u){
   if(!u||u.health<=0)return"单位已阵亡";
   if(u.stun>0)return"该单位被眩晕，本回合无法攻击";
-  if(u.attack<=0)return"攻击力为 0，无法攻击";
   if(u.atkLeft<=0)return u.fresh?"刚部署的单位下回合才能攻击":"本回合已经攻击过了";
   return null;
 }
@@ -115,7 +114,7 @@ class Game{
       stats:{dmg:0,played:0,kills:0}};
   }
   clone(c,hero){
-    const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,
+    const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
       untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member};
     if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;}
@@ -258,7 +257,7 @@ class Game{
   endTurn(pi){
     const g=this._guard(pi);if(g)return err(g);
     const p=this.players[pi];
-    for(const u of p.board)u.fresh=false;
+    for(const u of p.board){u.fresh=false;if(u.tempAtk){u.attack=Math.max(0,u.attack-u.tempAtk);u.tempAtk=0;}}
     this.emit({t:"endTurn",pi});
     this._startTurn(1-pi);
     return{ok:true};
@@ -281,7 +280,7 @@ class Game{
     const os=optionSpec(c);
     if(os&&!os.options.some(x=>x.id===option))return err("请先做出选择");
     s.energy-=c.cost;s.hand=s.hand.filter(x=>x!==c);s.stats.played++;
-    this.emit({t:"play",pi,card:pubCard(c),targets:picked});
+    this.emit({t:"play",pi,card:pubCard(c),targets:picked,option:os?option:null});
     if(c.kind==="unit"){
       this._ready(c);s.board.push(c);
       this.note(`部署 ${c.name}`,s);
@@ -470,7 +469,7 @@ class Game{
         fx("saturation");
         if(dmg>0){this.aoe(s,o,dmg);this.damageHero(o,dmg);}
         break;}
-      case"reload":s.board.forEach(u=>{if(u.gun)u.attack+=3;});this.draw(s,1);break;
+      case"reload":s.board.forEach(u=>{if(u.gun){u.attack+=3;u.tempAtk=(u.tempAtk||0)+3;}});this.draw(s,1);break;
       case"buffGuns2draw":s.board.forEach(u=>{if(u.gun)u.attack+=2;});this.draw(s,1);break;
       case"supply":this.draw(s,2);this.armor(s,2);break;
       case"fillRed":{
@@ -614,9 +613,9 @@ class Game{
 }
 
 function pubCard(c){
-  const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,text:c.text,effect:c.effect,
+  const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",effect:c.effect,
     charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member};
-  if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;}
+  if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;}
   return x;
 }
 function pubPlayer(p,full){

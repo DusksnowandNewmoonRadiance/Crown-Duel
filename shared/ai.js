@@ -117,7 +117,7 @@ class AIPlayer{
   }
   chooseAttack(s,o){
     for(let guard=0;guard<20;guard++){
-      const ready=s.board.filter(u=>!canAttack(u)&&!this.passed.has(u.uid));
+      const ready=s.board.filter(u=>!canAttack(u)&&u.attack>0&&!this.passed.has(u.uid));
       if(!ready.length)return null;
       const lethal=faceReach(s,o)>=o.hp+o.armor;
       let best=null;
