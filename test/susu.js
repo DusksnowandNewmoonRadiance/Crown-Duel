@@ -35,7 +35,7 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   check("乌克兰宣言：2 点伤害 +1 政体加成 = 3",a.regime==="ukr"&&b.board[0].health===b.board[0].maxHealth-3,b.board[0].health+"/"+b.board[0].maxHealth);
   play(g,0,give(g,a,"red"));
   const r=a.board.find(x=>x.id==="red");
-  check("乌克兰政体：新单位生命 -1",r.health===2&&r.maxHealth===2);
+  check("乌克兰政体：新单位生命 -1",r.health===1&&r.maxHealth===1);
   // 战斗伤害不吃加成
   b.board=[];const t=mk(g,"字母","over");b.board.push(t);
   r.atkLeft=1;r.health=5;r.maxHealth=5;
@@ -108,7 +108,7 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   a.board[1].attack=4;a.board[1].health=5;
   const c=give(g,a,"consolidate");play(g,0,c);
   const gd=a.board.find(u=>u.id==="redGuard");
-  check("整编：合并为近卫红军，属性等于总和",gd&&gd.attack===2+4+2&&gd.health===3+5+3,gd&&gd.attack+"/"+gd.health);
+  check("整编：合并为近卫红军，属性等于总和",gd&&gd.attack===2+4+2&&gd.health===2+5+2,gd&&gd.attack+"/"+gd.health);
   check("整编：只合并俄布，其他单位保留",a.board.some(u=>u.id==="blr")&&a.board.filter(u=>u.id==="red").length===0);
   check("整编：近卫红军有冲锋，可以立即攻击",gd.charge&&gd.atkLeft>0);
 }
@@ -130,6 +130,50 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   const x=setup();x.b.hand=[];
   play(x.g,0,give(x.g,x.a,"intel"));
   check("情报：敌方没有手牌时改为召唤俄布",!x.g.pending&&x.a.board.some(u=>u.id==="red"));
+}
+/* ---- 俄布 / 终端 ---- */
+{
+  const red=C.PROFILES["苏苏"].cards.find(c=>c.id==="red");
+  check("俄布：2 费 2/2、无冲锋、普通",red.cost===2&&red.atk===2&&red.hp===2&&!red.charge&&red.rarity==="common"&&red.limit===4);
+  const art=C.PROFILES["苏苏"].cards.find(c=>c.id==="artillery");
+  check("全亚洲炮兵总司令：卡面没有无关文字",!/隐藏终端/.test(art.text));
+}
+/* ---- awa：开局变成随机 awa 卡并洗入牌库 ---- */
+{
+  const def=C.PROFILES["苏苏"].cards.find(c=>c.id==="awaSwap");
+  check("awa 卡：0 费 20/20 冲锋精英，部署 99 点伤害",def.cost===0&&def.atk===20&&def.hp===20&&def.charge&&def.rarity==="elite"&&def.effect==="hero99"&&def.limit===1);
+  const base=C.defaultDeck("苏苏");
+  check("默认卡组不含 awa 卡，且仍为 40 张合法",!base.includes("awaSwap")&&base.length===40&&!C.deckError("苏苏",base));
+  const deck=base.slice(0,39).concat(["awaSwap"]);
+  check("携带 awa 卡的卡组合法",!C.deckError("苏苏",deck),C.deckError("苏苏",deck));
+  const pool=new Set(Object.values(C.AWA_CARDS).map(c=>c.id));
+  let hit=new Set(),okAll=true;
+  for(let i=0;i<60;i++){
+    const g=new E.Game({players:[{name:"甲",hero:"苏苏",deck},{name:"乙",hero:"字母"}],first:0});
+    const all=g.players[0].deck.concat(g.players[0].hand);
+    const awa=all.filter(c=>c.owner==="awa");
+    if(awa.length!==1||all.some(c=>c.id==="awaSwap")||all.length!==40)okAll=false;
+    awa.forEach(c=>hit.add(c.id));
+    const v=g.viewFor(0),vf=g.viewFor(1);
+    if(!(v.intro.length===1&&v.intro[0].who==="me"&&pool.has(awa[0].id)&&vf.intro[0].who==="foe"))okAll=false;
+  }
+  check("开局变成 1 张 awa 卡，原卡消失，牌库仍为 40 张，双方视图都有提示",okAll);
+  check("awa 随机卡会抽到不同的卡牌",hit.size>=2,[...hit].join(","));
+  // 没有携带时不会有 awa 卡（旧的随机替换已删除）
+  let any=false;
+  for(const h of ["苏苏","七星","下水"]){
+    const g=new E.Game({players:[{name:"甲",hero:h},{name:"乙",hero:"字母"}],first:0});
+    if(g.players[0].deck.concat(g.players[0].hand).some(c=>c.owner==="awa"))any=true;
+    if(g.viewFor(0).intro.length)any=true;
+  }
+  check("没有携带 awa 卡时不再随机混入 awa 卡",!any);
+  // 直接打出 awa 卡（例如被其他效果放进手牌）
+  const g=new E.Game({players:[{name:"甲",hero:"苏苏"},{name:"乙",hero:"字母"}],first:0});
+  g.mulligan(0,[]);g.mulligan(1,[]);
+  const a=g.players[0],b=g.players[1];a.energy=a.maxEnergy=10;
+  const c=g.clone(def,"苏苏");a.hand=[c];
+  const r=g.playCard(0,c.uid,[]);
+  check("awa 卡可以打出：99 点伤害",r.ok&&b.hp<=0&&g.phase==="over");
 }
 /* ---- 视图字段 ---- */
 {

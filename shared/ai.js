@@ -9,7 +9,7 @@ const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET}=C;
 const {unitValue,heroBonus,gunCount,playError,attackTargets,canAttack,autoTargets,autoOption,bestRegime,redCount}=E;
 const REGIME_OF={decreeRus:"rus",decreeUkr:"ukr",decreeBlr:"blr"};
 
-const BURN={damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
+const BURN={hero99:99,damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
 function burnOf(s,c){
   if(c.effect==="runaway")return s.money>=ESCAPE_TARGET?9999:2;
   if(c.effect==="unitDamageHero")return s.board.length;

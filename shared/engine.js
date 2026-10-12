@@ -125,13 +125,22 @@ class Game{
     const f=this.players[this.first],s=this.players[1-this.first];
     this._drawRaw(f,4);this._drawRaw(s,5);
     this.note(`对局开始：${f.name}（${f.hero}）先手，${s.name}（${s.hero}）后手`);
+    (this.intro||[]).forEach(x=>this.note(`${this.players[x.pi].name} 的【${x.from}】变成了 awa 的【${x.to}】，已洗入牌库`));
   }
   _makePlayer(i,p){
     const prof=PROFILES[p.hero];
     const deckIds=(p.deck&&!C.deckError(p.hero,p.deck))?p.deck:C.defaultDeck(p.hero);
     const deck=shuffle(deckIds.map(id=>this.clone(prof.cards.find(c=>c.id===id),p.hero)));
-    const awa=AWA_CARDS[p.hero];
-    if(awa)deck[Math.floor(Math.random()*deck.length)]=this.clone(awa,p.hero);
+    /* 带有【awa】的卡组：开局时它变成 awa 的一张随机卡牌并洗入牌库 */
+    const pool=Object.values(AWA_CARDS);
+    this.intro=this.intro||[];
+    for(let k=0;k<deck.length;k++){
+      if(!deck[k].awaSwap)continue;
+      const def=pool[Math.floor(Math.random()*pool.length)];
+      this.intro.push({pi:i,from:deck[k].name,to:def.name});
+      deck[k]=this.clone(def,p.hero);
+    }
+    if(this.intro.some(x=>x.pi===i))shuffle(deck);
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp:prof.hp,maxHp:prof.hp,armor:0,energy:0,maxEnergy:0,
       fatigue:0,deck,hand:[],board:[],money:0,heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
@@ -141,7 +150,7 @@ class Game{
   clone(c,hero){
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
-      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false};
+      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap};
     if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
   }
@@ -444,6 +453,7 @@ class Game{
       case"hero1":this.damageHero(o,1);break;
       case"hero2":this.damageHero(o,2);break;
       case"hero3":this.damageHero(o,3);break;
+      case"hero99":this.damageHero(o,99);this.note("awa：对敌方英雄造成 99 点伤害",s);break;
       case"draw2":this.draw(s,2);break;
       case"summonPirate":this.summon(s,"pirate",1);break;
       case"summonRandomPirate":{
@@ -773,6 +783,7 @@ class Game{
       lock:this.lock===null?null:(this.lock===pi?"me":"foe"),
       winner:this.winner===null?null:(this.winner==="draw"?"draw":(this.winner===pi?"me":"foe")),
       reason:this.reason,
+      intro:(this.intro||[]).map(x=>({who:x.pi===pi?"me":"foe",from:x.from,to:x.to})),
       me:pubPlayer(me,true),foe:pubPlayer(foe,false),
       pending:pd&&pd.pi===pi?{title:pd.title,hint:pd.hint,cards:pd.cards.map(pubCard)}:null,
       foePending:!!(pd&&pd.pi!==pi),

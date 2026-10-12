@@ -30,7 +30,7 @@ const GameUI=(()=>{
   function start(ctl,mode,opts){
     stop(true);
     S.ctl=ctl;S.mode=mode;S.opts=opts||{};
-    S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
+    S.introShown=false;S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
     ["#meRow","#foeRow","#hand","#foeHand","#fx","#logList"].forEach(s=>$(s).innerHTML="");
     ["#mulligan","#pick","#option","#result","#pause","#castBar","#preview","#reveal","#chatPanel","#netNotice","#coach","#aim"].forEach(s=>$(s).hidden=true);
     $("#logPanel").classList.add("closed");
@@ -103,6 +103,10 @@ const GameUI=(()=>{
   function postRender(v,old){
     if(old&&old.me.hp>10&&v.me.hp<=10&&v.me.hp>0&&v.phase==="play")FX.play("lowHp");
     if(v.phase==="over"&&!S.resultShown){S.resultShown=true;showResult(v);}
+    if(v.intro&&v.intro.length&&!S.introShown){
+      S.introShown=true;
+      v.intro.forEach((x,i)=>setTimeout(()=>gtoast(`${x.who==="me"?"你":"对手"}的【${x.from}】变成了 awa 的【${x.to}】，已洗入牌库`,false,3200),400+i*1500));
+    }
   }
 
   /* ============================================================
@@ -144,7 +148,7 @@ const GameUI=(()=>{
      H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */
   const CARD_FX={
     heal2:"H",heal3:"H",draw:"D1",drawHeal1:"D1 H",drawArmor:"D1 A",armor1:"A",armor2:"A",hero1:"B",hero2:"B",hero3:"B",draw2:"D2",
-    summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
+    hero99:"B",summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
     buffAll1:"U:+1/+1",buffAll2:"U:+2/+2",highcommand:"U:+2/+2",buffAll1draw:"U:+1/+1 D1",buffAllCharge:"U:+1/+1",alweiDeploy:"D2 U:+1/+1",pirateBuff:"U:+1攻 D1",
     buffGuns1:"G:+1攻",buffGuns2:"G:+2攻",reload:"G:+3攻 D1",buffGuns2draw:"G:+2攻 D1",buffRed:"R:+2/+2",
     huiliyiDeploy:"D1",buffOneDraw:"X:+2/+2 D1",revengeDeath:"U:亡语 D1",developEnemy:"D1",summonRandomPirate:"S",

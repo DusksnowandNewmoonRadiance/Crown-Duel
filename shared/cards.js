@@ -20,7 +20,7 @@ const RARITY_ORDER=["common","rare","special","elite"];
 const PROFILES={
   "苏苏":{faction:"彗星国 · 架子班 · 鸭子系",style:"苏维埃体系 · 政体切换 · 整编爆发",hp:32,cards:[
     /* 单位：rep 标明所属共和国（俄罗斯 rus / 乌克兰 ukr / 白俄罗斯 blr） */
-    {id:"red",name:"俄罗斯布尔什维克红军",cost:2,kind:"unit",art:"★",atk:2,hp:3,text:"冲锋。",charge:true,rep:"rus",n:4,limit:4,rarity:"common"},
+    {id:"red",name:"俄罗斯布尔什维克红军",cost:2,kind:"unit",art:"★",atk:2,hp:2,text:"",rep:"rus",n:4,limit:4,rarity:"common"},
     {id:"redguard",name:"赤卫队",cost:1,kind:"unit",art:"⚑",atk:2,hp:1,text:"冲锋。",charge:true,rep:"rus",n:3,limit:3,rarity:"rare"},
     {id:"sniper",name:"红军狙击手",cost:2,kind:"unit",art:"◉",atk:2,hp:2,text:"部署：对 1 个敌方单位造成 2 点伤害。",effect:"choose2",rep:"ukr",n:2,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"ukr",name:"乌克兰红军",cost:3,kind:"unit",art:"✦",atk:4,hp:3,text:"部署：对 1 个敌方单位造成 4 点伤害。",effect:"choose4",rep:"ukr",n:2,limit:2,rarity:"special",fx:"sp_strike"},
@@ -40,7 +40,8 @@ const PROFILES={
     {id:"forward",name:"为了革命的胜利前进",cost:3,kind:"spell",art:"→",text:"使你的所有单位获得 +2/+2。",effect:"buffAll2",n:2,limit:2,rarity:"special",fx:"sp_bless"},
     {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
-    {id:"artillery",name:"全亚洲炮兵总司令",cost:7,kind:"spell",art:"✣",text:"隐藏终端。权限：本局确立或更换过 2 次政体，且你的战场上至少有 2 个单位。用【红军炮兵】填满你的战场，对所有敌方单位造成 3 点伤害。",effect:"artilleryCommand",n:1,limit:1,rarity:"elite"},
+    {id:"artillery",name:"全亚洲炮兵总司令",cost:7,kind:"spell",art:"✣",text:"权限：本局确立或更换过 2 次政体，且你的战场上至少有 2 个单位。用【红军炮兵】填满你的战场，对所有敌方单位造成 3 点伤害。",effect:"artilleryCommand",n:1,limit:1,rarity:"elite"},
+    {id:"awaSwap",name:"awa",cost:0,kind:"unit",art:"∅",atk:20,hp:20,text:"冲锋。部署：对敌方英雄造成 99 点伤害。对局开始时，这张牌会变成 awa 的一张随机卡牌并洗入牌库。",flavor:"awa 是一个代号，而不是某一个人。",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"},
     {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[
@@ -232,7 +233,7 @@ const TOKENS={
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"}
 };
 
-/* awa 卡牌：不进卡组编辑器；每局开始时随机替换卡组中的一张 */
+/* awa 卡牌：不进卡组编辑器。只有携带苏苏的【awa】时，开局会变成其中随机一张并洗入牌库 */
 const AWA_CARDS={
   苏苏:{id:"awaFreeze",name:"停摆",cost:3,kind:"spell",art:"∅",owner:"awa",rarity:"elite",text:"直到你的下个回合开始，双方无法抽牌，费用上限和金钱也无法增加。",effect:"awaFreeze"},
   下水:{id:"awaDiscover",name:"选角",cost:1,kind:"spell",art:"※",owner:"awa",rarity:"elite",text:"从所有单位牌中随机展示 3 张，选择 1 张加入手牌。",effect:"awaDiscover"},
@@ -269,7 +270,7 @@ const KEYWORDS={
   deathrattle:{name:"亡语",desc:"这个单位被消灭时触发的效果。"},
   fleeting:{name:"限时",desc:"只存在到你的下个回合开始，之后会消散。"},
   lockCards:{name:"出牌封锁",desc:"在被封锁的回合里，限制能打出的牌数或牌的类型。"},
-  red:{name:"俄布",desc:"【俄罗斯布尔什维克红军】的简称（2 费 2/3 冲锋）。"},
+  red:{name:"俄布",desc:"【俄罗斯布尔什维克红军】的简称（2 费 2/2）。"},
   gun:{name:"火炮",desc:"下水卡组里类型栏标有「火炮」的单位。饱和炮击、炮兵支援等卡牌会按火炮生效。"},
   member:{name:"架子班成员",desc:"045 卡组里类型栏标有「架子班」的单位，可被召集令、名片召唤从牌库召唤。"},
   regime:{name:"政体",desc:"苏苏特有的状态，同一时间只有一种：俄罗斯（新单位获得冲锋，但你无法获得护甲）；乌克兰（你的部署伤害和法术伤害 +1，但新单位生命 -1）；白俄罗斯（回合结束时获得 2 点护甲、新嘲讽单位 +0/+1，但新单位失去冲锋）。"},
@@ -288,8 +289,7 @@ function cardDef(hero,id){
   const p=PROFILES[hero];
   const c=p&&p.cards.find(x=>x.id===id);
   if(c)return c;
-  const a=AWA_CARDS[hero];
-  if(a&&a.id===id)return a;
+  for(const h in AWA_CARDS)if(AWA_CARDS[h].id===id)return AWA_CARDS[h];
   return null;
 }
 
@@ -297,7 +297,7 @@ function cardDef(hero,id){
 function defaultDeck(hero){
   const cards=PROFILES[hero].cards,list=[],cnt={};
   const add=id=>{list.push(id);cnt[id]=(cnt[id]||0)+1;};
-  cards.forEach(c=>{for(let i=0;i<Math.min(c.n||1,c.limit);i++)if(list.length<DECK_SIZE)add(c.id);});
+  cards.forEach(c=>{for(let i=0;i<Math.min(c.n===undefined?1:c.n,c.limit);i++)if(list.length<DECK_SIZE)add(c.id);});
   const sorted=[...cards].sort((a,b)=>a.cost-b.cost);
   let guard=0;
   while(list.length<DECK_SIZE&&guard++<500){
