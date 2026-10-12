@@ -7,7 +7,7 @@
 "use strict";
 const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET}=C;
 const {unitValue,heroBonus,gunCount,playError,attackTargets,canAttack,autoTargets,autoOption,bestRegime,redCount}=E;
-const SCRAP_SPELLS={convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,crownCopy:2};
+const SCRAP_SPELLS={convert1:1,scrapSearch:1,convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,crownCopy:2};
 const REGIME_OF={decreeRus:"rus",decreeUkr:"ukr",decreeBlr:"blr"};
 
 const BURN={hero99:99,damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
@@ -85,6 +85,11 @@ function scoreCard(s,o,c,lethal){
         +((s.regimeChanges||0)<2?2:0);   // 权限需要更换次数
     }
     else if(c.scrap&&!e)sc=(s.hand.length>=9?1:-60);   // 废料留着当原料，手牌快满了才丢
+    else if(e==="convert1")sc+=(s.hand.length>=MAX_HAND-1?-100:5);
+    else if(e==="scrapSearch")sc+=(s.hand.length>=MAX_HAND-1?-100:5);
+    else if(e==="supplyDeck")sc+=(s.hand.length>=MAX_HAND-1||!s.deck.some(x=>x.kind==="unit")?-100:5);
+    else if(e==="intelSteal")sc+=(s.hand.length>=MAX_HAND-1||!o.deck.length?-100:6);
+    else if(e==="ramp0")sc+=s.maxEnergy<8?4:-3;
     else if(e==="convert2"||e==="convert3"||e==="crownCopy")sc+=(s.hand.length>=MAX_HAND-1?-100:6)+(e==="crownCopy"?4:0);
     else if(e==="scrapSummon2")sc+=(MAX_BOARD-myN>=2?4:-100);
     else if(e==="scrapStun")sc+=enN?4:-100;

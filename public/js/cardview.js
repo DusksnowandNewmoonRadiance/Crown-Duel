@@ -73,6 +73,7 @@ const CardView=(()=>{
     if(c.member||/架子班成员/.test(c.text||""))out.push(K.member);
     if(/偷取/.test(c.text||""))out.push(K.stealMoney);
     if(/政体/.test(c.text||""))out.push(K.regime);
+    if(/补给：/.test(c.text||""))out.push(K.supply);
     if(c.scrap||/废料/.test(c.text||""))out.push(K.scrap);
     if(/转化 d/.test(c.text||""))out.push(K.convert);
     if(c.recycle||/回收/.test(c.text||""))out.push(K.recycle);

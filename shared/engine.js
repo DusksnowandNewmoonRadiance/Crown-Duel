@@ -84,9 +84,12 @@ function playError(card,me,foe){
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
   {
     const sc=me.hand.filter(x=>x.scrap&&x.uid!==card.uid).length;
-    const need={convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,crownCopy:2}[card.effect];
+    const need={convert1:1,convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,scrapSearch:1,crownCopy:2}[card.effect];
     if(need&&sc<need)return`需要手牌中至少有 ${need} 张【废料】（目前 ${sc} 张）`;
     if(card.effect==="scrapStun"&&!foe.board.length)return"敌方没有单位可以眩晕";
+    if(card.effect==="scrapSearch"&&!me.deck.length)return"你的牌库已经空了";
+    if(card.effect==="supplyDeck"&&!me.deck.some(x=>x.kind==="unit"))return"牌库里没有单位牌";
+    if(card.effect==="intelSteal"&&!foe.deck.length)return"敌方牌库已经空了";
   }
   if(e==="consolidate"&&redCount(me)<2)return"整编需要至少 2 个【俄布】";
   if(e==="artilleryCommand"){
@@ -157,7 +160,7 @@ class Game{
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
       untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,
-      scrap:!!c.scrap,recycle:c.recycle||""};
+      scrap:!!c.scrap,recycle:c.recycle||"",recycleN:c.recycleN||1};
     if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
   }
@@ -254,9 +257,12 @@ class Game{
       const id=u.transfer||u.recycle;
       const def=TOKENS[id]||PROFILES[p.hero].cards.find(x=>x.id===id);
       if(!def)return;
-      const card=this.clone(def,p.hero);
-      if(this.addToHand(p,card))this.note(u.transfer?`${u.name} 引渡：灵魂转移，【${def.name}】进入手牌`:`${u.name} 回收：【${def.name}】放回手牌`,p);
-      else this.burn(p,card);
+      const times=u.transfer?1:(u.recycleN||1);
+      for(let i=0;i<times;i++){
+        const card=this.clone(def,p.hero);
+        if(this.addToHand(p,card))this.note(u.transfer?`${u.name} 引渡：灵魂转移，【${def.name}】进入手牌`:`${u.name} 回收：【${def.name}】放回手牌`,p);
+        else this.burn(p,card);
+      }
       if(u.transfer)this.emit({t:"fx",name:"transfer",pi:p.idx});
     });
     triggers.forEach(([p,u])=>{
@@ -613,8 +619,38 @@ class Game{
   cast(s,c,o,targets,option){
     const fx=(name,extra)=>this.emit(Object.assign({t:"fx",name,pi:s.idx},extra||{}));
     switch(c.effect){
+      case"convert1":this._convert(s,1,c.name);break;
       case"convert2":this._convert(s,2,c.name);break;
       case"convert3":this._convert(s,3,c.name);break;
+      case"ramp0":if(this.gainMax(s,1))s.energy=Math.min(MAX_ENERGY+1,s.energy+1);break;
+      case"supplyDeck":case"scrapSearch":{
+        if(this.lock!==null){this.note("停摆：无法抽牌",s);break;}
+        if(c.effect==="scrapSearch")this._discardScrap(s,1,false);
+        const pool=c.effect==="supplyDeck"?s.deck.filter(x=>x.kind==="unit"):s.deck.slice();
+        const opts=shuffle(pool.slice()).slice(0,3);
+        if(!opts.length){this.note(`${c.name}：牌库里没有可选的牌`,s);break;}
+        const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+        this._pick(s,c.name,"从牌库中选择 1 张加入手牌，其余留在牌库里",opts,auto,card=>{
+          const i=s.deck.indexOf(card);if(i>=0)s.deck.splice(i,1);
+          if(!this.addToHand(s,card))this.burn(s,card);
+          this.note(`${c.name}：取出了【${card.name}】`,s,true);
+        });
+        break;}
+      case"intelSteal":{
+        if(this.lock!==null){this.note("停摆：无法抽牌",s);break;}
+        const top=[];
+        for(let i=o.deck.length-1;i>=0&&top.length<3;i--)top.push(o.deck[i]);
+        if(!top.length){this.note("窃取情报：敌方牌库已空",s);break;}
+        const auto=top.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+        this._pick(s,"窃取情报","彗星情报网：这是敌方牌库顶的牌。选择 1 张据为己有，它会从敌方牌库中消失",top,auto,card=>{
+          const i=o.deck.indexOf(card);if(i>=0)o.deck.splice(i,1);
+          const def=C.cardDef(card.hero||o.hero,card.id);
+          const mine=def?this.clone(def,card.hero||o.hero):card;
+          if(!this.addToHand(s,mine))this.burn(s,mine);
+          this.note(`窃取情报：偷来了敌方的【${card.name}】`,s,true);
+          this.note("窃取情报：敌方牌库的一张牌被偷走了",o,true);
+        });
+        break;}
       case"scrapSummon2":{const k=this.summon(s,"scrapUnit",2);this.note(`翻箱倒柜：翻出 ${k} 个废铜烂铁`,s);fx("summonRed",{n:k});break;}
       case"scrapStun":{
         this._discardScrap(s,1,false);

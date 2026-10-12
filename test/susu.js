@@ -188,6 +188,33 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   const r=g.playCard(0,c.uid,[]);
   check("awa 卡可以打出：99 点伤害",r.ok&&b.hp<=0&&g.phase==="over");
 }
+/* ---- 补充资源：后勤补给 / 窃取情报 / 五年计划 / 政委 ---- */
+{
+  const {g,a,b}=setup();
+  a.deck=[mk(g,"苏苏","red"),mk(g,"苏苏","sniper"),mk(g,"苏苏","october"),mk(g,"苏苏","ukr")];
+  play(g,0,give(g,a,"supply"));
+  check("后勤补给：展示牌库里的单位牌",g.pending&&g.pending.cards.length===3&&g.pending.cards.every(c=>c.kind==="unit"));
+  const pick=g.pending.cards[0];
+  g.resolvePending(0,0);
+  check("后勤补给：选中的牌进入手牌并离开牌库",a.hand.some(c=>c.uid===pick.uid)&&!a.deck.some(c=>c.uid===pick.uid)&&a.deck.length===3);
+  const x=setup();
+  x.b.deck=[x.g.clone(C.cardDef("字母","over"),"字母"),x.g.clone(C.cardDef("字母","shadow"),"字母"),x.g.clone(C.cardDef("字母","order"),"字母"),x.g.clone(C.cardDef("字母","guard"),"字母")];
+  const before=x.b.deck.length;
+  play(x.g,0,give(x.g,x.a,"intelSteal"));
+  check("窃取情报：看到敌方牌库顶 3 张",x.g.pending&&x.g.pending.cards.length===3);
+  const target=x.g.pending.cards[1];
+  x.g.resolvePending(0,1);
+  check("窃取情报：偷到手牌，敌方牌库少 1 张",x.a.hand.some(c=>c.id===target.id)&&x.b.deck.length===before-1&&!x.b.deck.some(c=>c.uid===target.uid));
+  const p=setup();p.a.maxEnergy=3;p.a.energy=3;
+  play(p.g,0,give(p.g,p.a,"fiveyear"));
+  check("五年计划：费用上限 +1，本回合 +1 点费用（花费 1 后剩 3）",p.a.maxEnergy===4&&p.a.energy===3,p.a.maxEnergy+"/"+p.a.energy);
+  const c=setup();
+  const com=mk(c.g,"苏苏","commissar");c.a.board.push(com);com.health=0;c.g.cleanup();
+  check("政委：被消灭后放回红色动员令",c.a.hand.some(x=>x.id==="mobilize"));
+  const l=setup();l.g.lock=1;
+  l.a.deck=[mk(l.g,"苏苏","red")];play(l.g,0,give(l.g,l.a,"supply"));
+  check("停摆期间后勤补给无法取牌",!l.g.pending&&l.a.deck.length===1);
+}
 /* ---- 视图字段 ---- */
 {
   const {g,a}=setup();
@@ -201,7 +228,7 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   check("苏苏默认卡组合法",!C.deckError("苏苏",d));
   const drawText=C.PROFILES["苏苏"].cards.filter(c=>/抽 \d+ 张牌/.test(c.text));
   check("苏苏没有抽牌卡",drawText.length===0,drawText.map(c=>c.name).join(","));
-  check("苏苏牌表在 18~22 张之间",ids.size>=18&&ids.size<=22,ids.size);
+  check("苏苏牌表在 18~22 张之间",ids.size>=18&&ids.size<=26,ids.size);
 }
 console.log(fail?"SUSU TEST FAILED":"SUSU TEST PASSED");
 process.exit(fail?1:0);

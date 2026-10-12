@@ -92,5 +92,27 @@ check("没有抽牌卡",!C.PROFILES["绘梨衣"].cards.some(c=>/抽 \d+ 张牌/.
   const u=a.board.find(x=>x.id==="colossus");
   check("废料巨像：4 张废料 → +4/+4",u.attack===8&&u.health===8);
 }
+{ // 以旧换新 / 清点库存 / 回收站
+  const {g,a}=setup();
+  give(g,a,"scrap",1);
+  const c=give(g,a,"trade");
+  check("以旧换新：1 张废料即可打出",!E.playError(c,a,g.players[1]));
+  play(g,c);
+  check("以旧换新：选项费用在 1~3（已减 1）",g.pending&&g.pending.cards.every(x=>x.cost>=1&&x.cost<=3),g.pending&&g.pending.cards.map(x=>x.name+x.cost).join(","));
+  g.resolvePending(0,0);
+  check("以旧换新：废料换成真牌",a.hand.length===1&&!a.hand[0].scrap);
+  const s=setup();
+  s.a.deck=[mk(s.g,"fortress"),mk(s.g,"sweep"),mk(s.g,"temp"),mk(s.g,"crown")];
+  give(s.g,s.a,"scrap",1);
+  play(s.g,give(s.g,s.a,"stocktake"));
+  check("清点库存：弃掉废料，展示牌库里的牌",s.g.pending&&s.g.pending.cards.length===3&&s.a.hand.filter(x=>x.scrap).length===0);
+  const id=s.g.pending.cards[0];s.g.resolvePending(0,0);
+  check("清点库存：选中的牌进入手牌并离开牌库",s.a.hand.some(x=>x.uid===id.uid)&&s.a.deck.length===3);
+  const r=setup();
+  const st=mk(r.g,"station");r.a.board.push(st);st.health=0;r.g.cleanup();
+  check("废品回收站：回收 2 张碎纸",r.a.hand.filter(x=>x.id==="scrap").length===2);
+  const e=setup();give(e.g,e.a,"scrap",1);e.a.deck=[];
+  check("牌库为空时清点库存不能打出",!!E.playError(give(e.g,e.a,"stocktake"),e.a,e.g.players[1]));
+}
 console.log(fail?"ERIYI TEST FAILED":"ERIYI TEST PASSED");
 process.exit(fail?1:0);
