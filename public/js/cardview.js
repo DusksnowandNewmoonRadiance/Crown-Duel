@@ -43,7 +43,8 @@ const CardView=(()=>{
       const baseAtk=def?def.atk:atk;
       stats=`<div class="stats"><b class="stat atk${atk>baseAtk?" buff":""}">${atk}</b><b class="stat hp${hp<maxHp?" dmg":(def&&maxHp>def.hp?" buff":"")}">${hp}</b></div>`;
     }
-    const tag=c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":c.hero;
+    const rep=c.rep&&C.REGIMES?C.REGIMES[c.rep]:"";
+    const tag=c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":(rep&&c.hero==="苏苏"?rep:c.hero);
     const type=(c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(tag?" · "+esc(tag):""))
       +(rar?` · <span class="rar r-${rar}">${C.RARITY[rar].name}</span>`:"");
     const gem=rar?`<i class="gem r-${rar}" title="${C.RARITY[rar].name}"></i>`:"";
@@ -71,6 +72,12 @@ const CardView=(()=>{
     if(c.gun||/火炮/.test(c.text||""))out.push(K.gun);
     if(c.member||/架子班成员/.test(c.text||""))out.push(K.member);
     if(/偷取/.test(c.text||""))out.push(K.stealMoney);
+    if(/政体/.test(c.text||""))out.push(K.regime);
+    if(c.transfer||/引渡/.test(c.text||""))out.push(K.transfer);
+    if(/整编/.test(c.text||""))out.push(K.consolidate);
+    if(/权限/.test(c.text||""))out.push(K.permission);
+    if(/情报/.test(c.text||""))out.push(K.intel);
+    if(c.sealed)out.push({name:"已封存",desc:"情报部门封存了这张牌，在本回合无法打出。"});
     if(c.core)out.push(K.core);
     if(c.kind==="unit"&&c.fresh&&!c.charge)out.push({name:"刚部署",desc:"本回合不能攻击，下回合即可行动。"});
     if(c.stun>0)out.push({name:"眩晕",desc:"下个回合无法攻击。"});

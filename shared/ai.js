@@ -6,7 +6,8 @@
 })(typeof self!=="undefined"?self:this,function(C,E){
 "use strict";
 const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET}=C;
-const {unitValue,heroBonus,gunCount,playError,attackTargets,canAttack,autoTargets,autoOption}=E;
+const {unitValue,heroBonus,gunCount,playError,attackTargets,canAttack,autoTargets,autoOption,bestRegime,redCount}=E;
+const REGIME_OF={decreeRus:"rus",decreeUkr:"ukr",decreeBlr:"blr"};
 
 const BURN={damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
 function burnOf(s,c){
@@ -38,6 +39,8 @@ function scoreCard(s,o,c,lethal){
     if(c.taunt)sc+=(s.hp<=14||o.board.some(u=>u.attack>=4))?3:1;
     if(burn)sc+=burn*.6;
     if(/^choose/.test(e))sc+=enN?3:-1;
+    if(e==="secondDeploy")sc+=3+(enN?2:0);
+    if(e==="thirdDeploy")sc+=3;
     if(/^buff|alwei|huiliyi/.test(e))sc+=myN*1.2;
     if(/energyDown|qixing/.test(e))sc+=1.5;
     if(e==="drawHeal")sc+=4;
@@ -75,6 +78,13 @@ function scoreCard(s,o,c,lethal){
     else if(e==="revengeDeath")sc+=myN?myN*1.6:-100;
     else if(e==="artilleryCommand")sc+=enN*2.5+(MAX_BOARD-myN)*1.2;
     else if(e==="developEnemy")sc+=4;
+    else if(REGIME_OF[e]){
+      const want=bestRegime(s,o);
+      sc+=(s.regime===REGIME_OF[e]?-5:2)+(want===REGIME_OF[e]?3:0)+(e==="decreeUkr"?(enN?2:-3):0)+(e==="decreeRus"?(myN>=MAX_BOARD?-4:1):0)
+        +((s.regimeChanges||0)<2?2:0);   // 权限需要更换次数
+    }
+    else if(e==="consolidate"){const n=redCount(s);sc+=n>=4?9:n>=3?6:n>=2?1.5:-100;if(s.board.length>=MAX_BOARD&&n<3)sc-=3;}
+    else if(e==="intel")sc+=(o.handCount!==undefined?o.handCount:o.hand.length)>=2?3.5:-4;
     else if(e==="awaFreeze")sc+=3;
     else if(e==="awaDiscover")sc+=s.hand.length>=MAX_HAND-1?-100:4;
     else if(e==="awaJazz")sc+=(myN>=MAX_BOARD?-100:5)+((o.hero==="猪瘟鱼"&&o.money>0)?o.money*.4:0);

@@ -33,7 +33,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const g=game("七星","苏苏");
   const a=g.players[0],b=g.players[1];
   const band=mk(g,"七星","awaBand");band.atkLeft=1;a.board.push(band);
-  const foe=mk(g,"苏苏","tank");b.board.push(foe);
+  const foe=mk(g,"苏苏","blr");b.board.push(foe);
   const r=g.attack(0,band.uid,foe.uid);
   check("攻击力为 0 的单位可以攻击",r.ok&&band.atkLeft===0,r.error||"");
 }
@@ -136,9 +136,12 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const a=g.players[0],b=g.players[1];
   b.board.push(mk(g,"字母","guard"),mk(g,"字母","over"));
   ready(g,0,[mk(g,"苏苏","artillery")]);
-  a.board.push(mk(g,"苏苏","red"));
+  a.board.push(mk(g,"苏苏","red"),mk(g,"苏苏","red"));
+  check("权限：没有换过政体时不能打出",!!E.playError(a.hand[0],a,b));
+  a.regimeChanges=2;
+  check("权限：满足后可以打出",!E.playError(a.hand[0],a,b));
   play(g,0,a.hand[0]);
-  check("全亚洲炮兵总司令：填满战场",a.board.length===C.MAX_BOARD&&a.board.filter(u=>u.id==="redArtillery").length===C.MAX_BOARD-1);
+  check("全亚洲炮兵总司令：填满战场",a.board.length===C.MAX_BOARD&&a.board.filter(u=>u.id==="redArtillery").length===C.MAX_BOARD-2);
   check("对所有敌方单位造成 3 点伤害",b.board.every(u=>u.health===u.maxHealth-3));
 }
 
@@ -146,7 +149,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
 {
   const g=game("字母","苏苏");
   const a=g.players[0],b=g.players[1];
-  b.heroImmune=true;b.board.push(mk(g,"苏苏","tank"),mk(g,"苏苏","blr"));
+  b.heroImmune=true;b.board.push(mk(g,"苏苏","blr"),mk(g,"苏苏","blr"));
   ready(g,0,[mk(g,"字母","remove")]);
   const hp=b.hp;play(g,0,a.hand[0]);
   check("消除限制：移除嘲讽与免疫并造成 3 点伤害",b.board.every(u=>!u.taunt)&&!b.heroImmune&&b.hp===hp-3);

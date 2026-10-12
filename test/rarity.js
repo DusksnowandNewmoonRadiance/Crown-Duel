@@ -47,12 +47,12 @@ const e=g.players[0].deck.find(c=>c.rarity==="elite");
 check("视图里能解析出精英配方",!!F.recipeFor(E.pubCard(e)));
 
 /* 热更新：改稀有度时携带上限联动 */
-const key="苏苏:forward";
-const baseLimit=C.PROFILES["苏苏"].cards.find(c=>c.id==="forward").limit;
+const key="字母:over";
+const baseLimit=C.PROFILES["字母"].cards.find(c=>c.id==="over").limit;
 const errs=C.checkOverrides({[key]:{rarity:"elite"}});
 check("覆盖稀有度合法",!errs.length,errs.join(" "));
 C.applyOverrides({[key]:{rarity:"elite"}},"t1");
-const c1=C.PROFILES["苏苏"].cards.find(c=>c.id==="forward");
+const c1=C.PROFILES["字母"].cards.find(c=>c.id==="over");
 check("改稀有度后携带上限随之改变",c1.rarity==="elite"&&c1.limit===1&&c1.n<=1);
 C.applyOverrides({},"t2");
 check("清除覆盖后恢复",c1.rarity==="special"&&c1.limit===baseLimit);

@@ -18,32 +18,30 @@ const RARITY={
 const RARITY_ORDER=["common","rare","special","elite"];
 
 const PROFILES={
-  "苏苏":{faction:"彗星国 · 架子班 · 鸭子系",style:"苏维埃体系 · 铺场爆发",hp:32,cards:[
-    {id:"red",name:"俄罗斯布尔什维克红军",cost:2,kind:"unit",art:"★",atk:2,hp:3,text:"冲锋。",charge:true,n:4,limit:4,rarity:"common"},
-    {id:"latvian",name:"拉脱维亚布尔什维克红军",cost:3,kind:"unit",art:"★",atk:5,hp:5,text:"冲锋。每次攻击后，失去 1 点生命。",charge:true,effect:"selfDamage1",n:1,limit:1,rarity:"elite"},
-    {id:"ukr",name:"乌克兰红军",cost:3,kind:"unit",art:"✦",atk:4,hp:3,text:"部署：对 1 个敌方单位造成 4 点伤害。",effect:"choose4",n:2,limit:2,rarity:"special",fx:"sp_strike"},
-    {id:"blr",name:"白俄罗斯卫队",cost:4,kind:"unit",art:"◆",atk:5,hp:5,text:"嘲讽。",taunt:true,n:2,limit:2,rarity:"special"},
-    {id:"commissar",name:"苏维埃政委",cost:2,kind:"unit",art:"☭",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
-    {id:"veteran",name:"红军老兵",cost:5,kind:"unit",art:"▣",atk:6,hp:6,text:"嘲讽。",taunt:true,n:1,limit:2,rarity:"special"},
-    {id:"marshal",name:"炮兵总司令",cost:5,kind:"unit",art:"✚",atk:5,hp:5,text:"部署：对敌方英雄造成 3 点伤害。",effect:"hero3",n:1,limit:1,rarity:"elite"},
-    {id:"kazakh",name:"哈萨克布尔什维克红军",cost:5,kind:"unit",art:"☭",atk:1,hp:8,text:"嘲讽。部署：使你的所有【俄布】获得 +2/+2。",taunt:true,effect:"buffRed",n:1,limit:1,rarity:"elite"},
-    {id:"tank",name:"红军坦克",cost:4,kind:"unit",art:"▦",atk:4,hp:5,text:"嘲讽。",taunt:true,n:1,limit:2,rarity:"special"},
-    {id:"redguard",name:"赤卫队",cost:1,kind:"unit",art:"⚑",atk:2,hp:1,text:"冲锋。",charge:true,n:2,limit:3,rarity:"rare"},
-    {id:"advisor",name:"政委顾问",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:1,limit:2,rarity:"special"},
-    {id:"katyusha",name:"喀秋莎火箭炮",cost:4,kind:"unit",art:"✣",atk:4,hp:4,text:"部署：对至多 3 个敌方单位各造成 2 点伤害。",effect:"choose3x2",n:1,limit:1,rarity:"elite"},
-    {id:"armoredtrain",name:"装甲列车",cost:6,kind:"unit",art:"▦",atk:7,hp:7,text:"嘲讽。",taunt:true,n:1,limit:1,rarity:"elite"},
-    {id:"sniper",name:"红军狙击手",cost:2,kind:"unit",art:"◉",atk:2,hp:2,text:"部署：对 1 个敌方单位造成 2 点伤害。",effect:"choose2",n:2,limit:2,rarity:"special"},
-    {id:"mobilize",name:"红色动员令",cost:1,kind:"spell",art:"☭",text:"召唤 1 个【俄布】。",effect:"summonRed1",n:2,limit:3,rarity:"rare"},
+  "苏苏":{faction:"彗星国 · 架子班 · 鸭子系",style:"苏维埃体系 · 政体切换 · 整编爆发",hp:32,cards:[
+    /* 单位：rep 标明所属共和国（俄罗斯 rus / 乌克兰 ukr / 白俄罗斯 blr） */
+    {id:"red",name:"俄罗斯布尔什维克红军",cost:2,kind:"unit",art:"★",atk:2,hp:3,text:"冲锋。",charge:true,rep:"rus",n:4,limit:4,rarity:"common"},
+    {id:"redguard",name:"赤卫队",cost:1,kind:"unit",art:"⚑",atk:2,hp:1,text:"冲锋。",charge:true,rep:"rus",n:3,limit:3,rarity:"rare"},
+    {id:"sniper",name:"红军狙击手",cost:2,kind:"unit",art:"◉",atk:2,hp:2,text:"部署：对 1 个敌方单位造成 2 点伤害。",effect:"choose2",rep:"ukr",n:2,limit:2,rarity:"special",fx:"sp_strike"},
+    {id:"ukr",name:"乌克兰红军",cost:3,kind:"unit",art:"✦",atk:4,hp:3,text:"部署：对 1 个敌方单位造成 4 点伤害。",effect:"choose4",rep:"ukr",n:2,limit:2,rarity:"special",fx:"sp_strike"},
+    {id:"first",name:"苏一世",cost:3,kind:"unit",art:"Ⅰ",atk:4,hp:4,text:"冲锋。每次攻击后，失去 1 点生命。引渡：被消灭时，把【苏二世】置入你的手牌。",flavor:"旧大陆贫困地区出身，常年保持 1 段。",charge:true,effect:"selfDamage1",transfer:"second",rep:"rus",n:1,limit:1,rarity:"elite"},
+    {id:"blr",name:"白俄罗斯卫队",cost:4,kind:"unit",art:"◆",atk:5,hp:5,text:"嘲讽。",taunt:true,rep:"blr",n:2,limit:2,rarity:"special"},
+    {id:"katyusha",name:"喀秋莎火箭炮",cost:4,kind:"unit",art:"✣",atk:4,hp:4,text:"部署：对至多 3 个敌方单位各造成 2 点伤害。",effect:"choose3x2",rep:"ukr",n:1,limit:1,rarity:"elite"},
+    {id:"marshal",name:"炮兵总司令",cost:5,kind:"unit",art:"✚",atk:5,hp:5,text:"部署：对敌方英雄造成 3 点伤害。",effect:"hero3",rep:"ukr",n:1,limit:1,rarity:"elite"},
+    {id:"armoredtrain",name:"装甲列车",cost:6,kind:"unit",art:"▦",atk:7,hp:7,text:"嘲讽。",taunt:true,rep:"blr",n:1,limit:1,rarity:"elite"},
+    /* 政体法令：确立 / 更换政体，各带一个与共和国相称的效果 */
+    {id:"decreeRus",name:"十月宣言",cost:1,kind:"spell",art:"☭",text:"政体变为【俄罗斯】。召唤 1 个【俄布】。",effect:"decreeRus",rep:"rus",n:2,limit:2,rarity:"special"},
+    {id:"decreeUkr",name:"乌克兰苏维埃宣言",cost:1,kind:"spell",art:"✦",text:"政体变为【乌克兰】。对 1 个敌方单位造成 2 点伤害。",effect:"decreeUkr",rep:"ukr",n:2,limit:2,rarity:"special"},
+    {id:"decreeBlr",name:"白俄罗斯苏维埃宣言",cost:1,kind:"spell",art:"◆",text:"政体变为【白俄罗斯】。获得 2 点护甲。",effect:"decreeBlr",rep:"blr",n:2,limit:2,rarity:"special"},
+    {id:"mobilize",name:"红色动员令",cost:1,kind:"spell",art:"☭",text:"召唤 1 个【俄布】。",effect:"summonRed1",n:3,limit:3,rarity:"rare"},
     {id:"october",name:"十月革命",cost:3,kind:"spell",art:"☭",text:"召唤 2 个【俄布】。",effect:"summonRed2",n:3,limit:3,rarity:"rare"},
-    {id:"plan",name:"五年计划",cost:2,kind:"spell",art:"⇪",text:"费用上限 +1（本回合即可使用），抽 1 张牌。",effect:"ramp",n:2,limit:2,rarity:"special"},
-    {id:"war",name:"战时共产主义",cost:2,kind:"spell",art:"▣",text:"获得 3 点护甲，抽 1 张牌。",effect:"armor3draw",n:2,limit:2,rarity:"special"},
+    {id:"consolidate",name:"整编令",cost:3,kind:"spell",art:"▣",text:"整编：消灭你所有的【俄布】（至少 2 个），召唤 1 个【近卫红军】，攻击力和生命值等于它们的总和。",effect:"consolidate",n:3,limit:3,rarity:"rare"},
+    {id:"intel",name:"情报调阅",cost:2,kind:"spell",art:"◎",text:"情报：查看敌方手牌，选择 1 张封存——对手在下个回合无法打出它。若敌方没有手牌，改为召唤 1 个【俄布】。",effect:"intel",n:2,limit:2,rarity:"special"},
     {id:"forward",name:"为了革命的胜利前进",cost:3,kind:"spell",art:"→",text:"使你的所有单位获得 +2/+2。",effect:"buffAll2",n:2,limit:2,rarity:"special",fx:"sp_bless"},
-    {id:"artillery",name:"全亚洲炮兵总司令",cost:7,kind:"spell",art:"✣",text:"隐藏终端：用【红军炮兵】填满你的战场，对所有敌方单位造成 3 点伤害。",effect:"artilleryCommand",n:1,limit:1,rarity:"elite"},
-    {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"},
+    {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
-    {id:"comintern",name:"共产国际",cost:2,kind:"spell",art:"☭",text:"抽 2 张牌。",effect:"draw2",n:2,limit:2,rarity:"special"},
-    {id:"passion",name:"革命热情",cost:1,kind:"spell",art:"✹",text:"使 1 个友方单位获得 +2/+2，抽 1 张牌。",effect:"buffOneDraw",n:1,limit:2,rarity:"special"},
-    {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"}
+    {id:"artillery",name:"全亚洲炮兵总司令",cost:7,kind:"spell",art:"✣",text:"隐藏终端。权限：本局确立或更换过 2 次政体，且你的战场上至少有 2 个单位。用【红军炮兵】填满你的战场，对所有敌方单位造成 3 点伤害。",effect:"artilleryCommand",n:1,limit:1,rarity:"elite"},
+    {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[
     {id:"sentry",name:"卫戍哨兵",cost:1,kind:"unit",art:"盾",atk:1,hp:3,text:"嘲讽。",taunt:true,n:2,limit:3,rarity:"rare"},
@@ -227,6 +225,9 @@ const PROFILES={
 /* 衍生物：不属于任何卡组 */
 const TOKENS={
   awaBand:{id:"awaBand",name:"爵士乐队",cost:3,kind:"unit",art:"♪",atk:0,hp:4,owner:"awa",untargetable:true,text:"无法被敌方单位攻击。你的单位和法术对敌方造成的伤害 +1（可叠加）。"},
+  redGuard:{id:"redGuard",name:"近卫红军",cost:0,kind:"unit",art:"★",atk:0,hp:1,charge:true,rep:"rus",text:"冲锋。整编的产物：属性等于被整编的【俄布】之和。"},
+  second:{id:"second",name:"苏二世",cost:4,kind:"unit",art:"Ⅱ",atk:3,hp:5,effect:"secondDeploy",transfer:"third",text:"部署：选择一个政体，并使攻击力最高的敌方单位眩晕 1 回合。引渡：被消灭时，把【苏三世】置入你的手牌。",flavor:"自行引渡至德德，逐渐正常化。",rep:"rus"},
+  third:{id:"third",name:"苏三世",cost:6,kind:"unit",art:"Ⅲ",atk:6,hp:6,charge:true,effect:"thirdDeploy",text:"冲锋。部署：本回合三种政体的加成同时生效（代价不生效）。",flavor:"人脉威望达到顶峰。",rep:"rus"},
   redArtillery:{id:"redArtillery",name:"红军炮兵",cost:2,kind:"unit",art:"✣",atk:3,hp:2,ignoreTaunt:true,text:"无视嘲讽。"},
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"}
 };
@@ -238,11 +239,12 @@ const AWA_CARDS={
   七星:{id:"awaJazz",name:"即兴演出",cost:3,kind:"spell",art:"♪",owner:"awa",rarity:"elite",text:"召唤 1 个【爵士乐队】。如果敌方是猪瘟鱼，偷走其全部金钱。",effect:"awaJazz"}
 };
 
+const REGIMES={rus:"俄罗斯",ukr:"乌克兰",blr:"白俄罗斯"};
 const COLORS={苏苏:"#e0664f",字母:"#6fb6dc",七星:"#a98fd9",核弹:"#7cc98a",猪瘟鱼:"#e58aa6",八幡:"#4fc0b0","045":"#dcae62",下水:"#a3b6bf"};
 
 /* 新手引导信息：难度 1~3 */
 const HERO_INFO={
-  苏苏:{difficulty:1,title:"架子班 · 彗星高层",tip:"大量带「冲锋」的红军，铺满场面后用增益法术一波推进；留着隐藏终端【全亚洲炮兵总司令】收尾。"},
+  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"没有抽牌，靠场面说话：先用政体法令确立路线，铺满【俄布】后用【整编令】和增益一波推进；换满两次政体才能解锁隐藏终端【全亚洲炮兵总司令】。怕群伤清场，注意别一次铺太满。"},
   字母:{difficulty:2,title:"新式战法领袖",tip:"超模单位压场，用【消除限制】撕掉嘲讽和免疫后直伤突破；关键时刻策反对手最强的单位。"},
   七星:{difficulty:3,title:"彗星国领袖",tip:"不急着赢：压低对手的费用上限、封锁出牌，再用【衰减】一层一层磨死对手。"},
   核弹:{difficulty:2,title:"凹槽皇帝",tip:"卡组很薄，靠防御和逃跑撑住，找到【超人】后一击决胜——它每回合攻击两次，但只存在到你的下个回合开始。"},
@@ -270,6 +272,11 @@ const KEYWORDS={
   red:{name:"俄布",desc:"【俄罗斯布尔什维克红军】的简称（2 费 2/3 冲锋）。"},
   gun:{name:"火炮",desc:"下水卡组里类型栏标有「火炮」的单位。饱和炮击、炮兵支援等卡牌会按火炮生效。"},
   member:{name:"架子班成员",desc:"045 卡组里类型栏标有「架子班」的单位，可被召集令、名片召唤从牌库召唤。"},
+  regime:{name:"政体",desc:"苏苏特有的状态，同一时间只有一种：俄罗斯（新单位获得冲锋，但你无法获得护甲）；乌克兰（你的部署伤害和法术伤害 +1，但新单位生命 -1）；白俄罗斯（回合结束时获得 2 点护甲、新嘲讽单位 +0/+1，但新单位失去冲锋）。"},
+  transfer:{name:"引渡",desc:"亡语的一种：这个单位被消灭时，灵魂转移到下一世——把对应的牌置入你的手牌（手牌已满则弃置）。"},
+  consolidate:{name:"整编",desc:"消灭你所有的【俄布】，合并成一个攻击力和生命值等于它们总和的单位。"},
+  permission:{name:"权限",desc:"打出这张牌需要先满足条件，条件不满足时无法打出。"},
+  intel:{name:"情报",desc:"查看敌方手牌，并对其中 1 张施加影响。"},
   stealMoney:{name:"偷取金钱",desc:"猪瘟鱼的特殊资源。偷够 300 元后打出【逃跑】即可直接获胜。"}
 };
 
@@ -365,6 +372,6 @@ function applyOverrides(map,rev){
   overridesRev=rev||"";
 }
 
-return{RARITY,RARITY_ORDER,MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,defaultDeck,deckError,
+return{REGIMES,RARITY,RARITY_ORDER,MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,defaultDeck,deckError,
   PATCHABLE,checkOverrides,applyOverrides,baseOf:key=>BASE[key],get overridesRev(){return overridesRev;}};
 });

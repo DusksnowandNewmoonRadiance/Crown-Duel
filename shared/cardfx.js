@@ -47,9 +47,8 @@ const SPECIAL={
 /* ---- 精英卡：每张一个专属配方（键为 卡牌师:卡牌id） ---- */
 const ELITE={
   /* 苏苏 */
-  "苏苏:latvian":{pattern:"slash",palette:"crimson",glyph:"★",target:"foe"},
+  "苏苏:first":{pattern:"slash",palette:"crimson",glyph:"Ⅰ",target:"foe"},
   "苏苏:marshal":{pattern:"burst",palette:"ember",glyph:"✚",target:"foe"},
-  "苏苏:kazakh":{pattern:"rise",palette:"blood",glyph:"☭",target:"meBoard"},
   "苏苏:katyusha":{pattern:"rain",palette:"amber",glyph:"✣",target:"foeBoard"},
   "苏苏:armoredtrain":{pattern:"wave",palette:"steel",glyph:"▦",target:"meBoard"},
   "苏苏:winter":{pattern:"ring",palette:"frost",glyph:"❄",target:"foeBoard"},

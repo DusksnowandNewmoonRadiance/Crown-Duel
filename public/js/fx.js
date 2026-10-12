@@ -59,6 +59,19 @@ const FX=(()=>{
   }
 
   const E={
+    async regime(d){
+      const T={rus:["俄罗斯政体","#ff9a86","#a83020"],ukr:["乌克兰政体","#ffd77a","#a07a20"],blr:["白俄罗斯政体","#a8d4ff","#2a5f9a"],all:["联邦 · 三政合一","#ffe8a0","#a07a20"]};
+      const r=T[d.regime]||T.rus;
+      const l=fadeLayer(`radial-gradient(ellipse at 50% 50%,${r[2]}77,rgba(5,8,9,.72) 70%)`);
+      bigText(r[0],r[1],r[2],58,1300,36);Audio2.sfx("spell");out(l,1100);await sleep(850);
+    },
+    async transfer(){
+      bigText("灵魂引渡","#e8e0ff","#7a6cc0",54,1400,36);Audio2.sfx("heal");await sleep(900);
+    },
+    async consolidate(){
+      const l=fadeLayer("radial-gradient(ellipse at 50% 60%,rgba(224,102,79,.42),rgba(5,8,9,.7) 65%)");
+      bigText("整编","#ffd9a8","#a83020",60,1200,36);Audio2.sfx("core");shake();out(l,1000);await sleep(700);
+    },
     async saturation(){
       const l=fadeLayer("radial-gradient(ellipse at 50% 50%,rgba(224,102,79,.42),rgba(5,8,9,.7) 60%)");
       for(let i=0;i<3;i++){const w=add(`position:absolute;left:50%;top:50%;width:200px;height:200px;margin:-100px 0 0 -100px;border-radius:50%;border:4px solid ${["#ffb0a0","#ffd9a8","#f0d18e"][i]};box-shadow:0 0 50px #e0664f;z-index:201;animation:satWave 1.1s ${i*.15}s ease-out forwards;opacity:0`);w.style.opacity="";setTimeout(()=>w.remove(),1500);}

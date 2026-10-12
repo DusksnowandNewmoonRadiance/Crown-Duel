@@ -16,7 +16,18 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
    纯规则函数：参数是「玩家对象」，服务器状态和客户端视图都能用
    ============================================================ */
 function bandCount(p){return p&&p.board?p.board.filter(u=>u.id==="awaBand"&&u.health>0).length:0;}
-function boost(src,n){return n>0?n+bandCount(src):n;}
+/* 政体：加成在「当前政体」或「联邦回合」（苏三世）时生效；代价只在当前政体时生效 */
+function hasBonus(p,r){return!!p&&(p.regime===r||!!p.fedTurn);}
+function hasCost(p,r){return!!p&&p.regime===r;}
+/* 增伤：爵士乐队（所有伤害）、乌克兰政体（部署与法术伤害，不含战斗） */
+function boost(src,n,combat){return n>0?n+bandCount(src)+((!combat&&hasBonus(src,"ukr"))?1:0):n;}
+function bestRegime(me,foe){
+  const enAtk=foe.board.reduce((a,u)=>a+(u.health>0?u.attack:0),0);
+  if(me.hp<=12||enAtk>=8)return"blr";
+  if(foe.board.length>=3)return"ukr";
+  return"rus";
+}
+function redCount(p){return p.board.filter(u=>u.id==="red"&&u.health>0).length;}
 function heroBonus(u){return(u.id==="executor"||u.id==="captain")?1:0;}
 function gunCount(p){return p.board.filter(u=>u.gun&&u.health>0).length;}
 function unitValue(u){return u.attack+u.health*.8+(u.taunt?2:0)+(u.cost||0)*.5;}
@@ -48,12 +59,17 @@ function targetSpec(card,me,foe){
     case"rebel":return eligible(foe.board,1,1,"选择 1 个敌方单位策反","foe");
     case"buffOneDraw":return eligible(me.board,1,1,"选择 1 个友方单位 +2/+2","me");
     case"sacAoe3":return eligible(me.board,1,1,"选择要献祭的己方单位","me");
+    case"decreeUkr":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 2 点伤害","foe");
   }
   return null;
 }
 /* 出牌时的二选一 */
 function optionSpec(card){
-  return null;   // 目前没有需要出牌时二选一的卡牌（保留接口，剧情模式可能会用到）
+  if(card.effect==="secondDeploy")return{label:"选择政体",options:[
+    {id:"rus",label:"俄罗斯 · 新单位冲锋，无法获得护甲"},
+    {id:"ukr",label:"乌克兰 · 伤害 +1，新单位生命 -1"},
+    {id:"blr",label:"白俄罗斯 · 回合末 +2 护甲，新单位无冲锋"}]};
+  return null;
 }
 /* 能否出这张牌：返回 null 或原因 */
 function playError(card,me,foe){
@@ -65,6 +81,13 @@ function playError(card,me,foe){
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
+  if(card.sealed)return"情报封存：这张牌在本回合无法打出";
+  if(e==="consolidate"&&redCount(me)<2)return"整编需要至少 2 个【俄布】";
+  if(e==="artilleryCommand"){
+    const ch=me.regimeChanges||0;
+    if(ch<2)return`权限未满足：本局需要确立或更换过 2 次政体（目前 ${ch} 次）`;
+    if(me.board.length<2)return"权限未满足：战场上至少需要 2 个单位";
+  }
   return null;
 }
 
@@ -74,7 +97,7 @@ function autoTargets(card,me,foe){
   const pool=(spec.side==="foe"?foe:me).board.filter(u=>spec.eligible.includes(u.uid));
   const e=card.effect;
   let sorted;
-  if(e==="choose4"||e==="choose2"){
+  if(e==="choose4"||e==="choose2"||e==="decreeUkr"){
     const dmg=e==="choose4"?4:2;
     sorted=pool.slice().sort((a,b)=>((b.health<=dmg?10:0)+unitValue(b))-((a.health<=dmg?10:0)+unitValue(a)));
   }else if(e==="choose3x2")sorted=pool.slice().sort((a,b)=>((b.health<=2?10:0)+unitValue(b))-((a.health<=2?10:0)+unitValue(a)));
@@ -84,6 +107,7 @@ function autoTargets(card,me,foe){
   return sorted.slice(0,spec.max).map(u=>u.uid);
 }
 function autoOption(card,me,foe){
+  if(card.effect==="secondDeploy")return bestRegime(me,foe);
   return null;
 }
 
@@ -110,13 +134,14 @@ class Game{
     if(awa)deck[Math.floor(Math.random()*deck.length)]=this.clone(awa,p.hero);
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp:prof.hp,maxHp:prof.hp,armor:0,energy:0,maxEnergy:0,
       fatigue:0,deck,hand:[],board:[],money:0,heroImmune:false,turnsStarted:0,mulliganDone:false,
+      regime:null,regimeChanges:0,fedTurn:false,
       decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,
       stats:{dmg:0,played:0,kills:0}};
   }
   clone(c,hero){
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
-      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||""};
+      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false};
     if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
   }
@@ -151,15 +176,34 @@ class Game{
   /* ---------- 伤害 / 治疗 ---------- */
   damageHero(p,n,o={}){
     if(this.phase==="over")return;
-    if(!o.fatigue&&!o.self&&n>0)n+=bandCount(this.opp(p));
+    if(!o.fatigue&&!o.self&&n>0){const src=this.opp(p);n+=bandCount(src);if(!o.combat&&hasBonus(src,"ukr"))n+=1;}
     if(n<=0)return;
     const blocked=Math.min(p.armor,n);p.armor-=blocked;p.hp-=n-blocked;
     if(!o.fatigue&&!o.self)this.opp(p).stats.dmg+=n;
     this._checkEnd();
   }
-  damageUnit(owner,u,n,src){u.health-=boost(src,n);}
+  damageUnit(owner,u,n,src,combat){u.health-=boost(src,n,combat);}
   heal(p,n){p.hp+=n;}
-  armor(p,n){p.armor+=n;}
+  armor(p,n){
+    if(n>0&&hasCost(p,"rus")){this.note("俄罗斯政体：无法获得护甲",p);return;}
+    p.armor+=n;
+  }
+  setRegime(p,r){
+    const names=C.REGIMES;
+    if(p.regime===r){this.note(`政体仍是【${names[r]}】`,p);return;}
+    p.regime=r;p.regimeChanges=(p.regimeChanges||0)+1;
+    this.note(`${p.name} 的政体变为【${names[r]}】`,p);
+    this.emit({t:"fx",name:"regime",pi:p.idx,regime:r});
+  }
+  /* 单位进入战场：就绪 + 政体对新单位的影响 */
+  _enter(p,u){
+    this._ready(u);
+    if(u.kind!=="unit")return;
+    if(hasCost(p,"blr")&&u.charge){u.charge=false;u.atkLeft=0;}
+    if(hasBonus(p,"rus")&&!u.charge){u.charge=true;u.atkLeft=u.strikes;}
+    if(hasBonus(p,"blr")&&u.taunt){u.health+=1;u.maxHealth+=1;}
+    if(hasCost(p,"ukr")&&u.health>1){u.health-=1;u.maxHealth=Math.max(1,u.maxHealth-1);}
+  }
   steal(p,n){
     if(this.lock!==null){this.note("停摆：无法偷取金钱",p);return;}
     const amt=n*STEAL_UNIT;
@@ -182,14 +226,22 @@ class Game{
   }
   loseMax(p,n){p.maxEnergy=Math.max(0,p.maxEnergy-n);p.energy=Math.min(p.energy,p.maxEnergy);}
   cleanup(){
-    const triggers=[];
+    const triggers=[],souls=[];
     for(const p of this.players){
       const dead=p.board.filter(u=>u.health<=0);
       if(!dead.length)continue;
       p.board=p.board.filter(u=>u.health>0);
       this.opp(p).stats.kills+=dead.length;
-      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);});
+      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer)souls.push([p,u]);});
     }
+    souls.forEach(([p,u])=>{
+      const def=TOKENS[u.transfer]||PROFILES[p.hero].cards.find(x=>x.id===u.transfer);
+      if(!def)return;
+      const card=this.clone(def,p.hero);
+      if(this.addToHand(p,card))this.note(`${u.name} 引渡：灵魂转移，【${def.name}】进入手牌`,p);
+      else this.burn(p,card);
+      this.emit({t:"fx",name:"transfer",pi:p.idx});
+    });
     triggers.forEach(([p,u])=>{
       this.note(`${u.name} 的亡语：对敌方英雄造成 ${u.deathDmg} 点伤害`,p);
       this.damageHero(this.opp(p),u.deathDmg);
@@ -200,7 +252,7 @@ class Game{
     let def=TOKENS[id]||PROFILES[p.hero].cards.find(x=>x.id===id);
     if(!def)for(const h in PROFILES){def=PROFILES[h].cards.find(x=>x.id===id);if(def)break;}
     if(!def)return 0;let k=0;
-    for(let i=0;i<n&&p.board.length<MAX_BOARD;i++){const u=this.clone(def,p.hero);this._ready(u);p.board.push(u);k++;}
+    for(let i=0;i<n&&p.board.length<MAX_BOARD;i++){const u=this.clone(def,p.hero);p.board.push(u);this._enter(p,u);k++;}
     return k;
   }
   takeover(from,to,u,label){
@@ -294,6 +346,9 @@ class Game{
     const g=this._guard(pi);if(g)return err(g);
     const p=this.players[pi];
     for(const u of p.board){u.fresh=false;if(u.tempAtk){u.attack=Math.max(0,u.attack-u.tempAtk);u.tempAtk=0;}}
+    if(hasBonus(p,"blr")){this.armor(p,2);this.note("白俄罗斯政体：回合结束，获得 2 点护甲",p);}
+    p.fedTurn=false;
+    p.hand.forEach(x=>{x.sealed=false;});
     this.emit({t:"endTurn",pi});
     this._startTurn(1-pi);
     return{ok:true};
@@ -318,7 +373,7 @@ class Game{
     s.energy-=c.cost;s.hand=s.hand.filter(x=>x!==c);s.stats.played++;s.playedTurn=(s.playedTurn||0)+1;
     this.emit({t:"play",pi,card:pubCard(c),targets:picked,option:os?option:null});
     if(c.kind==="unit"){
-      this._ready(c);s.board.push(c);
+      s.board.push(c);this._enter(s,c);
       this.note(`部署 ${c.name}`,s);
       if(c.id==="superman")this.emit({t:"fx",name:"superman",pi});
       this.deploy(s,c,o,picked,option);
@@ -347,11 +402,11 @@ class Game{
     this.emit({t:"attack",pi,uid,target:t?t.uid:null});
     u.atkLeft--;
     if(!t){
-      this.damageHero(o,u.attack+heroBonus(u));
+      this.damageHero(o,u.attack+heroBonus(u),{combat:true});
       this.note(`${u.name} 攻击了敌方英雄`,s);
     }else{
-      this.damageUnit(o,t,u.attack,s);
-      this.damageUnit(s,u,t.attack,o);
+      this.damageUnit(o,t,u.attack,s,true);
+      this.damageUnit(s,u,t.attack,o,true);
       this.note(`${u.name} 与 ${t.name} 交战`,s);
     }
     if(u.effect==="selfDamage1"&&u.health>0){u.health-=1;this.note(`${u.name} 攻击后生命 -1`,s);}
@@ -455,6 +510,17 @@ class Game{
       case"steal4":this.steal(s,4);break;
       case"steal3draw":this.steal(s,3);this.draw(s,1);break;
       case"steal2armor2":this.steal(s,2);this.armor(s,2);break;
+      case"secondDeploy":{
+        const r=C.REGIMES[option]?option:bestRegime(s,o);
+        this.setRegime(s,r);
+        const t=o.board.filter(u=>u.health>0).sort((a,b)=>b.attack-a.attack)[0];
+        if(t){t.stun=Math.max(t.stun||0,1);t.atkLeft=0;this.note(`苏二世：${t.name} 被眩晕，下个回合无法攻击`,s);}
+        break;}
+      case"thirdDeploy":
+        s.fedTurn=true;
+        this.note("苏三世：本回合三种政体的加成同时生效",s);
+        this.emit({t:"fx",name:"regime",pi:s.idx,regime:"all"});
+        break;
     }
   }
   buffAll(s,a,h){s.board.forEach(u=>{u.attack+=a;u.health+=h;u.maxHealth+=h;});}
@@ -470,7 +536,7 @@ class Game{
     const i=s.deck.findIndex(pred);
     if(i<0||s.board.length>=MAX_BOARD)return null;
     const card=s.deck.splice(i,1)[0];
-    this._ready(card);s.board.push(card);
+    s.board.push(card);this._enter(s,card);
     this.note(`${label}：召唤了 ${card.name}`,s);
     return card;
   }
@@ -479,6 +545,36 @@ class Game{
   cast(s,c,o,targets,option){
     const fx=(name,extra)=>this.emit(Object.assign({t:"fx",name,pi:s.idx},extra||{}));
     switch(c.effect){
+      case"decreeRus":this.setRegime(s,"rus");this.summon(s,"red",1);fx("summonRed",{n:1});break;
+      case"decreeUkr":{
+        this.setRegime(s,"ukr");
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){this.damageUnit(o,t,2,s);this.note(`对 ${t.name} 造成 2 点伤害`,s);}
+        break;}
+      case"decreeBlr":this.setRegime(s,"blr");this.armor(s,2);break;
+      case"consolidate":{
+        const reds=s.board.filter(u=>u.id==="red"&&u.health>0);
+        if(reds.length<2)break;
+        const a=reds.reduce((x,u)=>x+u.attack,0),h=reds.reduce((x,u)=>x+u.health,0);
+        s.board=s.board.filter(u=>!reds.includes(u));
+        if(this.summon(s,"redGuard",1)){
+          const g=s.board[s.board.length-1];
+          g.attack=a;g.health=h;g.maxHealth=h;
+          this.note(`整编：${reds.length} 个俄布合并为【近卫红军】${a}/${h}`,s);
+          fx("consolidate");
+        }
+        break;}
+      case"intel":{
+        if(!o.hand.length){this.summon(s,"red",1);this.note("情报调阅：敌方没有手牌，一支俄布趁机出击",s);break;}
+        const cards=o.hand.slice();
+        const auto=cards.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+        this._pick(s,"情报调阅","彗星情报网：这是敌方的手牌。选择 1 张封存，对手在下个回合无法打出它",cards,auto,card=>{
+          card.sealed=true;
+          this.note(`情报调阅：封存了敌方的【${card.name}】`,s,true);
+          this.note("情报调阅：敌方的一张手牌被封存",o,true);
+        });
+        break;}
       case"summonRed1":this.summon(s,"red",1);fx("summonRed",{n:1});break;
       case"summonRed2":this.summon(s,"red",2);fx("summonRed",{n:2});break;
       case"armor3draw":this.armor(s,3);this.draw(s,1);break;
@@ -626,7 +722,7 @@ class Game{
         const auto=cands.reduce((bi,x,i,a)=>unitValue(x)>unitValue(a[bi])?i:bi,0);
         this._pick(s,"名片召唤","选择一位架子班成员直接召唤到战场",cands.slice(),auto,card=>{
           const i=s.deck.indexOf(card);if(i<0||s.board.length>=MAX_BOARD)return;
-          s.deck.splice(i,1);this._ready(card);s.board.push(card);
+          s.deck.splice(i,1);s.board.push(card);this._enter(s,card);
           this.note(`名片召唤：召唤了 ${card.name}`,s);
           this.deploy(s,card,o,null,null);
         });
@@ -691,7 +787,7 @@ class Game{
 
 function pubCard(c){
   const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",effect:c.effect,
-    charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx};
+    charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx,rep:c.rep||"",transfer:c.transfer||"",sealed:!!c.sealed};
   if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
   else if(c.lifespan)x.lifespan=c.lifespan;
   return x;
@@ -699,6 +795,7 @@ function pubCard(c){
 function pubPlayer(p,full){
   return{name:p.name,hero:p.hero,hp:p.hp,maxHp:p.maxHp,armor:p.armor,energy:p.energy,maxEnergy:p.maxEnergy,money:p.money,
     heroImmune:p.heroImmune,turnsStarted:p.turnsStarted,fatigue:p.fatigue,deckCount:p.deck.length,handCount:p.hand.length,
+    regime:p.regime||null,regimeChanges:p.regimeChanges||0,fedTurn:!!p.fedTurn,
     decay:p.decay||0,turnCap:p.turnCap==null?null:p.turnCap,playedTurn:p.playedTurn||0,noSpell:!!p.noSpell,
     nextCap:p.nextCap==null?null:p.nextCap,nextNoSpell:!!p.nextNoSpell,
     hand:full?p.hand.map(pubCard):p.hand.map(c=>({uid:c.uid,back:true,costUp:c.cost>c.baseCost})),
@@ -706,5 +803,5 @@ function pubPlayer(p,full){
 }
 function err(msg){return{ok:false,error:msg};}
 
-return{Game,shuffle,bandCount,boost,heroBonus,gunCount,unitValue,canAttack,attackTargets,targetSpec,optionSpec,playError,autoTargets,autoOption,pubCard};
+return{Game,shuffle,bandCount,boost,bestRegime,redCount,hasBonus,hasCost,heroBonus,gunCount,unitValue,canAttack,attackTargets,targetSpec,optionSpec,playError,autoTargets,autoOption,pubCard};
 });

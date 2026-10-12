@@ -144,7 +144,7 @@ const GameUI=(()=>{
      H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */
   const CARD_FX={
     heal2:"H",heal3:"H",draw:"D1",drawHeal1:"D1 H",drawArmor:"D1 A",armor1:"A",armor2:"A",hero1:"B",hero2:"B",hero3:"B",draw2:"D2",
-    summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",
+    summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
     buffAll1:"U:+1/+1",buffAll2:"U:+2/+2",highcommand:"U:+2/+2",buffAll1draw:"U:+1/+1 D1",buffAllCharge:"U:+1/+1",alweiDeploy:"D2 U:+1/+1",pirateBuff:"U:+1攻 D1",
     buffGuns1:"G:+1攻",buffGuns2:"G:+2攻",reload:"G:+3攻 D1",buffGuns2draw:"G:+2攻 D1",buffRed:"R:+2/+2",
     huiliyiDeploy:"D1",buffOneDraw:"X:+2/+2 D1",revengeDeath:"U:亡语 D1",developEnemy:"D1",summonRandomPirate:"S",
@@ -280,6 +280,12 @@ const GameUI=(()=>{
     let st="";
     if(p.decay>0)st+=`<span class="lock-tag st-decay" title="每个回合开始时受到 ${p.decay} 点伤害">☠ 衰减 ${p.decay}</span>`;
     if(p.turnCap!=null)st+=`<span class="lock-tag st-lock">封锁 ${p.playedTurn}/${p.turnCap}</span>`;
+    if(p.regime||p.fedTurn){
+      const RT={rus:"新单位冲锋 · 无法获得护甲",ukr:"部署与法术伤害 +1 · 新单位生命 -1",blr:"回合结束 +2 护甲 · 新嘲讽 +1 生命 · 新单位无冲锋"};
+      const nm=p.fedTurn?"联邦":C.REGIMES[p.regime];
+      const tip=p.fedTurn?"苏三世：本回合三种政体的加成同时生效（代价不生效）":(RT[p.regime]||"");
+      st+=`<span class="lock-tag st-regime r-${p.fedTurn?"all":p.regime}" title="${V.esc(tip)}">☭ ${V.esc(nm)}${p.fedTurn&&p.regime?" · "+V.esc(C.REGIMES[p.regime]):""}</span>`;
+    }
     if(p.noSpell)st+=`<span class="lock-tag st-lock">禁法术</span>`;
     if((p.nextCap!=null||p.nextNoSpell)&&p.turnCap==null&&!p.noSpell)st+=`<span class="lock-tag st-next">下回合受封锁</span>`;
     box.querySelector(".hr").innerHTML=V.esc(p.hero)+" "+lock+st;
@@ -378,7 +384,7 @@ const GameUI=(()=>{
       if(el)map.delete(String(c.uid));
       else{el=document.createElement("div");el.dataset.uid=c.uid;box.appendChild(el);if(!full){el._enter=true;created++;setTimeout(()=>{el._enter=false;el.classList.remove("enter");},420);}}
       const p=L(i),playable=rd&&!E.playError(c,v.me,v.foe);
-      el.className="hcard"+(playable?" play":"")+(S.sel&&S.sel.type==="hand"&&S.sel.uid===c.uid?" sel":"")+(S.drag&&S.drag.uid===c.uid?" drag":"")+(el._enter?" enter":"");
+      el.className="hcard"+(c.sealed?" sealed":"")+(playable?" play":"")+(S.sel&&S.sel.type==="hand"&&S.sel.uid===c.uid?" sel":"")+(S.drag&&S.drag.uid===c.uid?" drag":"")+(el._enter?" enter":"");
       el.style.left=p.left+"px";el.style.zIndex=S.sel&&S.sel.uid===c.uid?50:(i+1);
       el.style.setProperty("--rot",p.rot.toFixed(1)+"deg");el.style.setProperty("--ty",p.ty.toFixed(1)+"px");
       const html=V.card(c,{cant:v.myTurn&&v.phase==="play"&&c.cost>v.me.energy});
