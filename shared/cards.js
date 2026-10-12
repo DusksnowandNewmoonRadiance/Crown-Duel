@@ -41,7 +41,7 @@ const PROFILES={
     {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
     {id:"artillery",name:"全亚洲炮兵总司令",cost:7,kind:"spell",art:"✣",text:"权限：本局确立或更换过 2 次政体，且你的战场上至少有 2 个单位。用【红军炮兵】填满你的战场，对所有敌方单位造成 3 点伤害。",effect:"artilleryCommand",n:1,limit:1,rarity:"elite"},
-    {id:"awaSwap",name:"awa",cost:0,kind:"unit",art:"∅",atk:20,hp:20,text:"冲锋。部署：对敌方英雄造成 99 点伤害。对局开始时，这张牌会变成 awa 的一张随机卡牌并洗入牌库。",flavor:"awa 是一个代号，而不是某一个人。",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"},
+    {id:"awaSwap",name:"undefined",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"},
     {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[

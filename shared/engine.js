@@ -489,9 +489,9 @@ class Game{
         if(!s.hand.length)break;
         let li=0;s.hand.forEach((x,i)=>{if(x.cost<s.hand[li].cost)li=i;});
         const low=s.hand[li];
-        let pool=PROFILES[s.hero].cards.filter(x=>x.cost===low.cost+2);
+        let pool=PROFILES[s.hero].cards.filter(x=>x.cost===low.cost+2&&!x.awaSwap);
         if(!pool.length){
-          const higher=PROFILES[s.hero].cards.filter(x=>x.cost>low.cost);
+          const higher=PROFILES[s.hero].cards.filter(x=>x.cost>low.cost&&!x.awaSwap);
           if(higher.length){const m=Math.min(...higher.map(x=>x.cost));pool=higher.filter(x=>x.cost===m);}
         }
         if(!pool.length)break;
@@ -754,7 +754,7 @@ class Game{
       case"awaDiscover":{
         fx("awaDiscover");
         const pool=[];
-        for(const h in PROFILES)PROFILES[h].cards.forEach(x=>{if(x.kind==="unit")pool.push(x);});
+        for(const h in PROFILES)PROFILES[h].cards.forEach(x=>{if(x.kind==="unit"&&!x.awaSwap)pool.push(x);});
         const opts=shuffle(pool).slice(0,3).map(x=>this.clone(x,x.hero));
         const auto=opts.reduce((bi,x,i,a)=>(unitValue(x)+(x.charge?2:0))>(unitValue(a[bi])+(a[bi].charge?2:0))?i:bi,0);
         this._pick(s,"选角","从 3 个单位中选择 1 个加入手牌（其余消失）",opts,auto,card=>{

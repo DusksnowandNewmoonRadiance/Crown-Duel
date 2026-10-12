@@ -143,6 +143,19 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   const def=C.PROFILES["苏苏"].cards.find(c=>c.id==="awaSwap");
   check("awa 卡：0 费 20/20 冲锋精英，部署 99 点伤害",def.cost===0&&def.atk===20&&def.hp===20&&def.charge&&def.rarity==="elite"&&def.effect==="hero99"&&def.limit===1);
   const base=C.defaultDeck("苏苏");
+  check("这张卡的卡面没有任何描述，也不提 awa",def.text===""&&!def.flavor&&!/awa/i.test(def.name+def.text));
+  // 不能通过其他方式获得：选角 / 变废为宝 的候选里都不含它
+  { let leaked=false;
+    for(let i=0;i<150&&!leaked;i++){
+      const g2=new E.Game({players:[{name:"甲",hero:"下水"},{name:"乙",hero:"字母"}],first:0});
+      g2.mulligan(0,[]);g2.mulligan(1,[]);
+      const p=g2.players[0];p.energy=p.maxEnergy=10;
+      const c2=g2.clone(C.AWA_CARDS["下水"],"下水");p.hand=[c2];
+      g2.playCard(0,c2.uid,[]);
+      if(g2.pending&&g2.pending.cards.some(x=>x.id==="awaSwap"))leaked=true;
+    }
+    check("选角不会给出这张卡",!leaked);
+  }
   check("默认卡组不含 awa 卡，且仍为 40 张合法",!base.includes("awaSwap")&&base.length===40&&!C.deckError("苏苏",base));
   const deck=base.slice(0,39).concat(["awaSwap"]);
   check("携带 awa 卡的卡组合法",!C.deckError("苏苏",deck),C.deckError("苏苏",deck));

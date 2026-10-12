@@ -186,7 +186,12 @@ const Codex=(()=>{
   /* ---- 卡牌详情 + 特效预览 ---- */
   let cvTimer=null;
   function openCard(h,id){
-    const c=C.PROFILES[h].cards.find(x=>x.id===id);if(!c)return;
+    let c=C.PROFILES[h].cards.find(x=>x.id===id);if(!c)return;
+    // 那张「出错」的卡：查看详情时显示的是 awa 的一张随机卡牌
+    if(c.awaSwap){
+      const keys=Object.keys(C.AWA_CARDS),k=keys[Math.floor(Math.random()*keys.length)];
+      h=k;c=Object.assign({limit:1},C.AWA_CARDS[k]);
+    }
     const card=Object.assign({hero:h},c);
     const r=C.RARITY[c.rarity];
     const rec=FX&&FX.recipeFor(card);
