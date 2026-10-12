@@ -18,7 +18,8 @@ const PORT=+process.env.PORT||3000;
 const HOST=process.env.HOST||"0.0.0.0";
 const TURN_MS=+process.env.TURN_SECONDS*1000||75000;
 const MULLIGAN_MS=30000;
-const RECONNECT_MS=60000;
+const RECONNECT_MS=90000;      // 断线后保留座位的时间（手机网络切换、锁屏都需要时间）
+const AFK_LIMIT=3;             // 连续超时自动结束回合这么多次，判负
 const ROOM_GRACE_MS=20000;
 const COUNTDOWN_MS=3000;
 const MAX_ROOMS=300;
@@ -61,7 +62,7 @@ app.use("/admin",adminRouter({
 }));
 
 const server=http.createServer(app);
-const io=new Server(server,{pingInterval:10000,pingTimeout:20000,maxHttpBufferSize:64*1024});
+const io=new Server(server,{pingInterval:8000,pingTimeout:15000,maxHttpBufferSize:64*1024});
 
 /* ============================================================
    工具
@@ -217,14 +218,34 @@ function enqueue(u){
 class Match{
   constructor(room){
     this.room=room;this.seats=room.seats.slice();this.over=false;this.timer=null;this.deadline=0;this.timerKey="";
+    this.seq=0;this.afk=[0,0];
     const ps=this.seats.map(id=>{const u=users.get(id);return{name:u.nick,hero:u.hero,deck:u.deck};});
     this.game=new E.Game({players:ps});
     this.startedAt=now();
     this.push(true);
   }
   seatOf(uid){return this.seats.indexOf(uid);}
+  /* 引擎出现异常时的兜底：丢弃悬空的选择，向双方强制同步，不让对局停在半个状态 */
+  recover(err,where){
+    console.error("[game] "+where+" error",err);
+    try{
+      const g=this.game;
+      g.pending=null;
+      this.timerKey="";
+      this.push(true);
+    }catch(e2){
+      console.error("[game] recover failed",e2);
+      try{this.game.forfeit(this.game.current,"服务器异常，对局终止");this.push(false);}catch(e3){this.dispose();}
+    }
+  }
   act(seat,a){
     if(this.over)return{ok:false,error:"对局已结束"};
+    const g=this.game;let r;
+    try{r=this._act(seat,a);}catch(e){this.recover(e,"action");return{ok:false,error:"服务器处理出错，已为你同步对局状态"};}
+    if(r&&r.ok&&a&&a.type!=="concede")this.afk[seat]=0;
+    return r;
+  }
+  _act(seat,a){
     const g=this.game;let r;
     switch(a&&a.type){
       case"mulligan":r=g.mulligan(seat,Array.isArray(a.uids)?a.uids.filter(isInt).slice(0,5):[]);break;
@@ -257,29 +278,40 @@ class Match{
   clearTimer(){if(this.timer)clearTimeout(this.timer);this.timer=null;}
   timeout(){
     this.timer=null;const g=this.game;if(this.over)return;
-    if(g.phase==="mulligan"){[0,1].forEach(i=>{if(!g.players[i].mulliganDone)g.mulligan(i,[]);});}
-    else if(g.phase==="play"){
-      const cur=g.current;
-      if(g.pending)g.resolvePending(g.pending.pi,g.pending.auto);
-      if(g.phase==="play"&&g.current===cur){g.note("回合超时，自动结束",g.players[cur]);g.endTurn(cur);}
-    }
-    this.timerKey="";this.push(false);
+    try{
+      if(g.phase==="mulligan"){[0,1].forEach(i=>{if(!g.players[i].mulliganDone)g.mulligan(i,[]);});}
+      else if(g.phase==="play"){
+        const cur=g.current;
+        if(g.pending)g.resolvePending(g.pending.pi,g.pending.auto);
+        if(g.phase==="play"&&g.current===cur){
+          this.afk[cur]++;
+          if(this.afk[cur]>=AFK_LIMIT){
+            this.timerKey="";
+            this.forfeit(cur,"长时间未操作，判负");return;
+          }
+          g.note("回合超时，自动结束",g.players[cur]);
+          g.endTurn(cur);
+        }
+      }
+      this.timerKey="";this.push(false);
+    }catch(e){this.recover(e,"timeout");}
   }
   timerInfo(){return this.deadline?{msLeft:Math.max(0,this.deadline-now()),total:this.timerTotal}:null;}
   push(full){
     const g=this.game;
+    this.seq++;
     this.schedule();
     const events=g.takeEvents();
     this.seats.forEach((id,i)=>{
       const u=users.get(id);
       send(u,"game",{view:g.viewFor(i),events:full?[]:g.eventsFor(events,i),timer:this.timerInfo(),full:!!full,
-        foeOnline:!!(users.get(this.seats[1-i])||{}).connected});
+        foeOnline:!!(users.get(this.seats[1-i])||{}).connected,seq:this.seq});
     });
     if(g.phase==="over"&&!this.over)this.finish();
   }
   sendTo(id){
     const i=this.seatOf(id);if(i<0)return;
-    send(users.get(id),"game",{view:this.game.viewFor(i),events:[],timer:this.timerInfo(),full:true,foeOnline:!!(users.get(this.seats[1-i])||{}).connected});
+    send(users.get(id),"game",{view:this.game.viewFor(i),events:[],timer:this.timerInfo(),full:true,foeOnline:!!(users.get(this.seats[1-i])||{}).connected,seq:this.seq});
   }
   forfeit(seat,reason){if(this.over)return;this.game.forfeit(seat,reason);this.push(false);}
   finish(){
@@ -400,7 +432,13 @@ io.on("connection",socket=>{
     reply(cb,res);
   });
 
-  socket.on("game:sync",()=>{const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(r&&r.match)r.match.sendTo(u.id);});
+  socket.on("game:sync",()=>{const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(r&&r.match&&!r.match.over)r.match.sendTo(u.id);});
+  /* 心跳：客户端对照对局序号，发现落后就主动请求完整同步 */
+  socket.on("game:ping",(d,cb)=>{
+    const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
+    if(!r||!r.match)return reply(cb,{ok:true,inGame:false});
+    reply(cb,{ok:true,inGame:!r.match.over,seq:r.match.seq,turn:r.match.game.turn,phase:r.match.game.phase});
+  });
 
   /* 局内聊天：同时记入房间聊天记录，对局结束回到房间后还能看到 */
   socket.on("game:chat",(text,cb)=>{
@@ -438,5 +476,8 @@ io.on("connection",socket=>{
 
 server.listen(PORT,HOST,()=>console.log(`[皇冠对决] 服务器已启动：http://${HOST==="0.0.0.0"?"localhost":HOST}:${PORT}`));
 
+/* 任何未捕获的异常都不应该让整个服务器（和所有对局）一起消失 */
+process.on("uncaughtException",e=>console.error("[进程] 未捕获异常",e));
+process.on("unhandledRejection",e=>console.error("[进程] 未处理的 Promise 拒绝",e));
 process.on("SIGTERM",()=>{io.close();server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),3000).unref();});
 module.exports={server,io};

@@ -259,6 +259,7 @@ function openDecks(hero,deckId){
    ============================================================ */
 const Net={
   socket:null,inLobby:false,room:null,lobby:null,myId:null,searching:false,searchSince:0,gameOn:false,pendingJoin:null,
+  seq:null,hbTimer:null,hbMiss:0,wasDown:false,
   connect(){
     if(this.socket)return;
     if(typeof io!=="function"){toast("无法连接服务器（联机功能需要通过服务器访问）");return false;}
@@ -267,12 +268,20 @@ const Net={
       $("#netDot").classList.add("on");$("#connBanner").hidden=true;
       s.emit("hello",{clientId:Me.cid,nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)},r=>{
         if(!r||!r.ok)return;this.myId=r.id;
+        if(this.wasDown&&this.gameOn){GameUI.notice("已重新连接",true);}
+        this.wasDown=false;this.hbMiss=0;
         Live.checkBuild(r.build);Live.setMaint(r.maintenance);
         if(r.nick&&r.nick!==Me.nick){Me.nick=r.nick;renderHome();}
         if(this.pendingJoin){const c=this.pendingJoin;this.pendingJoin=null;this.joinRoom({code:c});}
       });
     });
-    s.on("disconnect",()=>{$("#netDot").classList.remove("on");if(this.inLobby||this.room)$("#connBanner").hidden=false;});
+    s.on("disconnect",()=>{
+      $("#netDot").classList.remove("on");if(this.inLobby||this.room)$("#connBanner").hidden=false;
+      if(this.gameOn){this.wasDown=true;GameUI.notice("网络连接中断，正在自动重连…（对局会为你保留一段时间）",false);}
+    });
+    s.io.on("reconnect_attempt",n=>{if(this.gameOn&&n>=2)GameUI.notice(`网络不佳，正在重连…（第 ${n} 次）`,false);});
+    s.io.on("reconnect_failed",()=>{if(this.gameOn)GameUI.notice("重连失败，请检查网络后刷新页面",false);});
+    this.startHeartbeat();
     s.on("kicked",d=>{toast(d.reason||"连接已断开");this.leaveAll();});
     s.on("lobby",d=>{this.lobby=d;renderLobby();});
     s.on("lobby:chatlog",list=>{$("#lobbyChatLog").innerHTML="";list.forEach(m=>chatLine("#lobbyChatLog",m));});
@@ -321,11 +330,56 @@ const Net={
     const had=this.room;this.room=r;
     if(r){closeModal("#mMatch");this.searching=false;}
     if(!this.inLobby)return;
-    if(this.gameOn)return;
+    if(this.gameOn){
+      // 服务器说我们已经不在任何房间里：对局已经不存在（服务器重启，或断线太久被判负）
+      if(!r){
+        this.gameOn=false;this.seq=null;
+        GameUI.stop();
+        toast("对局已经结束或服务器已重启，已回到大厅",false,4000);
+        show("#scrLobby");renderLobby();
+        setTimeout(()=>Live.afterGame(),0);
+      }
+      return;
+    }
     if(r){if(!had)Audio2.sfx("match");show("#scrRoom");renderRoom();}
     else{show("#scrLobby");renderLobby();}
   },
+  /* 对局序号：发现中间丢了更新，就请求一次完整同步 */
+  trackSeq(u){
+    if(u.seq===undefined)return;
+    const gap=!u.full&&this.seq!=null&&u.seq>this.seq+1;
+    this.seq=u.seq;
+    if(gap&&this.socket&&this.socket.connected)this.socket.emit("game:sync");
+  },
+  startHeartbeat(){
+    if(this.hbTimer)return;
+    const ping=()=>{
+      if(!this.gameOn||!this.socket||document.hidden)return;
+      if(!this.socket.connected){this.socket.connect();return;}
+      let done=false;
+      const t=setTimeout(()=>{
+        if(done)return;
+        if(++this.hbMiss>=2){this.hbMiss=0;try{this.socket.disconnect();this.socket.connect();}catch(e){}}
+      },5000);
+      this.socket.emit("game:ping",null,r=>{
+        done=true;clearTimeout(t);this.hbMiss=0;
+        if(!r||!r.ok)return;
+        if(r.inGame===false&&this.gameOn&&!GameUI.view){return;}
+        if(r.inGame&&r.seq!==this.seq)this.socket.emit("game:sync");
+      });
+    };
+    this.hbTimer=setInterval(ping,10000);
+    const wake=()=>{
+      if(!this.socket)return;
+      if(!this.socket.connected)this.socket.connect();
+      else if(this.gameOn)this.socket.emit("game:sync");
+    };
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)wake();});
+    addEventListener("online",wake);
+    addEventListener("focus",wake);
+  },
   onGame(u){
+    this.trackSeq(u);
     if(!this.gameOn){
       this.gameOn=true;
       closeModal("#mMatch");$$(".modal").forEach(m=>m.hidden=true);
@@ -347,11 +401,11 @@ const Net={
     Net.socket.emit("game:chat",text,r=>{clearTimeout(t);res(r||{ok:false});});
   })},
   backToRoomAfterGame(){
-    this.gameOn=false;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
+    this.gameOn=false;this.seq=null;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
     if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
   },
   backToLobbyAfterGame(){
-    this.gameOn=false;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
+    this.gameOn=false;this.seq=null;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
     if(this.room)this.socket.emit("room:leave");
     show("#scrLobby");renderLobby();
   }

@@ -36,7 +36,7 @@ const GameUI=(()=>{
   function start(ctl,mode,opts){
     stop(true);
     S.ctl=ctl;S.mode=mode;S.opts=opts||{};
-    S.introShown=false;S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
+    S.viewSeq=undefined;S.introShown=false;S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
     ["#meRow","#foeRow","#hand","#foeHand","#fx","#logList"].forEach(s=>$(s).innerHTML="");
     ["#mulligan","#pick","#option","#result","#pause","#castBar","#preview","#reveal","#chatPanel","#netNotice","#coach","#aim"].forEach(s=>$(s).hidden=true);
     $("#logPanel").classList.add("closed");
@@ -58,7 +58,12 @@ const GameUI=(()=>{
     S.processing=true;
     while(S.queue.length&&S.ctl){
       const u=S.queue.shift();
-      try{await handle(u);}catch(e){console.error(e);S.view=u.view;render(true);}
+      // 动画等待最多 9 秒：任何一个特效卡住（页面切到后台、元素被替换）都不能让界面永远不可操作
+      let wd;
+      const guard=new Promise((_,rej)=>{wd=setTimeout(()=>rej(new Error("animation watchdog")),9000);});
+      try{await Promise.race([handle(u),guard]);}
+      catch(e){console.error(e);S.viewSeq=u.seq!==undefined?u.seq:S.viewSeq;S.view=u.view;render(true);}
+      finally{clearTimeout(wd);}
     }
     S.processing=false;
     S.waiters.splice(0).forEach(f=>f());
@@ -75,6 +80,7 @@ const GameUI=(()=>{
     if(u.foeOnline===false)notice("对手断线了，等待重连…",false);
     else if(u.foeOnline===true&&!$("#netNotice").hidden&&!$("#netNotice").classList.contains("ok"))$("#netNotice").hidden=true;
     if(u.full||!S.view){
+      if(u.seq!==undefined)S.viewSeq=u.seq;
       const first=!S.view;S.view=v;
       if(S.cast&&!v.myTurn)S.cast=null;
       render(true);
@@ -92,6 +98,8 @@ const GameUI=(()=>{
       else if(e.t==="fx")await animFx(e);
       else if(e.t==="burn")animBurn(e);
     }
+    if(u.seq!==undefined&&S.viewSeq!==undefined&&u.seq<S.viewSeq)return;   // 看门狗已经渲染了更新的状态
+    if(u.seq!==undefined)S.viewSeq=u.seq;
     const old=S.view;S.view=v;
     if(S.cast&&(!v.myTurn||!v.me.hand.some(c=>c.uid===S.cast.card.uid)))S.cast=null;
     if(S.sel&&S.sel.type==="hand"&&!v.me.hand.some(c=>c.uid===S.sel.uid))S.sel=null;
