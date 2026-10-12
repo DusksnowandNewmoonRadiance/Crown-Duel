@@ -141,7 +141,7 @@ const PROFILES={
     {id:"count",name:"清点现金",cost:2,kind:"spell",art:"+",text:"恢复 3 点生命，抽 1 张牌，偷取 30 元。",effect:"healDrawSteal",n:2,limit:2,rarity:"special"},
     {id:"taxevasion",name:"偷税漏税",cost:2,kind:"spell",art:"$",text:"对敌方英雄造成 2 点伤害，抽 1 张牌，偷取 40 元。",effect:"hero2drawSteal",n:2,limit:2,rarity:"special"},
     {id:"launder",name:"洗钱",cost:2,kind:"spell",art:"◇",text:"偷取 40 元。",effect:"steal4",n:2,limit:2,rarity:"special"},
-    {id:"escape",name:"逃跑",cost:3,kind:"spell",art:"↗",text:"如果你已偷取 250 元，立即获胜。否则获得 3 点护甲，对敌方英雄造成 2 点伤害。",effect:"runaway",n:2,limit:2,rarity:"special",fx:"sp_coin"},
+    {id:"escape",name:"逃跑",cost:3,kind:"spell",art:"↗",text:"如果你已偷取 300 元，立即获胜。否则获得 3 点护甲，对敌方英雄造成 2 点伤害。",effect:"runaway",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"transfer",name:"资金转移",cost:3,kind:"spell",art:"⇄",text:"抽 2 张牌，获得 2 点护甲，偷取 20 元。",effect:"supplySteal",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"funding",name:"财政拨款",cost:3,kind:"spell",art:"+",text:"恢复 5 点生命，抽 1 张牌。",effect:"heal5draw",n:1,limit:2,rarity:"special",fx:"sp_guard"},
     {id:"sanction",name:"经济制裁",cost:4,kind:"spell",art:"⚡",text:"对敌方英雄造成 5 点伤害。",effect:"damage5",n:1,limit:2,rarity:"special",fx:"sp_strike"},

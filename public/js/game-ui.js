@@ -917,19 +917,54 @@ const GameUI=(()=>{
     addEventListener("orientationchange",()=>setTimeout(fit,200));
     if(window.visualViewport)visualViewport.addEventListener("resize",fit);
     document.addEventListener("fullscreenchange",()=>{fit();syncPause();});
+    document.addEventListener("webkitfullscreenchange",()=>{fit();syncPause();});
+    setupFull();
   }
   function openPause(){syncPause();$("#pause").hidden=false;clearSel();}
   function syncPause(){
     $("#pSfx").textContent="音效："+(Audio2.sfxOn?"开":"关");
     $("#pMusic").textContent="音乐："+(Audio2.musicOn?"开":"关");
-    $("#pFull").textContent=document.fullscreenElement?"退出全屏":"全屏";
+    $("#pFull").textContent=fsEl()?"退出全屏":"全屏";
+    $("#gFull").textContent=fsEl()?"⤢":"⛶";
+  }
+  /* ---- 全屏：触屏设备首次点按自动进入；手动退出后不再自动进入 ---- */
+  const FSK="cd.autoFull";
+  const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
+  const fsCan=()=>!!(document.documentElement.requestFullscreen||document.documentElement.webkitRequestFullscreen);
+  const touchy=()=>matchMedia("(pointer:coarse)").matches||navigator.maxTouchPoints>0;
+  const standalone=()=>matchMedia("(display-mode: fullscreen)").matches||matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+  async function enterFull(){
+    const el=document.documentElement;
+    try{
+      if(el.requestFullscreen)await el.requestFullscreen({navigationUI:"hide"});
+      else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
+      try{await screen.orientation.lock("landscape");}catch(e){}
+    }catch(e){}
+    setTimeout(fit,200);
   }
   async function toggleFull(){
     try{
-      if(document.fullscreenElement)await document.exitFullscreen();
-      else{await document.documentElement.requestFullscreen();try{await screen.orientation.lock("landscape");}catch(e){}}
+      if(fsEl()){try{localStorage.setItem(FSK,"0");}catch(e){}await(document.exitFullscreen?document.exitFullscreen():document.webkitExitFullscreen());}
+      else{try{localStorage.removeItem(FSK);}catch(e){}await enterFull();}
     }catch(e){}
     syncPause();setTimeout(fit,200);
+  }
+  function autoFull(){
+    if(!touchy()||!fsCan()||fsEl()||standalone())return;
+    try{if(localStorage.getItem(FSK)==="0")return;}catch(e){}
+    enterFull();
+  }
+  function setupFull(){
+    const can=fsCan()&&!standalone();
+    $("#gFull").hidden=!(touchy()&&can);
+    $("#rotFull").hidden=!(touchy()&&can);
+    const ios=touchy()&&!fsCan()&&!standalone();
+    $("#rotIos").hidden=!ios;
+    $("#pFull").hidden=!can;
+    $("#gFull").addEventListener("click",()=>{Audio2.sfx("click");toggleFull();});
+    $("#rotFull").addEventListener("click",()=>toggleFull());
+    // 触屏设备在对局里的第一次点按进入全屏（浏览器要求必须由点按触发）
+    $("#scrGame").addEventListener("pointerdown",e=>{if(e.pointerType==="touch")autoFull();},{passive:true});
   }
   bind();
 

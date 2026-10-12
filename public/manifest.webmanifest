@@ -1,0 +1,13 @@
+{
+  "name": "皇冠对决",
+  "short_name": "皇冠对决",
+  "description": "快节奏的网页卡牌对战，支持单人练习与联机大厅。",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0b1014",
+  "theme_color": "#0b1014",
+  "icons": [
+    {"src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1014'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23e2b467'%3E♛%3C/text%3E%3C/svg%3E", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

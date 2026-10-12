@@ -221,6 +221,11 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   check("所有默认卡组合法",!bad.length,bad.join(" "));
   const text=JSON.stringify(C.PROFILES);
   check("卡牌文字里没有已废弃的旧说法",!/25 元|彗星冲击|受 \d+ 点伤害/.test(text));
+  // 所有提到「目标金额」的文字必须与常量一致（逃跑卡、关键字说明、卡牌师提示、规则页）
+  const nums=[...(text+JSON.stringify(C.KEYWORDS)+JSON.stringify(C.HERO_INFO)).matchAll(/(?:偷取|偷够|攒够)\s*(\d+)\s*元[^。]{0,12}(?:获胜|逃跑|胜利)|已偷取\s*(\d+)\s*元/g)].map(m=>+(m[1]||m[2]));
+  check("文字中的目标金额与 ESCAPE_TARGET 一致",nums.length>=2&&nums.every(n=>n===C.ESCAPE_TARGET),nums.join(","));
+  const html=require("fs").readFileSync(__dirname+"/../public/index.html","utf8");
+  check("规则页没有 awa 说明",!/awa 卡/.test(html));
 }
 
 const pass=results.every(Boolean);

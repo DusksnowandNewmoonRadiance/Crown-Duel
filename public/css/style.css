@@ -308,7 +308,7 @@ input{font:inherit;color:var(--text)}
    ============================================================ */
 #scrGame{background:#05080a}
 #stageWrap{position:absolute;inset:0;overflow:hidden;
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  padding:0 env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 #stage{position:absolute;left:0;top:0;width:1280px;height:720px;transform-origin:0 0;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
 #stage.shake{animation:shake .32s}
 @keyframes shake{0%,100%{translate:0 0}20%{translate:-6px 3px}40%{translate:6px -2px}60%{translate:-4px -1px}80%{translate:3px 2px}}
@@ -811,3 +811,10 @@ input{font:inherit;color:var(--text)}
 .fx-base .ph{position:absolute;border:2px dashed rgba(255,255,255,.14);border-radius:18px;color:rgba(255,255,255,.28);font:700 22px var(--serif);display:grid;place-items:center}
 .fx-base .hero{position:absolute;width:112px;height:112px;margin:-56px 0 0 -56px;border-radius:50%;border:4px solid rgba(255,255,255,.3);background:rgba(255,255,255,.06);color:rgba(255,255,255,.55);font:800 40px var(--serif);display:grid;place-items:center}
 @media (max-width:700px){.cv-body{grid-template-columns:1fr}.cv-card .card{font-size:17px}.cx-frow label{width:46px}}
+
+/* ---------- 手机全屏 ---------- */
+#rotate .small{font-size:12.5px;max-width:280px;line-height:1.6}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:520px){
+  .side-btns{gap:6px}
+  .round-btn{width:40px;height:40px;font-size:17px}
+}
