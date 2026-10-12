@@ -89,7 +89,11 @@ function scoreCard(s,o,c,lethal){
     else if(e==="scrapSearch")sc+=(s.hand.length>=MAX_HAND-1?-100:5);
     else if(e==="supplyDeck")sc+=(s.hand.length>=MAX_HAND-1||!s.deck.some(x=>x.kind==="unit")?-100:5);
     else if(e==="intelSteal")sc+=(s.hand.length>=MAX_HAND-1||!o.deck.length?-100:6);
-    else if(e==="ramp0")sc+=s.maxEnergy<8?4:-3;
+    else if(e==="fiveYearPlan"){
+      const lose=s.board.filter(u=>u.health<=2).length;
+      const hurt=s.board.filter(u=>u.health>2).length+o.board.filter(u=>u.health<u.maxHealth).length;
+      sc+=(s.board.length?hurt*1.8-lose*3.5:-100)+(s.hand.length>=7?-4:0);
+    }
     else if(e==="convert2"||e==="convert3"||e==="crownCopy")sc+=(s.hand.length>=MAX_HAND-1?-100:6)+(e==="crownCopy"?4:0);
     else if(e==="scrapSummon2")sc+=(MAX_BOARD-myN>=2?4:-100);
     else if(e==="scrapStun")sc+=enN?4:-100;

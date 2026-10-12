@@ -205,9 +205,15 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   const target=x.g.pending.cards[1];
   x.g.resolvePending(0,1);
   check("窃取情报：偷到手牌，敌方牌库少 1 张",x.a.hand.some(c=>c.id===target.id)&&x.b.deck.length===before-1&&!x.b.deck.some(c=>c.uid===target.uid));
-  const p=setup();p.a.maxEnergy=3;p.a.energy=3;
+  const p=setup();
+  const u1=mk(p.g,"苏苏","blr"),u2=mk(p.g,"苏苏","red"),u3=mk(p.g,"苏苏","katyusha");
+  p.a.board.push(u1,u2,u3);   // 5/5、2/2、4/4
+  p.a.deck=[];for(let i=0;i<6;i++)p.a.deck.push(mk(p.g,"苏苏","red"));
+  const foeHurt=p.g.clone(C.cardDef("字母","over"),"字母");foeHurt.health=foeHurt.maxHealth-1;p.b.board.push(foeHurt);
+  const h0=p.a.hand.length;
   play(p.g,0,give(p.g,p.a,"fiveyear"));
-  check("五年计划：费用上限 +1，本回合 +1 点费用（花费 1 后剩 3）",p.a.maxEnergy===4&&p.a.energy===3,p.a.maxEnergy+"/"+p.a.energy);
+  check("五年计划：我方单位各受 2 点伤害，阵亡的不计入",u1.health===3&&u3.health===2&&!p.a.board.includes(u2));
+  check("五年计划：抽取等同于场上受伤单位数（含敌方）= 3",p.a.hand.length===h0+3&&p.a.deck.length===3,p.a.hand.length-h0);
   const c=setup();
   const com=mk(c.g,"苏苏","commissar");c.a.board.push(com);com.health=0;c.g.cleanup();
   check("政委：被消灭后放回红色动员令",c.a.hand.some(x=>x.id==="mobilize"));

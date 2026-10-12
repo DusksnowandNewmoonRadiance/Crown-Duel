@@ -5,10 +5,11 @@ const orig=JSON.parse(JSON.stringify(P));
 const reset=()=>{P.hp=orig.hp;P.cards.forEach((c,i)=>Object.assign(c,JSON.parse(JSON.stringify(orig.cards[i]))));};
 const V={
  base:()=>{},
- cheap:()=>{card("supply").cost=1;card("intelSteal").cost=2;card("fiveyear").cost=1;},
- cheapHp:()=>{V.cheap();P.hp=35;},
- moreSpells:()=>{V.cheapHp();card("october").n=3;card("redguard").n=2;card("consolidate").n=3;card("supply").n=1;card("fiveyear").n=1;card("commissar").n=1;},
- stronger:()=>{V.cheapHp();card("commissar").atk=3;card("commissar").hp=3;card("red").hp=3;},
+ one:()=>{card("fiveyear").n=1;card("october").n=3;},
+ oneMob:()=>{card("fiveyear").n=1;card("mobilize").n=3;},
+ oneHp:()=>{card("fiveyear").n=1;card("october").n=3;P.hp=38;},
+ cost2:()=>{card("fiveyear").cost=2;},
+ cost2one:()=>{card("fiveyear").cost=2;card("fiveyear").n=1;card("october").n=3;},
 };
 function play(a,b){const g=new E.Game({players:[{name:"A",hero:a},{name:"B",hero:b}]});const ai=[new AIPlayer("normal"),new AIPlayer("normal")];for(let i=0;i<2;i++)g.mulligan(i,ai[i].mulligan(g,i));let st=0;
  while(g.phase!=="over"&&st++<3000){const pi=g.current;if(g.pending){g.resolvePending(g.pending.pi,ai[g.pending.pi].pickPending(g));continue;}const x=ai[pi].next(g,pi);let r;

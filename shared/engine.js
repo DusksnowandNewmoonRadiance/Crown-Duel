@@ -622,7 +622,13 @@ class Game{
       case"convert1":this._convert(s,1,c.name);break;
       case"convert2":this._convert(s,2,c.name);break;
       case"convert3":this._convert(s,3,c.name);break;
-      case"ramp0":if(this.gainMax(s,1))s.energy=Math.min(MAX_ENERGY+1,s.energy+1);break;
+      case"fiveYearPlan":{
+        s.board.forEach(u=>this.damageUnit(s,u,2,s));
+        this.cleanup();
+        const x=s.board.concat(o.board).filter(u=>u.health>0&&u.health<u.maxHealth).length;
+        this.note(`五年计划：我方单位各受 2 点伤害，场上共有 ${x} 个受伤单位`,s);
+        if(x>0)this.draw(s,x);
+        break;}
       case"supplyDeck":case"scrapSearch":{
         if(this.lock!==null){this.note("停摆：无法抽牌",s);break;}
         if(c.effect==="scrapSearch")this._discardScrap(s,1,false);
