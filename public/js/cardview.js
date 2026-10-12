@@ -44,7 +44,7 @@ const CardView=(()=>{
       stats=`<div class="stats"><b class="stat atk${atk>baseAtk?" buff":""}">${atk}</b><b class="stat hp${hp<maxHp?" dmg":(def&&maxHp>def.hp?" buff":"")}">${hp}</b></div>`;
     }
     const rep=c.rep&&C.REGIMES?C.REGIMES[c.rep]:"";
-    const tag=c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":(rep&&c.hero==="苏苏"?rep:c.hero);
+    const tag=c.scrap?"废料":c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":(rep&&c.hero==="苏苏"?rep:c.hero);
     const type=(c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(tag?" · "+esc(tag):""))
       +(rar?` · <span class="rar r-${rar}">${C.RARITY[rar].name}</span>`:"");
     const gem=rar?`<i class="gem r-${rar}" title="${C.RARITY[rar].name}"></i>`:"";
@@ -73,6 +73,9 @@ const CardView=(()=>{
     if(c.member||/架子班成员/.test(c.text||""))out.push(K.member);
     if(/偷取/.test(c.text||""))out.push(K.stealMoney);
     if(/政体/.test(c.text||""))out.push(K.regime);
+    if(c.scrap||/废料/.test(c.text||""))out.push(K.scrap);
+    if(/转化 d/.test(c.text||""))out.push(K.convert);
+    if(c.recycle||/回收/.test(c.text||""))out.push(K.recycle);
     if(c.transfer||/引渡/.test(c.text||""))out.push(K.transfer);
     if(/整编/.test(c.text||""))out.push(K.consolidate);
     if(/权限/.test(c.text||""))out.push(K.permission);

@@ -148,7 +148,7 @@ const GameUI=(()=>{
      H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */
   const CARD_FX={
     heal2:"H",heal3:"H",draw:"D1",drawHeal1:"D1 H",drawArmor:"D1 A",armor1:"A",armor2:"A",hero1:"B",hero2:"B",hero3:"B",draw2:"D2",
-    hero99:"B",summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
+    hero99:"B",scrapSummon2:"S",scrapBlast:"B",scrapSweep:"H",neutral:"A",scrapStun:"F",summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
     buffAll1:"U:+1/+1",buffAll2:"U:+2/+2",highcommand:"U:+2/+2",buffAll1draw:"U:+1/+1 D1",buffAllCharge:"U:+1/+1",alweiDeploy:"D2 U:+1/+1",pirateBuff:"U:+1攻 D1",
     buffGuns1:"G:+1攻",buffGuns2:"G:+2攻",reload:"G:+3攻 D1",buffGuns2draw:"G:+2攻 D1",buffRed:"R:+2/+2",
     huiliyiDeploy:"D1",buffOneDraw:"X:+2/+2 D1",revengeDeath:"U:亡语 D1",developEnemy:"D1",summonRandomPirate:"S",
@@ -290,6 +290,7 @@ const GameUI=(()=>{
       const tip=p.fedTurn?"苏三世：本回合三种政体的加成同时生效（代价不生效）":(RT[p.regime]||"");
       st+=`<span class="lock-tag st-regime r-${p.fedTurn?"all":p.regime}" title="${V.esc(tip)}">☭ ${V.esc(nm)}${p.fedTurn&&p.regime?" · "+V.esc(C.REGIMES[p.regime]):""}</span>`;
     }
+    if(p.hero==="绘梨衣")st+=`<span class="lock-tag st-regime r-all" title="皇冠产出：每个回合开始，手牌获得 1 张【碎纸】">♻ 皇冠产出</span>`;
     if(p.noSpell)st+=`<span class="lock-tag st-lock">禁法术</span>`;
     if((p.nextCap!=null||p.nextNoSpell)&&p.turnCap==null&&!p.noSpell)st+=`<span class="lock-tag st-next">下回合受封锁</span>`;
     box.querySelector(".hr").innerHTML=V.esc(p.hero)+" "+lock+st;

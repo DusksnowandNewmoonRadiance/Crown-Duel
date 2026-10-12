@@ -7,6 +7,7 @@
 "use strict";
 const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET}=C;
 const {unitValue,heroBonus,gunCount,playError,attackTargets,canAttack,autoTargets,autoOption,bestRegime,redCount}=E;
+const SCRAP_SPELLS={convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,crownCopy:2};
 const REGIME_OF={decreeRus:"rus",decreeUkr:"ukr",decreeBlr:"blr"};
 
 const BURN={hero99:99,damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
@@ -83,6 +84,13 @@ function scoreCard(s,o,c,lethal){
       sc+=(s.regime===REGIME_OF[e]?-5:2)+(want===REGIME_OF[e]?3:0)+(e==="decreeUkr"?(enN?2:-3):0)+(e==="decreeRus"?(myN>=MAX_BOARD?-4:1):0)
         +((s.regimeChanges||0)<2?2:0);   // 权限需要更换次数
     }
+    else if(c.scrap&&!e)sc=(s.hand.length>=9?1:-60);   // 废料留着当原料，手牌快满了才丢
+    else if(e==="convert2"||e==="convert3"||e==="crownCopy")sc+=(s.hand.length>=MAX_HAND-1?-100:6)+(e==="crownCopy"?4:0);
+    else if(e==="scrapSummon2")sc+=(MAX_BOARD-myN>=2?4:-100);
+    else if(e==="scrapStun")sc+=enN?4:-100;
+    else if(e==="scrapBlast"){const k=s.hand.filter(x=>x.scrap).length;sc+=(lethal?30:0)+(k>=4||o.hp<=k*2?k*2:-6);}
+    else if(e==="scrapSweep"){const k=s.hand.filter(x=>x.scrap).length;sc+=(s.maxHp-s.hp>=4?Math.min(10,k*2):-8)+(s.hand.length>=9?3:0);}
+    else if(e==="neutral")sc+=(s.hp<=12&&enN>=2?6:-6);
     else if(e==="consolidate"){const n=redCount(s);sc+=n>=4?9:n>=3?6:n>=2?1.5:-100;if(s.board.length>=MAX_BOARD&&n<3)sc-=3;}
     else if(e==="intel")sc+=(o.handCount!==undefined?o.handCount:o.hand.length)>=2?3.5:-4;
     else if(e==="awaFreeze")sc+=3;

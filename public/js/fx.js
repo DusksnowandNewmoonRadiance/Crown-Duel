@@ -65,6 +65,9 @@ const FX=(()=>{
       const l=fadeLayer(`radial-gradient(ellipse at 50% 50%,${r[2]}77,rgba(5,8,9,.72) 70%)`);
       bigText(r[0],r[1],r[2],58,1300,36);Audio2.sfx("spell");out(l,1100);await sleep(850);
     },
+    async convert(){
+      bigText("变废为宝","#d8ffb0","#5a8a30",54,1300,36);Audio2.sfx("heal");await sleep(800);
+    },
     async transfer(){
       bigText("灵魂引渡","#e8e0ff","#7a6cc0",54,1400,36);Audio2.sfx("heal");await sleep(900);
     },

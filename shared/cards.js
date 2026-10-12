@@ -220,6 +220,25 @@ const PROFILES={
     {id:"support",name:"炮兵支援",cost:4,kind:"spell",art:"★",text:"使你的所有火炮获得 +2 攻击力，抽 1 张牌。",effect:"buffGuns2draw",n:2,limit:2,rarity:"special",fx:"sp_bless"},
     {id:"resupply",name:"弹药补充",cost:2,kind:"spell",art:"+",text:"恢复 3 点生命，抽 1 张牌。",effect:"heal3draw",n:1,limit:2,rarity:"special"},
     {id:"bombardcmd",name:"轰炸指令",cost:5,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:2,rarity:"special",fx:"sp_strike"}
+  ]},
+  "绘梨衣":{faction:"小怪兽国 · 架子班",style:"劣质资源转化 · 慢热",hp:34,passive:"皇冠产出：每个回合开始，你的手牌获得 1 张【碎纸】。",cards:[
+    {id:"scavenger",name:"拾荒者",cost:1,kind:"unit",art:"♻",atk:2,hp:2,text:"回收：被消灭时，把 1 张【碎纸】放回你的手牌。",recycle:"scrap",n:4,limit:4,rarity:"common"},
+    {id:"temp",name:"临时工",cost:1,kind:"unit",art:"✂",atk:2,hp:2,text:"部署：弃掉手牌中的 1 张【废料】，获得 +2/+2。",effect:"scrapPump",n:4,limit:4,rarity:"common"},
+    {id:"fortress",name:"废料堡垒",cost:2,kind:"unit",art:"▤",atk:2,hp:7,text:"嘲讽。",taunt:true,n:4,limit:4,rarity:"common"},
+    {id:"corner",name:"角落里的小怪兽",cost:2,kind:"unit",art:"☻",atk:3,hp:4,text:"每当你打出 1 张【废料】，获得 +1 攻击，持续到回合结束。",effect:"scrapRage",n:3,limit:3,rarity:"rare"},
+    {id:"shredder",name:"碎纸机",cost:2,kind:"unit",art:"▥",atk:2,hp:4,text:"每当你打出 1 张【废料】，恢复 1 点生命。",effect:"scrapHeal",n:3,limit:3,rarity:"rare"},
+    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:5,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
+    {id:"guard",name:"小怪兽卫队",cost:3,kind:"unit",art:"✦",atk:5,hp:5,text:"部署：你手牌中每有 1 张【废料】，获得 +1/+1（至多 +3）。",effect:"scrapGuard",n:2,limit:2,rarity:"special"},
+    {id:"eriyi",name:"绘梨衣",cost:3,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：转化 2。",flavor:"蜷缩在杂乱房间的角落里，用最差的牌打出最好的效果。",effect:"convert2",n:1,limit:1,rarity:"elite"},
+    {id:"colossus",name:"废料巨像",cost:5,kind:"unit",art:"▦",atk:4,hp:4,text:"部署：弃掉手牌中所有【废料】，每张使其获得 +1/+1。",effect:"scrapColossus",n:1,limit:1,rarity:"elite"},
+    {id:"rummage",name:"翻箱倒柜",cost:0,kind:"spell",art:"▣",text:"召唤 2 个【废铜烂铁】。",effect:"scrapSummon2",n:3,limit:3,rarity:"rare"},
+    {id:"upcycle",name:"变废为宝",cost:0,kind:"spell",art:"♻",text:"转化 2。",effect:"convert2",n:3,limit:3,rarity:"rare"},
+    {id:"remelt",name:"回炉重造",cost:1,kind:"spell",art:"♺",text:"转化 3。",effect:"convert3",n:2,limit:2,rarity:"special"},
+    {id:"expired",name:"过期卡包",cost:0,kind:"spell",art:"✉",text:"弃掉手牌中的 1 张【废料】，使攻击力最高的敌方单位眩晕 1 回合。",effect:"scrapStun",n:2,limit:2,rarity:"special"},
+    {id:"recycle",name:"废物利用",cost:1,kind:"spell",art:"☄",text:"弃掉手牌中所有【废料】，每张对敌方英雄造成 2 点伤害。",effect:"scrapBlast",n:2,limit:2,rarity:"special"},
+    {id:"sweep",name:"大扫除",cost:1,kind:"spell",art:"✧",text:"弃掉手牌中所有【废料】，每张恢复 3 点生命（至多 12 点）。",effect:"scrapSweep",n:2,limit:2,rarity:"special"},
+    {id:"neutral",name:"中立宣言",cost:3,kind:"spell",art:"⚐",text:"所有单位眩晕 1 回合，你获得 4 点护甲。",flavor:"小怪兽宣布中立。",effect:"neutral",n:1,limit:1,rarity:"elite"},
+    {id:"crown",name:"复制皇冠",cost:5,kind:"spell",art:"♛",text:"弃掉手牌中所有【废料】（至少 2 张），每 2 张获得 1 张随机的精英牌（至多 3 张）。",effect:"crownCopy",n:1,limit:1,rarity:"elite"}
   ]}
 };
 
@@ -229,6 +248,8 @@ const TOKENS={
   redGuard:{id:"redGuard",name:"近卫红军",cost:0,kind:"unit",art:"★",atk:0,hp:1,charge:true,rep:"rus",text:"冲锋。整编的产物：属性等于被整编的【俄布】之和。"},
   second:{id:"second",name:"苏二世",cost:4,kind:"unit",art:"Ⅱ",atk:3,hp:5,effect:"secondDeploy",transfer:"third",text:"部署：选择一个政体，并使攻击力最高的敌方单位眩晕 1 回合。引渡：被消灭时，把【苏三世】置入你的手牌。",flavor:"自行引渡至德德，逐渐正常化。",rep:"rus"},
   third:{id:"third",name:"苏三世",cost:6,kind:"unit",art:"Ⅲ",atk:6,hp:6,charge:true,effect:"thirdDeploy",text:"冲锋。部署：本回合三种政体的加成同时生效（代价不生效）。",flavor:"人脉威望达到顶峰。",rep:"rus"},
+  scrap:{id:"scrap",name:"碎纸",cost:0,kind:"spell",art:"▫",text:"废料。没有任何效果。",scrap:true},
+  scrapUnit:{id:"scrapUnit",name:"废铜烂铁",cost:0,kind:"unit",art:"▪",atk:2,hp:2,scrap:true,recycle:"scrap",text:"废料。回收：被消灭时，把 1 张【碎纸】放回你的手牌。"},
   redArtillery:{id:"redArtillery",name:"红军炮兵",cost:2,kind:"unit",art:"✣",atk:3,hp:2,ignoreTaunt:true,text:"无视嘲讽。"},
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"}
 };
@@ -241,10 +262,11 @@ const AWA_CARDS={
 };
 
 const REGIMES={rus:"俄罗斯",ukr:"乌克兰",blr:"白俄罗斯"};
-const COLORS={苏苏:"#e0664f",字母:"#6fb6dc",七星:"#a98fd9",核弹:"#7cc98a",猪瘟鱼:"#e58aa6",八幡:"#4fc0b0","045":"#dcae62",下水:"#a3b6bf"};
+const COLORS={绘梨衣:"#a8c97a",苏苏:"#e0664f",字母:"#6fb6dc",七星:"#a98fd9",核弹:"#7cc98a",猪瘟鱼:"#e58aa6",八幡:"#4fc0b0","045":"#dcae62",下水:"#a3b6bf"};
 
 /* 新手引导信息：难度 1~3 */
 const HERO_INFO={
+  绘梨衣:{difficulty:3,title:"小怪兽国 · 架子班",tip:"每个回合开始你会得到一张【碎纸】——它们是废料，也是原料。前期靠废料单位撑住，攒够废料后用【变废为宝】【回炉重造】换成真正的好牌，或者一口气打成伤害和生命。手牌上限只有 10 张，别让废料把手牌塞满。"},
   苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"没有抽牌，靠场面说话：先用政体法令确立路线，铺满【俄布】后用【整编令】和增益一波推进；换满两次政体才能解锁隐藏终端【全亚洲炮兵总司令】。怕群伤清场，注意别一次铺太满。"},
   字母:{difficulty:2,title:"新式战法领袖",tip:"超模单位压场，用【消除限制】撕掉嘲讽和免疫后直伤突破；关键时刻策反对手最强的单位。"},
   七星:{difficulty:3,title:"彗星国领袖",tip:"不急着赢：压低对手的费用上限、封锁出牌，再用【衰减】一层一层磨死对手。"},
@@ -273,6 +295,9 @@ const KEYWORDS={
   red:{name:"俄布",desc:"【俄罗斯布尔什维克红军】的简称（2 费 2/2）。"},
   gun:{name:"火炮",desc:"下水卡组里类型栏标有「火炮」的单位。饱和炮击、炮兵支援等卡牌会按火炮生效。"},
   member:{name:"架子班成员",desc:"045 卡组里类型栏标有「架子班」的单位，可被召集令、名片召唤从牌库召唤。"},
+  scrap:{name:"废料",desc:"没有直接用处的低质量卡牌，是【转化】等效果的原料。它们也会占用手牌位置（上限 10 张）。"},
+  convert:{name:"转化",desc:"转化 N：弃掉手牌中的 N 张【废料】，从费用为 N+1 到 N+3 的牌里发现 1 张，它的费用 -1。"},
+  recycle:{name:"回收",desc:"这个单位被消灭时，把 1 张【碎纸】放回你的手牌（手牌已满则弃置）。"},
   regime:{name:"政体",desc:"苏苏特有的状态，同一时间只有一种：俄罗斯（新单位获得冲锋，但你无法获得护甲）；乌克兰（你的部署伤害和法术伤害 +1，但新单位生命 -1）；白俄罗斯（回合结束时获得 2 点护甲、新嘲讽单位 +0/+1，但新单位失去冲锋）。"},
   transfer:{name:"引渡",desc:"亡语的一种：这个单位被消灭时，灵魂转移到下一世——把对应的牌置入你的手牌（手牌已满则弃置）。"},
   consolidate:{name:"整编",desc:"消灭你所有的【俄布】，合并成一个攻击力和生命值等于它们总和的单位。"},

@@ -47,6 +47,10 @@ const SPECIAL={
 /* ---- 精英卡：每张一个专属配方（键为 卡牌师:卡牌id） ---- */
 const ELITE={
   /* 苏苏 */
+  "绘梨衣:eriyi":{pattern:"orbit",palette:"teal",glyph:"♻",target:"me"},
+  "绘梨衣:colossus":{pattern:"rise",palette:"steel",glyph:"▦",target:"meBoard"},
+  "绘梨衣:neutral":{pattern:"ring",palette:"white",glyph:"⚐",target:"center"},
+  "绘梨衣:crown":{pattern:"pillar",palette:"rose",glyph:"♛",target:"me"},
   "苏苏:awaSwap":{pattern:"rift",palette:"white",glyph:"∅",target:"foe"},
   "苏苏:first":{pattern:"slash",palette:"crimson",glyph:"Ⅰ",target:"foe"},
   "苏苏:marshal":{pattern:"burst",palette:"ember",glyph:"✚",target:"foe"},

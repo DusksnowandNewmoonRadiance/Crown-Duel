@@ -82,6 +82,12 @@ function playError(card,me,foe){
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
+  {
+    const sc=me.hand.filter(x=>x.scrap&&x.uid!==card.uid).length;
+    const need={convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,crownCopy:2}[card.effect];
+    if(need&&sc<need)return`需要手牌中至少有 ${need} 张【废料】（目前 ${sc} 张）`;
+    if(card.effect==="scrapStun"&&!foe.board.length)return"敌方没有单位可以眩晕";
+  }
   if(e==="consolidate"&&redCount(me)<2)return"整编需要至少 2 个【俄布】";
   if(e==="artilleryCommand"){
     const ch=me.regimeChanges||0;
@@ -150,7 +156,8 @@ class Game{
   clone(c,hero){
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
-      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap};
+      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,
+      scrap:!!c.scrap,recycle:c.recycle||""};
     if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
   }
@@ -241,15 +248,16 @@ class Game{
       if(!dead.length)continue;
       p.board=p.board.filter(u=>u.health>0);
       this.opp(p).stats.kills+=dead.length;
-      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer)souls.push([p,u]);});
+      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);});
     }
     souls.forEach(([p,u])=>{
-      const def=TOKENS[u.transfer]||PROFILES[p.hero].cards.find(x=>x.id===u.transfer);
+      const id=u.transfer||u.recycle;
+      const def=TOKENS[id]||PROFILES[p.hero].cards.find(x=>x.id===id);
       if(!def)return;
       const card=this.clone(def,p.hero);
-      if(this.addToHand(p,card))this.note(`${u.name} 引渡：灵魂转移，【${def.name}】进入手牌`,p);
+      if(this.addToHand(p,card))this.note(u.transfer?`${u.name} 引渡：灵魂转移，【${def.name}】进入手牌`:`${u.name} 回收：【${def.name}】放回手牌`,p);
       else this.burn(p,card);
-      this.emit({t:"fx",name:"transfer",pi:p.idx});
+      if(u.transfer)this.emit({t:"fx",name:"transfer",pi:p.idx});
     });
     triggers.forEach(([p,u])=>{
       this.note(`${u.name} 的亡语：对敌方英雄造成 ${u.deathDmg} 点伤害`,p);
@@ -343,6 +351,11 @@ class Game{
     }
     this.emit({t:"turn",pi});
     if(!(pi===this.first&&p.turnsStarted===1))this.draw(p,1);
+    if(p.hero==="绘梨衣"){
+      const card=this.clone(TOKENS.scrap,p.hero);
+      if(this.addToHand(p,card))this.note("皇冠产出：获得 1 张【碎纸】",p);
+      else this.note("皇冠产出：手牌已满，没有产出",p);
+    }
   }
   _guard(pi){
     if(this.phase==="mulligan")return"请先完成调度";
@@ -390,8 +403,38 @@ class Game{
       this.note(`施放【${c.name}】`,s);
       this.cast(s,c,o,picked,option);
     }
+    if(c.scrap)this._onScrapPlayed(s);
     this.cleanup();this._checkEnd();
     return{ok:true};
+  }
+  _onScrapPlayed(s){
+    for(const u of s.board){
+      if(u.health<=0)continue;
+      if(u.effect==="scrapRage"){u.attack+=1;u.tempAtk=(u.tempAtk||0)+1;this.note(`${u.name}：攻击力 +1`,s);}
+      else if(u.effect==="scrapHeal"){this.heal(s,1);this.note(`${u.name}：恢复 1 点生命`,s);}
+    }
+  }
+  /* 弃掉手牌中的废料（all 为 true 时全部），返回弃掉的数量 */
+  _discardScrap(s,n,all){
+    const list=s.hand.filter(x=>x.scrap);
+    const take=all?list:list.slice(0,n);
+    s.hand=s.hand.filter(x=>!take.includes(x));
+    return take.length;
+  }
+  /* 转化 N：弃掉 N 张废料，从费用 N+1 ~ N+3 的牌里发现 1 张，费用 -1 */
+  _convert(s,n,label){
+    if(s.hand.filter(x=>x.scrap).length<n){this.note(`${label}：手牌中的废料不足 ${n} 张`,s);return;}
+    this._discardScrap(s,n,false);
+    const pool=PROFILES[s.hero].cards.filter(x=>!x.awaSwap&&x.cost>=n+1&&x.cost<=n+3&&!/^(convert|crownCopy)/.test(x.effect||""));
+    const opts=shuffle(pool.slice()).slice(0,3).map(x=>{const k=this.clone(x,s.hero);k.cost=Math.max(0,k.cost-1);return k;});
+    if(!opts.length){this.note(`${label}：没有可以转化的牌`,s);return;}
+    this.note(`${label}：弃掉 ${n} 张废料`,s);
+    const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+    this._pick(s,label,`弃掉了 ${n} 张废料：选择 1 张加入手牌，费用 -1`,opts,auto,card=>{
+      if(!this.addToHand(s,card))this.burn(s,card);
+      this.note(`${label}：转化出【${card.name}】`,s,true);
+      this.emit({t:"fx",name:"convert",pi:s.idx});
+    });
   }
 
   /* ---------- 攻击 ---------- */
@@ -520,6 +563,21 @@ class Game{
       case"steal4":this.steal(s,4);break;
       case"steal3draw":this.steal(s,3);this.draw(s,1);break;
       case"steal2armor2":this.steal(s,2);this.armor(s,2);break;
+      case"scrapPump":
+        if(this._discardScrap(s,1,false)){c.attack+=2;c.health+=2;c.maxHealth+=2;this.note("临时工：弃掉 1 张废料，获得 +2/+2",s);}
+        break;
+      case"scrapGuard":{
+        const k=Math.min(3,s.hand.filter(x=>x.scrap).length);
+        if(k){c.attack+=k;c.health+=k;c.maxHealth+=k;this.note(`小怪兽卫队：获得 +${k}/+${k}`,s);}
+        break;}
+      case"scrapColossus":{
+        const k=this._discardScrap(s,0,true);
+        if(k){c.attack+=k;c.health+=k;c.maxHealth+=k;this.note(`废料巨像：弃掉 ${k} 张废料，获得 +${k}/+${k}`,s);}
+        break;}
+      case"costUp1":
+        if(o.hand.length){const t=o.hand[Math.floor(Math.random()*o.hand.length)];t.cost+=1;this.note("汐：1 张敌方手牌费用 +1",s);}
+        break;
+      case"convert2":this._convert(s,2,c.name);break;
       case"secondDeploy":{
         const r=C.REGIMES[option]?option:bestRegime(s,o);
         this.setRegime(s,r);
@@ -555,6 +613,39 @@ class Game{
   cast(s,c,o,targets,option){
     const fx=(name,extra)=>this.emit(Object.assign({t:"fx",name,pi:s.idx},extra||{}));
     switch(c.effect){
+      case"convert2":this._convert(s,2,c.name);break;
+      case"convert3":this._convert(s,3,c.name);break;
+      case"scrapSummon2":{const k=this.summon(s,"scrapUnit",2);this.note(`翻箱倒柜：翻出 ${k} 个废铜烂铁`,s);fx("summonRed",{n:k});break;}
+      case"scrapStun":{
+        this._discardScrap(s,1,false);
+        const t=o.board.filter(u=>u.health>0).sort((a,b)=>b.attack-a.attack)[0];
+        if(t){t.stun=Math.max(t.stun||0,1);t.atkLeft=0;this.note(`过期卡包：${t.name} 被眩晕`,s);}
+        break;}
+      case"scrapBlast":{
+        const k=this._discardScrap(s,0,true);
+        this.note(`废物利用：弃掉 ${k} 张废料，造成 ${k*2} 点伤害`,s);
+        if(k)this.damageHero(o,k*2);
+        break;}
+      case"scrapSweep":{
+        const k=this._discardScrap(s,0,true);
+        const h=Math.min(12,k*3);
+        this.heal(s,h);this.note(`大扫除：弃掉 ${k} 张废料，恢复 ${h} 点生命`,s);
+        break;}
+      case"neutral":
+        [s,o].forEach(p=>p.board.forEach(u=>{u.stun=Math.max(u.stun||0,1);u.atkLeft=0;}));
+        this.armor(s,4);this.note("中立宣言：所有单位眩晕 1 回合，你获得 4 点护甲",s);
+        fx("evasion");break;
+      case"crownCopy":{
+        const k=this._discardScrap(s,0,true);
+        const n=Math.min(3,Math.floor(k/2));
+        const pool=PROFILES[s.hero].cards.filter(x=>x.rarity==="elite"&&x.id!=="crown"&&!x.awaSwap);
+        let got=0;
+        for(let i=0;i<n&&pool.length;i++){
+          const d=pool[Math.floor(Math.random()*pool.length)];
+          if(this.addToHand(s,this.clone(d,s.hero)))got++;
+        }
+        this.note(`复制皇冠：弃掉 ${k} 张废料，复制出 ${got} 张精英牌`,s);
+        break;}
       case"decreeRus":this.setRegime(s,"rus");this.summon(s,"red",1);fx("summonRed",{n:1});break;
       case"decreeUkr":{
         this.setRegime(s,"ukr");
@@ -798,7 +889,7 @@ class Game{
 
 function pubCard(c){
   const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",effect:c.effect,
-    charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx,rep:c.rep||"",transfer:c.transfer||"",sealed:!!c.sealed};
+    charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx,rep:c.rep||"",transfer:c.transfer||"",sealed:!!c.sealed,scrap:!!c.scrap,recycle:c.recycle||""};
   if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
   else if(c.lifespan)x.lifespan=c.lifespan;
   return x;
