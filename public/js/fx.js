@@ -1,6 +1,6 @@
 /* 对局特效：全部画在 #fx 图层上，坐标为舞台坐标（1280×720） */
 const FX=(()=>{
-  const W=1280,H=720;
+  const W=1280;let H=720;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const layerRoot=()=>document.getElementById("fx");
   let scale=()=>1;
@@ -97,6 +97,17 @@ const FX=(()=>{
       const l=fadeLayer("linear-gradient(0deg,rgba(224,102,79,.55),transparent 55%)");
       bigText("赤色黎明","#ffd9a8","#d9634d",64,1200,62);
       Audio2.sfx("satur");shake();out(l,1000);await sleep(800);
+    },
+    async summonScrap(d){
+      const l=fadeLayer("radial-gradient(ellipse at 50% 70%,rgba(168,201,122,.38),rgba(5,8,9,.6) 65%)");
+      for(let i=0;i<7;i++){
+        const x=300+Math.random()*680;
+        const s=add(`position:absolute;left:${x}px;top:-40px;width:${18+Math.random()*16}px;height:${14+Math.random()*14}px;border-radius:3px;background:${["#c9d2c0","#a8c97a","#8a9488","#d8d4b8"][i%4]};box-shadow:0 0 10px rgba(168,201,122,.5);z-index:201;transform:rotate(${Math.random()*80-40}deg);transition:top .5s cubic-bezier(.4,0,.8,.4),opacity .4s .45s`);
+        setTimeout(()=>{s.style.top=(H*.55+Math.random()*80)+"px";s.style.opacity="0";},i*70);
+        setTimeout(()=>s.remove(),1300);
+      }
+      bigText(d&&d.title?d.title:"翻箱倒柜","#e2f0c8","#5a8a30",46,1100,38);
+      Audio2.sfx("spell");out(l,950);await sleep(650);
     },
     async summonRed(d){
       const l=fadeLayer("radial-gradient(ellipse at 50% 100%,rgba(224,102,79,.45),transparent 55%)");
@@ -353,5 +364,6 @@ const FX=(()=>{
 
   async function play(name,data,el){if(E[name]){try{await E[name](data,el);}catch(e){console.warn(e);}}}
   function clear(){const r=layerRoot();if(r)r.innerHTML="";}
-  return{setScale,pos,float,ring,shake,shatter,play,cast,clear,sleep};
+  function setH(h){H=h;}
+  return{setScale,setH,pos,float,ring,shake,shatter,play,cast,clear,sleep};
 })();

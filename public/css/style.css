@@ -826,3 +826,22 @@ input{font:inherit;color:var(--text)}
 .lock-tag.st-regime.r-all{background:rgba(178,123,232,.18);border-color:#b27be8;color:#e6d4f8}
 .hcard.sealed{filter:grayscale(.85) brightness(.7)}
 .hcard.sealed::after{content:"封存";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-12deg);padding:2px 10px;border:2px solid #ff8a70;border-radius:8px;color:#ff8a70;font:900 20px var(--serif);background:rgba(0,0,0,.5)}
+
+/* ---------- 紧凑舞台（手机横屏）：高度 660，触控目标更大 ---------- */
+#stage.compact .lane{height:180px}
+#stage.compact .lane.foe{top:40px}
+#stage.compact #midline{top:220px;height:30px}
+#stage.compact .lane.me{top:250px}
+#stage.compact #hand{top:446px;height:214px}
+#stage.compact .hcard{top:10px}
+#stage.compact .turn-box{top:206px}
+#stage.compact #castBar{top:236px}
+#stage.compact .round-btn{width:54px;height:54px;font-size:23px}
+#stage.compact .side-btns{gap:8px}
+#stage.compact #endBtn{width:196px;height:70px;font-size:22px}
+#stage.compact .unit .un{font-size:14px;max-height:34px}
+#stage.compact .unit .ust .stat{width:42px;height:42px;font-size:22px}
+#stage.compact .unit .ukw i{width:25px;height:25px;font-size:13px}
+#stage.compact .hname{font-size:17px}
+#stage.compact .mana b,#stage.compact .counts{font-size:13.5px}
+#stage.compact .hpb{min-width:52px;height:52px;font-size:24px}

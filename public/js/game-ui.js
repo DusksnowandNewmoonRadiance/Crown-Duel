@@ -17,8 +17,14 @@ const GameUI=(()=>{
   function fit(){
     const wrap=$("#stageWrap");if(!wrap)return;
     const W=wrap.clientWidth,H=wrap.clientHeight;if(!W||!H)return;
-    const s=Math.min(W/1280,H/720);S.scale=s;
-    $("#stage").style.transform=`translate(${(W-1280*s)/2}px,${(H-720*s)/2}px) scale(${s})`;
+    // 小屏（手机横屏）使用紧凑舞台：逻辑高度 660，整体比 720 高度时大约 9%
+    const compact=H/720<.8;
+    const SH=compact?660:720;
+    const st=$("#stage");
+    st.classList.toggle("compact",compact);st.style.height=SH+"px";
+    S.SH=SH;FX.setH&&FX.setH(SH);
+    const s=Math.min(W/1280,H/SH);S.scale=s;
+    st.style.transform=`translate(${(W-1280*s)/2}px,${(H-SH*s)/2}px) scale(${s})`;
     if(S.coach)placeCoach();
   }
   FX.setScale(()=>S.scale);
@@ -142,7 +148,7 @@ const GameUI=(()=>{
       case"center":a={x:640,y:360,w:600,h:200};break;
       default:a=P(`#${op}Hero .portrait`);
     }
-    return{layer:$("#fx"),W:1280,H:720,from,anchor:a,name:e.card.name,shake:FX.shake};
+    return{layer:$("#fx"),W:1280,H:S.SH||720,from,anchor:a,name:e.card.name,shake:FX.shake};
   }
   /* 卡牌效果 → 通用特效。B 弹道打脸 / T 弹道打目标 / W 冲击波 / U 全体增益 / G 火炮增益 / R 俄布增益 / X 目标增益
      H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */

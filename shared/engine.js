@@ -636,7 +636,7 @@ class Game{
           const u=this.clone(d,s.hero);s.board.push(u);this._enter(s,u);names.push(d.name);
         }
         this.note(names.length?`以旧换新：废料变成了 ${names.join("、")}`:"以旧换新：没有可以转换的废料",s);
-        if(names.length)fx("summonRed",{n:names.length});
+        if(names.length)fx("summonScrap",{n:names.length,title:"以旧换新"});
         break;}
       case"convert2":this._convert(s,2,c.name);break;
       case"convert3":this._convert(s,3,c.name);break;
@@ -675,7 +675,7 @@ class Game{
           this.note("窃取情报：敌方牌库的一张牌被偷走了",o,true);
         });
         break;}
-      case"scrapSummon2":{const k=this.summon(s,"scrapUnit",2);this.note(`翻箱倒柜：翻出 ${k} 个废铜烂铁`,s);fx("summonRed",{n:k});break;}
+      case"scrapSummon2":{const k=this.summon(s,"scrapUnit",2);this.note(`翻箱倒柜：翻出 ${k} 个废铜烂铁`,s);fx("summonScrap",{n:k,title:"翻箱倒柜"});break;}
       case"scrapStun":{
         this._discardScrap(s,1,false);
         const t=o.board.filter(u=>u.health>0).sort((a,b)=>b.attack-a.attack)[0];
