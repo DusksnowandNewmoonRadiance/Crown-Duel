@@ -84,8 +84,8 @@ function scoreCard(s,o,c,lethal){
       sc+=(s.regime===REGIME_OF[e]?-5:2)+(want===REGIME_OF[e]?3:0)+(e==="decreeUkr"?(enN?2:-3):0)+(e==="decreeRus"?(myN>=MAX_BOARD?-4:1):0)
         +((s.regimeChanges||0)<2?2:0);   // 权限需要更换次数
     }
-    else if(c.scrap&&!e)sc=(s.hand.length>=9?1:-60);   // 废料留着当原料，手牌快满了才丢
-    else if(e==="convert1")sc+=(s.hand.length>=MAX_HAND-1?-100:5);
+    else if(c.scrap&&!e)sc=(s.board.some(u=>u.effect==="scrapTax"&&u.health>0)?4:(s.hand.length>=9?1:-60));   // 废料留着当原料，手牌快满了才丢
+    else if(e==="scrapToUnits"){const k=Math.min(s.hand.filter(x=>x.scrap).length,MAX_BOARD-myN);sc+=k>=2?k*3:-3;}
     else if(e==="scrapSearch")sc+=(s.hand.length>=MAX_HAND-1?-100:5);
     else if(e==="supplyDeck")sc+=(s.hand.length>=MAX_HAND-1||!s.deck.some(x=>x.kind==="unit")?-100:5);
     else if(e==="intelSteal")sc+=(s.hand.length>=MAX_HAND-1||!o.deck.length?-100:6);

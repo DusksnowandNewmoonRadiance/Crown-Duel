@@ -148,7 +148,7 @@ const GameUI=(()=>{
      H 治疗 / A 护甲 / D 抽牌 / $ 偷钱 / M+ M- 费用 / F 冰霜 / S 召唤 / K 弃牌 / Q 自伤 */
   const CARD_FX={
     heal2:"H",heal3:"H",draw:"D1",drawHeal1:"D1 H",drawArmor:"D1 A",armor1:"A",armor2:"A",hero1:"B",hero2:"B",hero3:"B",draw2:"D2",
-    fiveYearPlan:"W D1",supplyDeck:"D1",intelSteal:"D1",scrapSearch:"D1",hero99:"B",scrapSummon2:"S",scrapBlast:"B",scrapSweep:"H",neutral:"A",scrapStun:"F",summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
+    fiveYearPlan:"W D1",scrapToUnits:"S",supplyDeck:"D1",intelSteal:"D1",scrapSearch:"D1",hero99:"B",scrapSummon2:"S",scrapBlast:"B",scrapSweep:"H",neutral:"A",scrapStun:"F",summonPirate:"S",copySmallCannon:"S",susuDeploy:"S",summoncall:"S",decreeRus:"S",decreeUkr:"T",decreeBlr:"A",consolidate:"S",secondDeploy:"T",
     buffAll1:"U:+1/+1",buffAll2:"U:+2/+2",highcommand:"U:+2/+2",buffAll1draw:"U:+1/+1 D1",buffAllCharge:"U:+1/+1",alweiDeploy:"D2 U:+1/+1",pirateBuff:"U:+1攻 D1",
     buffGuns1:"G:+1攻",buffGuns2:"G:+2攻",reload:"G:+3攻 D1",buffGuns2draw:"G:+2攻 D1",buffRed:"R:+2/+2",
     huiliyiDeploy:"D1",buffOneDraw:"X:+2/+2 D1",revengeDeath:"U:亡语 D1",developEnemy:"D1",summonRandomPirate:"S",

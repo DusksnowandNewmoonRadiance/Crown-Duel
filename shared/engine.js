@@ -72,8 +72,12 @@ function optionSpec(card){
   return null;
 }
 /* 能否出这张牌：返回 null 或原因 */
+function scrapTax(p){return p&&p.board?p.board.filter(u=>u.effect==="scrapTax"&&u.health>0).length:0;}
+/* 实际费用：废品回收站让手牌中的废料费用 +1（视图里的牌已经加过，带 taxed 标记） */
+function effCost(card,me){return card.cost+((card.scrap&&!card.taxed)?scrapTax(me):0);}
 function playError(card,me,foe){
-  if(card.cost>me.energy)return`费用不足（需要 ${card.cost}，当前 ${me.energy}）`;
+  const cost=effCost(card,me);
+  if(cost>me.energy)return`费用不足（需要 ${cost}，当前 ${me.energy}）`;
   if(me.turnCap!=null&&(me.playedTurn||0)>=me.turnCap)return`出牌封锁：本回合最多只能打出 ${me.turnCap} 张牌`;
   if(card.kind==="spell"&&me.noSpell)return"寂静星环：本回合无法打出法术牌";
   if(card.kind==="unit"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
@@ -84,10 +88,11 @@ function playError(card,me,foe){
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
   {
     const sc=me.hand.filter(x=>x.scrap&&x.uid!==card.uid).length;
-    const need={convert1:1,convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,scrapSearch:1,crownCopy:2}[card.effect];
+    const need={scrapToUnits:1,convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,scrapSearch:1,crownCopy:2}[card.effect];
     if(need&&sc<need)return`需要手牌中至少有 ${need} 张【废料】（目前 ${sc} 张）`;
     if(card.effect==="scrapStun"&&!foe.board.length)return"敌方没有单位可以眩晕";
     if(card.effect==="scrapSearch"&&!me.deck.length)return"你的牌库已经空了";
+    if(card.effect==="scrapToUnits"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
     if(card.effect==="supplyDeck"&&!me.deck.some(x=>x.kind==="unit"))return"牌库里没有单位牌";
     if(card.effect==="intelSteal"&&!foe.deck.length)return"敌方牌库已经空了";
   }
@@ -398,7 +403,7 @@ class Game{
     }
     const os=optionSpec(c);
     if(os&&!os.options.some(x=>x.id===option))return err("请先做出选择");
-    s.energy-=c.cost;s.hand=s.hand.filter(x=>x!==c);s.stats.played++;s.playedTurn=(s.playedTurn||0)+1;
+    s.energy-=effCost(c,s);s.hand=s.hand.filter(x=>x!==c);s.stats.played++;s.playedTurn=(s.playedTurn||0)+1;
     this.emit({t:"play",pi,card:pubCard(c),targets:picked,option:os?option:null});
     if(c.kind==="unit"){
       s.board.push(c);this._enter(s,c);
@@ -414,6 +419,8 @@ class Game{
     return{ok:true};
   }
   _onScrapPlayed(s){
+    const tax=scrapTax(s);
+    if(tax>0){this.note(`废品回收站：打出废料，抽 ${tax} 张牌`,s);this.draw(s,tax);}
     for(const u of s.board){
       if(u.health<=0)continue;
       if(u.effect==="scrapRage"){u.attack+=1;u.tempAtk=(u.tempAtk||0)+1;this.note(`${u.name}：攻击力 +1`,s);}
@@ -619,7 +626,18 @@ class Game{
   cast(s,c,o,targets,option){
     const fx=(name,extra)=>this.emit(Object.assign({t:"fx",name,pi:s.idx},extra||{}));
     switch(c.effect){
-      case"convert1":this._convert(s,1,c.name);break;
+      case"scrapToUnits":{
+        const pool=PROFILES[s.hero].cards.filter(x=>x.kind==="unit"&&x.rarity!=="elite"&&!x.awaSwap);
+        const names=[];
+        while(s.board.length<MAX_BOARD){
+          const sc=s.hand.find(x=>x.scrap);if(!sc)break;
+          s.hand=s.hand.filter(x=>x!==sc);
+          const d=pool[Math.floor(Math.random()*pool.length)];
+          const u=this.clone(d,s.hero);s.board.push(u);this._enter(s,u);names.push(d.name);
+        }
+        this.note(names.length?`以旧换新：废料变成了 ${names.join("、")}`:"以旧换新：没有可以转换的废料",s);
+        if(names.length)fx("summonRed",{n:names.length});
+        break;}
       case"convert2":this._convert(s,2,c.name);break;
       case"convert3":this._convert(s,3,c.name);break;
       case"fiveYearPlan":{
@@ -942,10 +960,10 @@ function pubPlayer(p,full){
     regime:p.regime||null,regimeChanges:p.regimeChanges||0,fedTurn:!!p.fedTurn,
     decay:p.decay||0,turnCap:p.turnCap==null?null:p.turnCap,playedTurn:p.playedTurn||0,noSpell:!!p.noSpell,
     nextCap:p.nextCap==null?null:p.nextCap,nextNoSpell:!!p.nextNoSpell,
-    hand:full?p.hand.map(pubCard):p.hand.map(c=>({uid:c.uid,back:true,costUp:c.cost>c.baseCost})),
+    hand:full?p.hand.map(c=>{const x=pubCard(c);if(c.scrap){const t=scrapTax(p);if(t){x.cost+=t;x.taxed=true;}}return x;}):p.hand.map(c=>({uid:c.uid,back:true,costUp:c.cost>c.baseCost})),
     board:p.board.map(pubCard),stats:p.stats};
 }
 function err(msg){return{ok:false,error:msg};}
 
-return{Game,shuffle,bandCount,boost,bestRegime,redCount,hasBonus,hasCost,heroBonus,gunCount,unitValue,canAttack,attackTargets,targetSpec,optionSpec,playError,autoTargets,autoOption,pubCard};
+return{Game,effCost,scrapTax,shuffle,bandCount,boost,bestRegime,redCount,hasBonus,hasCost,heroBonus,gunCount,unitValue,canAttack,attackTargets,targetSpec,optionSpec,playError,autoTargets,autoOption,pubCard};
 });

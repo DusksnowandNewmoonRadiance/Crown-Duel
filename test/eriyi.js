@@ -12,7 +12,7 @@ const give=(g,p,id,n)=>{const r=[];for(let i=0;i<(n||1);i++){const c=mk(g,id);p.
 const play=(g,c,t)=>g.playCard(0,c.uid,t||[]);
 
 check("牌表合法：默认卡组 40 张",!C.deckError("绘梨衣",C.defaultDeck("绘梨衣"))&&C.defaultDeck("绘梨衣").length===40);
-check("没有抽牌卡",!C.PROFILES["绘梨衣"].cards.some(c=>/抽 \d+ 张牌/.test(c.text)));
+check("没有直接抽牌的法术（抽牌只能由废料触发）",!C.PROFILES["绘梨衣"].cards.some(c=>c.kind==="spell"&&(/^draw/.test(c.effect||"")||/抽 d+ 张牌/.test(c.text))));
 { // 皇冠产出
   const {g,a}=setup();
   g.endTurn(0);g.endTurn(1);
@@ -94,13 +94,15 @@ check("没有抽牌卡",!C.PROFILES["绘梨衣"].cards.some(c=>/抽 \d+ 张牌/.
 }
 { // 以旧换新 / 清点库存 / 回收站
   const {g,a}=setup();
-  give(g,a,"scrap",1);
+  give(g,a,"scrap",3);
   const c=give(g,a,"trade");
-  check("以旧换新：1 张废料即可打出",!E.playError(c,a,g.players[1]));
+  check("以旧换新：有废料即可打出",!E.playError(c,a,g.players[1]));
   play(g,c);
-  check("以旧换新：选项费用在 1~3（已减 1）",g.pending&&g.pending.cards.every(x=>x.cost>=1&&x.cost<=3),g.pending&&g.pending.cards.map(x=>x.name+x.cost).join(","));
-  g.resolvePending(0,0);
-  check("以旧换新：废料换成真牌",a.hand.length===1&&!a.hand[0].scrap);
+  check("以旧换新：3 张废料变成 3 个非精英单位",a.board.length===3&&a.hand.filter(x=>x.scrap).length===0&&a.board.every(u=>u.rarity!=="elite"&&!u.scrap),a.board.map(u=>u.name).join(","));
+  const f=setup();give(f.g,f.a,"scrap",4);
+  for(let i=0;i<4;i++)f.a.board.push(mk(f.g,"fortress"));
+  play(f.g,give(f.g,f.a,"trade"));
+  check("以旧换新：战场放满后剩余废料保留",f.a.board.length===C.MAX_BOARD&&f.a.hand.filter(x=>x.scrap).length===2);
   const s=setup();
   s.a.deck=[mk(s.g,"fortress"),mk(s.g,"sweep"),mk(s.g,"temp"),mk(s.g,"crown")];
   give(s.g,s.a,"scrap",1);
@@ -109,8 +111,19 @@ check("没有抽牌卡",!C.PROFILES["绘梨衣"].cards.some(c=>/抽 \d+ 张牌/.
   const id=s.g.pending.cards[0];s.g.resolvePending(0,0);
   check("清点库存：选中的牌进入手牌并离开牌库",s.a.hand.some(x=>x.uid===id.uid)&&s.a.deck.length===3);
   const r=setup();
-  const st=mk(r.g,"station");r.a.board.push(st);st.health=0;r.g.cleanup();
-  check("废品回收站：回收 2 张碎纸",r.a.hand.filter(x=>x.id==="scrap").length===2);
+  const st=mk(r.g,"station");r.a.board.push(st);
+  r.a.deck=[mk(r.g,"fortress"),mk(r.g,"temp"),mk(r.g,"sweep")];
+  const sc1=give(r.g,r.a,"scrap");
+  const hv=r.g.viewFor(0).me.hand.find(x=>x.uid===sc1.uid);
+  check("废品回收站：手牌中的废料费用 +1（视图里已经加上）",hv.cost===1&&hv.taxed===true);
+  r.a.energy=0;
+  check("费用不足时不能打出废料",!!E.playError(hv,r.g.viewFor(0).me,r.g.viewFor(0).foe));
+  r.a.energy=5;const h0=r.a.hand.length;
+  play(r.g,sc1);
+  check("废品回收站：打出废料花 1 费并抽 1 张牌",r.a.energy===4&&r.a.hand.length===h0,r.a.energy+"/"+(r.a.hand.length-h0));
+  const two=setup();two.a.board.push(mk(two.g,"station"),mk(two.g,"station"));two.a.deck=[mk(two.g,"fortress"),mk(two.g,"temp"),mk(two.g,"sweep")];
+  const sc2=give(two.g,two.a,"scrap");two.a.energy=2;play(two.g,sc2);
+  check("两个回收站叠加：花 2 费，抽 2 张",two.a.energy===0&&two.a.hand.length===2,two.a.hand.length);
   const e=setup();give(e.g,e.a,"scrap",1);e.a.deck=[];
   check("牌库为空时清点库存不能打出",!!E.playError(give(e.g,e.a,"stocktake"),e.a,e.g.players[1]));
 }
