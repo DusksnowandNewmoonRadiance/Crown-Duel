@@ -231,7 +231,7 @@ const PROFILES={
     {id:"guard",name:"小怪兽卫队",cost:3,kind:"unit",art:"✦",atk:5,hp:5,text:"部署：你手牌中每有 1 张【废料】，获得 +1/+1（至多 +3）。",effect:"scrapGuard",n:2,limit:2,rarity:"special"},
     {id:"eriyi",name:"绘梨衣",cost:3,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：转化 2。",flavor:"蜷缩在杂乱房间的角落里，用最差的牌打出最好的效果。",effect:"convert2",n:1,limit:1,rarity:"elite"},
     {id:"colossus",name:"废料巨像",cost:5,kind:"unit",art:"▦",atk:4,hp:4,text:"部署：弃掉手牌中所有【废料】，每张使其获得 +1/+1。",effect:"scrapColossus",n:1,limit:1,rarity:"elite"},
-    {id:"rummage",name:"翻箱倒柜",cost:0,kind:"spell",art:"▣",text:"召唤 2 个【废铜烂铁】。",effect:"scrapSummon2",n:3,limit:3,rarity:"rare"},
+    {id:"rummage",name:"翻箱倒柜",cost:2,kind:"spell",art:"▣",text:"召唤 2 个【废铜烂铁】。",effect:"scrapSummon2",n:3,limit:3,rarity:"rare"},
     {id:"trade",name:"以旧换新",cost:1,kind:"spell",art:"⇄",text:"弃掉手牌中所有【废料】，每张随机召唤 1 个你的单位（不含精英，战场已满时停止）。",effect:"scrapToUnits",n:2,limit:2,rarity:"special"},
     {id:"upcycle",name:"变废为宝",cost:0,kind:"spell",art:"♻",text:"转化 2。",effect:"convert2",n:3,limit:3,rarity:"rare"},
     {id:"stocktake",name:"清点库存",cost:1,kind:"spell",art:"▤",text:"弃掉手牌中的 1 张【废料】，从你的牌库中随机展示 3 张牌，选择 1 张加入手牌。",effect:"scrapSearch",n:2,limit:2,rarity:"special"},
