@@ -92,6 +92,15 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   check("哈萨克红军：部署使所有俄布 +2/+2",r1.attack===4&&r1.health===4&&r2.attack===4&&r2.health===4,r1.attack+"/"+r1.health);
   check("哈萨克红军：自身不获得增益，保留 1/8",u.attack===1&&u.health===8,u.attack+"/"+u.health);
 }
+/* ---- 红场指挥官 ---- */
+{
+  const {g,a,b}=setup(0);
+  const n=a.board.length;
+  play(g,0,give(g,a,"redOfficer"));
+  check("红场指挥官：部署召唤 1 个俄布",a.board.filter(u=>u.id==="red").length===n+1&&a.board.some(u=>u.id==="redOfficer"),a.board.map(u=>u.id).join(" "));
+  const o=a.board.find(u=>u.id==="redOfficer");
+  check("红场指挥官：本体保留 3/3",o.attack===3&&o.health===3,o.attack+"/"+o.health);
+}
 /* ---- 红军集结 / 战时共产主义 / 先锋动员 / 红场阅兵 ---- */
 {
   const {g,a,b}=setup(0);

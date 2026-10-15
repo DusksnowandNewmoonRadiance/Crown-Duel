@@ -553,6 +553,8 @@ class Game{
         if(hit.length)this.note(`对 ${hit.join("、")} 各造成 2 点伤害`,s);
         break;}
       case"buffRed":s.board.forEach(u=>{if(u.id==="red"){u.attack+=2;u.health+=2;u.maxHealth+=2;}});this.note("哈萨克红军：所有俄布 +2/+2",s);break;
+      case"summonRed1":this.summon(s,"red",1);break;
+      case"summonRed2":this.summon(s,"red",2);break;
       case"alweiDeploy":this.draw(s,2);this.buffAll(s,1,1);this.note("阿伟：抽两张牌，全军 +1/+1",s);break;
       case"qixingDeploy":this.loseMax(o,1);this.note("七星：敌方费用上限 -1",s);break;
       case"susuDeploy":{
