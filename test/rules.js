@@ -5,6 +5,8 @@ const results=[];const check=(n,ok,x)=>{results.push(!!ok);console.log((ok?"✔ 
 function game(a,b){
   const g=new E.Game({players:[{name:"甲",hero:a},{name:"乙",hero:b}],first:0});
   g.mulligan(0,[]);g.mulligan(1,[]);
+  // 苏苏开局会自动打出【苏维埃社会主义共和国联盟】选择政体，先替测试选俄罗斯以放行首回合操作
+  if(g.pending&&g.pending.pi===0)g.resolvePending(0,0);
   return g;
 }
 const mk=(g,hero,id)=>g.clone(C.cardDef(hero,id),hero);
@@ -12,6 +14,8 @@ function ready(g,pi,hand){
   const p=g.players[pi];p.hand=hand;p.energy=p.maxEnergy=10;return p;
 }
 const play=(g,pi,card,targets,opt)=>g.playCard(pi,card.uid,targets||[],opt);
+/* 苏苏作为后手时，其首回合开始会弹出政体选择 pending；测试中直接替它选默认政体以放行 */
+const settle=g=>{if(g.pending&&g.pending.pi===g.current)g.resolvePending(g.current,g.pending.auto);};
 function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
 
 /* ---- 护甲 ---- */
@@ -33,7 +37,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const g=game("七星","苏苏");
   const a=g.players[0],b=g.players[1];
   const band=mk(g,"七星","awaBand");band.atkLeft=1;a.board.push(band);
-  const foe=mk(g,"苏苏","blr");b.board.push(foe);
+  const foe=mk(g,"苏苏","redheavy");b.board.push(foe);
   const r=g.attack(0,band.uid,foe.uid);
   check("攻击力为 0 的单位可以攻击",r.ok&&band.atkLeft===0,r.error||"");
 }
@@ -68,7 +72,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const a=g.players[0],b=g.players[1];
   ready(g,0,[mk(g,"七星","cardCap")]);play(g,0,a.hand[0]);
   check("星域封锁：设置下回合出牌上限",b.nextCap===2&&b.turnCap===null);
-  g.endTurn(0);
+  g.endTurn(0);settle(g);
   check("封锁在对手下个回合生效",b.turnCap===2);
   ready(g,1,[mk(g,"苏苏","redguard"),mk(g,"苏苏","redguard"),mk(g,"苏苏","redguard")]);
   const r1=play(g,1,b.hand[0]),r2=play(g,1,b.hand[0]),r3=play(g,1,b.hand[0]);
@@ -79,7 +83,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
 {
   const g=game("七星","苏苏");
   const a=g.players[0],b=g.players[1];
-  ready(g,0,[mk(g,"七星","silence")]);play(g,0,a.hand[0]);g.endTurn(0);
+  ready(g,0,[mk(g,"七星","silence")]);play(g,0,a.hand[0]);g.endTurn(0);settle(g);
   ready(g,1,[mk(g,"苏苏","mobilize"),mk(g,"苏苏","redguard")]);
   const s=play(g,1,b.hand.find(c=>c.id==="mobilize")),u=play(g,1,b.hand.find(c=>c.id==="redguard"));
   check("寂静星环：不能打法术，但可以打单位",!s.ok&&u.ok,s.error);
@@ -109,7 +113,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const sup=a.board[0];
   g.attack(0,sup.uid,null);g.attack(0,sup.uid,null);
   check("超人本回合攻击两次，各 10 点伤害",b.hp===hp-20,`hp ${hp}→${b.hp}`);
-  g.endTurn(0);
+  g.endTurn(0);settle(g);
   check("超人在对手回合仍在场",a.board.length===1);
   g.endTurn(1);
   check("超人在你的下个回合开始时消散",a.board.length===0);
@@ -130,26 +134,11 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   check("攒够 300 元后逃跑获胜",g.phase==="over"&&g.winner===0);
 }
 
-/* ---- 苏苏：炮兵总司令 ---- */
-{
-  const g=game("苏苏","字母");
-  const a=g.players[0],b=g.players[1];
-  b.board.push(mk(g,"字母","guard"),mk(g,"字母","over"));
-  ready(g,0,[mk(g,"苏苏","artillery")]);
-  a.board.push(mk(g,"苏苏","red"),mk(g,"苏苏","red"));
-  check("权限：没有换过政体时不能打出",!!E.playError(a.hand[0],a,b));
-  a.regimeChanges=2;
-  check("权限：满足后可以打出",!E.playError(a.hand[0],a,b));
-  play(g,0,a.hand[0]);
-  check("全亚洲炮兵总司令：填满战场",a.board.length===C.MAX_BOARD&&a.board.filter(u=>u.id==="redArtillery").length===C.MAX_BOARD-2);
-  check("对所有敌方单位造成 3 点伤害",b.board.every(u=>u.health===u.maxHealth-3));
-}
-
 /* ---- 字母：消除限制 ---- */
 {
   const g=game("字母","苏苏");
   const a=g.players[0],b=g.players[1];
-  b.heroImmune=true;b.board.push(mk(g,"苏苏","blr"),mk(g,"苏苏","blr"));
+  b.heroImmune=true;b.board.push(mk(g,"苏苏","kazakh"),mk(g,"苏苏","kazakh"));
   ready(g,0,[mk(g,"字母","remove")]);
   const hp=b.hp;play(g,0,a.hand[0]);
   check("消除限制：移除嘲讽与免疫并造成 3 点伤害",b.board.every(u=>!u.taunt)&&!b.heroImmune&&b.hp===hp-3);
@@ -164,7 +153,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
     a.board=[];a.hand=[mk(g,"八幡","ship")];a.energy=10;
     play(g,0,a.hand[0]);
     a.board.filter(u=>u.id!=="ship").forEach(u=>seen.add(u.id));
-    g.endTurn(0);g.endTurn(1);
+    g.endTurn(0);settle(g);g.endTurn(1);
   }
   check("海盗船会随机召唤不同的海盗",seen.size>=3,[...seen].join(","));
 }
@@ -212,6 +201,22 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
     if(b.hp===14)seen.add("伤害");else if(b.hp===24)seen.add("治疗对手");else if(a.hp===hp0-3)seen.add("自伤");else if(a.hand.length>=h+1)seen.add("抽牌");
   }
   check("淘金会随机触发 4 种效果",seen.size===4,[...seen].join(","));
+}
+
+/* ---- 炮火准备（choose3x2 法术）---- */
+{
+  const g=game("下水","字母");
+  const a=g.players[0],b=g.players[1];
+  const f1=mk(g,"字母","commando"),f2=mk(g,"字母","shadow"),f3=mk(g,"字母","over");
+  f1.health=4;f2.health=4;f3.health=4;b.board.push(f1,f2,f3);
+  ready(g,0,[mk(g,"下水","prepfire")]);
+  const r=play(g,0,a.hand[0],[f1.uid,f2.uid,f3.uid]);
+  check("炮火准备：选中 3 个敌方单位各受 2 点伤害",r.ok&&f1.health===2&&f2.health===2&&f3.health===2,r.error||(f1.health+","+f2.health+","+f3.health));
+  const g2=game("下水","字母");const a2=g2.players[0],b2=g2.players[1];
+  const x=mk(g2,"字母","commando"),y=mk(g2,"字母","shadow");x.health=3;y.health=3;b2.board.push(x,y);
+  ready(g2,0,[mk(g2,"下水","prepfire")]);
+  const r2=play(g2,0,a2.hand[0],[x.uid]);
+  check("炮火准备：只选 1 个也只伤它",r2.ok&&x.health===1&&y.health===3,r2.error||(x.health+","+y.health));
 }
 
 /* ---- 数据一致性 ---- */

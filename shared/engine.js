@@ -75,6 +75,7 @@ function optionSpec(card){
 function scrapTax(p){return p&&p.board?p.board.filter(u=>u.effect==="scrapTax"&&u.health>0).length:0;}
 /* 实际费用：废品回收站让手牌中的废料费用 +1（视图里的牌已经加过，带 taxed 标记） */
 function effCost(card,me){return card.cost+((card.scrap&&!card.taxed)?scrapTax(me):0);}
+/* 能否出这张牌：返回 null 或原因 */
 function playError(card,me,foe){
   const cost=effCost(card,me);
   if(cost>me.energy)return`费用不足（需要 ${cost}，当前 ${me.energy}）`;
@@ -91,10 +92,13 @@ function playError(card,me,foe){
     const need={scrapToUnits:1,convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,scrapSearch:1,crownCopy:2}[card.effect];
     if(need&&sc<need)return`需要手牌中至少有 ${need} 张【废料】（目前 ${sc} 张）`;
     if(card.effect==="scrapStun"&&!foe.board.length)return"敌方没有单位可以眩晕";
-    if(card.effect==="scrapSearch"&&!me.deck.length)return"你的牌库已经空了";
+    // 下面三处加了 me.deck / foe.deck 的判空：
+    // 客户端 UI 用的是 pubPlayer（没有 deck 字段），加 && 后 UI 预判会跳过这一层，
+    // 真正的规则裁决仍由引擎（playCard）用完整 player 对象执行。
+    if(card.effect==="scrapSearch"&&me.deck&&!me.deck.length)return"你的牌库已经空了";
     if(card.effect==="scrapToUnits"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
-    if(card.effect==="supplyDeck"&&!me.deck.some(x=>x.kind==="unit"))return"牌库里没有单位牌";
-    if(card.effect==="intelSteal"&&!foe.deck.length)return"敌方牌库已经空了";
+    if(card.effect==="supplyDeck"&&me.deck&&!me.deck.some(x=>x.kind==="unit"))return"牌库里没有单位牌";
+    if(card.effect==="intelSteal"&&foe.deck&&!foe.deck.length)return"敌方牌库已经空了";
   }
   if(e==="consolidate"&&redCount(me)<2)return"整编需要至少 2 个【俄布】";
   if(e==="artilleryCommand"){
@@ -225,7 +229,7 @@ class Game{
     if(u.kind!=="unit")return;
     if(hasCost(p,"blr")&&u.charge){u.charge=false;u.atkLeft=0;}
     if(hasBonus(p,"rus")&&!u.charge){u.charge=true;u.atkLeft=u.strikes;}
-    if(hasBonus(p,"blr")&&u.taunt){u.health+=1;u.maxHealth+=1;}
+    if(hasBonus(p,"blr")&&u.taunt){u.attack+=1;u.health+=2;u.maxHealth+=2;}
     if(hasCost(p,"ukr")&&u.health>1){u.health-=1;u.maxHealth=Math.max(1,u.maxHealth-1);}
   }
   steal(p,n){
@@ -362,10 +366,20 @@ class Game{
     }
     this.emit({t:"turn",pi});
     if(!(pi===this.first&&p.turnsStarted===1))this.draw(p,1);
+    /* 苏苏开局：自动抽取并自动使用【苏维埃社会主义共和国联盟】——选择一个政体并成为它 */
+    if(p.hero==="苏苏"&&p.regime===null&&p.turnsStarted===1){
+      const opts=["rus","ukr","blr"].map(r=>({uid:-1,id:r,name:C.REGIMES[r],cost:0,kind:"spell",art:"☭",text:"开局确立此政体，其后新部署单位按其规则结算"}));
+      const auto=Math.max(0,["rus","ukr","blr"].indexOf(bestRegime(p,this.opp(p))));
+      this._pick(p,"苏维埃社会主义共和国联盟","开局：选择要建立的共和国政体并成为它",opts,auto,card=>{
+        this.setRegime(p,card.id);
+        this.note(`已建立【${C.REGIMES[card.id]}】政体`,p);
+      });
+    }
     if(p.hero==="绘梨衣"){
-      const card=this.clone(TOKENS.scrap,p.hero);
-      if(this.addToHand(p,card))this.note("皇冠产出：获得 1 张【碎纸】",p);
-      else this.note("皇冠产出：手牌已满，没有产出",p);
+      // 皇冠产出 1→2 张：加快废料积累，支撑转化 / 复制皇冠等消耗（配合转化改进，避免慢热过头）
+      let got=0;
+      while(got<2&&p.hand.length<MAX_HAND&&this.addToHand(p,this.clone(TOKENS.scrap,p.hero)))got++;
+      this.note(got?`皇冠产出：获得 ${got} 张【碎纸】`:"皇冠产出：手牌已满，没有产出",p);
     }
   }
   _guard(pi){
@@ -434,16 +448,21 @@ class Game{
     s.hand=s.hand.filter(x=>!take.includes(x));
     return take.length;
   }
-  /* 转化 N：弃掉 N 张废料，从费用 N+1 ~ N+3 的牌里发现 1 张，费用 -1 */
+  /* 转化 N：弃掉 N 张废料，从牌库里发现 1 张中费牌，费用 -（N-1）
+     旧规则池是 N+1~N+3，但绘梨衣卡组没有 4~6 费牌，导致「转化 3」几乎转不出牌、
+     且转 3 不比转 2 好——出现「转得越多牌效越低」。
+     修复：池下限固定为 3（保证能转到 汐/卫队/中立宣言 这类中费好牌），上界放宽到 N+4，
+     折扣随 N 增大、选项随 N 增多——转得越多，牌越好、越便宜。 */
   _convert(s,n,label){
     if(s.hand.filter(x=>x.scrap).length<n){this.note(`${label}：手牌中的废料不足 ${n} 张`,s);return;}
     this._discardScrap(s,n,false);
-    const pool=PROFILES[s.hero].cards.filter(x=>!x.awaSwap&&x.cost>=n+1&&x.cost<=n+3&&!/^(convert|crownCopy)/.test(x.effect||""));
-    const opts=shuffle(pool.slice()).slice(0,3).map(x=>{const k=this.clone(x,s.hero);k.cost=Math.max(0,k.cost-1);return k;});
+    const lo=3, hi=n===2?5:n+4, disc=n-1, count=n+1;
+    const pool=PROFILES[s.hero].cards.filter(x=>!x.awaSwap&&x.cost>=lo&&x.cost<=hi&&!/^(convert|crownCopy)/.test(x.effect||""));
+    const opts=shuffle(pool.slice()).slice(0,count).map(x=>{const k=this.clone(x,s.hero);k.cost=Math.max(0,k.cost-disc);return k;});
     if(!opts.length){this.note(`${label}：没有可以转化的牌`,s);return;}
     this.note(`${label}：弃掉 ${n} 张废料`,s);
     const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
-    this._pick(s,label,`弃掉了 ${n} 张废料：选择 1 张加入手牌，费用 -1`,opts,auto,card=>{
+    this._pick(s,label,`弃掉了 ${n} 张废料：选择 1 张加入手牌，费用 -${disc}`,opts,auto,card=>{
       if(!this.addToHand(s,card))this.burn(s,card);
       this.note(`${label}：转化出【${card.name}】`,s,true);
       this.emit({t:"fx",name:"convert",pi:s.idx});
@@ -523,7 +542,7 @@ class Game{
       case"buffAll2":this.buffAll(s,2,2);break;
       case"buffGuns1":s.board.forEach(u=>{if(u.gun)u.attack+=1;});break;
       case"buffGuns2":s.board.forEach(u=>{if(u.gun)u.attack+=2;});break;
-      case"gunnerBoost":if(gunCount(s)>1){c.attack+=2;c.health+=2;c.maxHealth+=2;this.note("炮兵班：获得 +2/+2",s);}break;
+      case"gunnerBoost":if(gunCount(s)>1){c.attack+=1;c.health+=1;c.maxHealth+=1;this.note("炮兵班：获得 +1/+1",s);}break;
       case"energyDown":this.loseMax(o,1);this.note("引力场：敌方费用上限 -1",s);break;
       case"choose4":case"choose2":{
         const dmg=c.effect==="choose4"?4:2;
@@ -706,6 +725,12 @@ class Game{
         }
         this.note(`复制皇冠：弃掉 ${k} 张废料，复制出 ${got} 张精英牌`,s);
         break;}
+      case"choose3x2":{
+        // 法术版（炮火准备）：cast 缺少该分支导致法术打出去空转，这里补上与 deploy 相同的处理
+        const list=(targets&&targets.length)?targets:autoTargets(c,s,o);
+        const hit=[];list.forEach(id=>{const t=o.board.find(u=>u.uid===id);if(t){this.damageUnit(o,t,2,s);hit.push(t.name);}});
+        if(hit.length)this.note(`对 ${hit.join("、")} 各造成 2 点伤害`,s);
+        break;}
       case"decreeRus":this.setRegime(s,"rus");this.summon(s,"red",1);fx("summonRed",{n:1});break;
       case"decreeUkr":{
         this.setRegime(s,"ukr");
@@ -738,6 +763,9 @@ class Game{
         break;}
       case"summonRed1":this.summon(s,"red",1);fx("summonRed",{n:1});break;
       case"summonRed2":this.summon(s,"red",2);fx("summonRed",{n:2});break;
+      case"summonRed1Draw":if(this.summon(s,"red",1)){this.draw(s,1);fx("summonRed",{n:1});}break;
+      case"buffReds1":s.board.forEach(u=>{if(u.id==="red"){u.attack+=1;u.health+=1;u.maxHealth+=1;}});this.note("红军集结：所有俄布 +1/+1",s);break;
+      case"redDraw":{const n=redCount(s);if(n>0)this.draw(s,n);this.note(`战时共产主义：每控制 1 个俄布抽 1 张，共抽 ${n} 张`,s);break;}
       case"armor3draw":this.armor(s,3);this.draw(s,1);break;
       case"traceBoost":this.armor(s,6);this.draw(s,2);break;
       case"timeShield2":this.armor(s,5);this.heal(s,3);break;
@@ -813,7 +841,7 @@ class Game{
         fx("saturation");
         if(dmg>0){this.aoe(s,o,dmg);this.damageHero(o,dmg);}
         break;}
-      case"reload":s.board.forEach(u=>{if(u.gun){u.attack+=3;u.tempAtk=(u.tempAtk||0)+3;}});this.draw(s,1);break;
+      case"reload":s.board.forEach(u=>{if(u.gun){u.attack+=2;u.tempAtk=(u.tempAtk||0)+2;}});this.draw(s,1);break;
       case"buffGuns2draw":s.board.forEach(u=>{if(u.gun)u.attack+=2;});this.draw(s,1);break;
       case"supply":this.draw(s,2);this.armor(s,2);break;
       case"fillRed":{
@@ -898,7 +926,9 @@ class Game{
         if(auto<0)auto=top.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
         this._pick(s,c.name,"选择一张加入手牌，其余放回牌库底",top,auto,card=>{
           if(!this.addToHand(s,card))this.burn(s,card);
-          top.filter(x=>x!==card).forEach(x=>s.deck.unshift(x));
+          // 注释里写的是「放回牌库底」，但原代码用了 unshift（插到牌库顶）——
+          // 改成 push，真正放回牌库底部。
+          top.filter(x=>x!==card).forEach(x=>s.deck.push(x));
           this.note(`${c.name}：选择了【${card.name}】`,s,true);
         });
         break;}

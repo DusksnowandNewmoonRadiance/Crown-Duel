@@ -27,6 +27,14 @@ const CardView=(()=>{
   }
   /* c: 卡牌数据（引擎实例或卡牌定义），opts: {cant} */
   function card(c,opts){
+    // 数据兜底：任何 null / undefined / 缺 id 或 kind 的对象都渲染成占位卡，
+    // 不抛异常，避免把整个手牌区（及对局流程）拖死。
+    if(!c||c.id===undefined||c.kind===undefined){
+      return '<div class="card k-spell r-common"><span class="cost">?</span>'+
+        '<div class="art"><span>?</span></div>'+
+        '<div class="nm">数据缺失</div>'+
+        '<div class="tx">这张卡的数据异常，请刷新页面</div></div>';
+    }
     opts=opts||{};
     const atk=c.attack!==undefined?c.attack:c.atk,hp=c.health!==undefined?c.health:c.hp,maxHp=c.maxHealth!==undefined?c.maxHealth:c.hp;
     const base=c.baseCost!==undefined?c.baseCost:c.cost;

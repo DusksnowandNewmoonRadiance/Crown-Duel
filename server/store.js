@@ -25,9 +25,25 @@ if(!Array.isArray(announcements)){
     popup:false,pinned:true,createdAt:Date.now(),updatedAt:Date.now()}];
 }
 let balance=read("balance.json",{rev:"",overrides:{},updatedAt:0});
+let stats=read("stats.json",{});
+/* 胜率统计：{ [hero]: {wins,losses,draws,games,winRate} }，记录联机对局结果 */
+function calcRate(s){s.games=s.wins+s.losses+s.draws;s.winRate=s.games?Math.round(s.wins/s.games*1000)/10:0;return s;}
 
 const Store={
   DATA_DIR,TYPES,
+  stats(){return stats;},
+  /* heroes:[h0,h1]，winner:0|1|"draw" */
+  recordMatch(heroes,winner){
+    if(!Array.isArray(heroes)||heroes.length<2)return stats;
+    const a=heroes[0],b=heroes[1];
+    const A=stats[a]||(stats[a]={wins:0,losses:0,draws:0,games:0,winRate:0});
+    const B=stats[b]||(stats[b]={wins:0,losses:0,draws:0,games:0,winRate:0});
+    if(winner==="draw"){A.draws++;B.draws++;}
+    else{A[winner===0?"wins":"losses"]++;B[winner===0?"losses":"wins"]++;}
+    calcRate(A);calcRate(B);
+    write("stats.json",stats);
+    return stats;
+  },
   announcements(){return announcements.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt);},
   upsertAnnouncement(a){
     const now=Date.now();

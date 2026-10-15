@@ -56,18 +56,31 @@ const GameUI=(()=>{
   function push(u){if(!S.ctl)return;S.queue.push(u);if(!S.processing)processQueue();}
   async function processQueue(){
     S.processing=true;
-    while(S.queue.length&&S.ctl){
-      const u=S.queue.shift();
-      // 动画等待最多 9 秒：任何一个特效卡住（页面切到后台、元素被替换）都不能让界面永远不可操作
-      let wd;
-      const guard=new Promise((_,rej)=>{wd=setTimeout(()=>rej(new Error("animation watchdog")),9000);});
-      try{await Promise.race([handle(u),guard]);}
-      catch(e){console.error(e);S.viewSeq=u.seq!==undefined?u.seq:S.viewSeq;S.view=u.view;render(true);}
-      finally{clearTimeout(wd);}
+    // 用 try/finally 包住整个循环：即使 handle / render 在任何地方抛异常，
+    // finally 里的 S.processing=false 和 waiters 清理也一定会执行，
+    // 保证 UI 不会永久锁死、AI 不会永久卡在 GameUI.idle()。
+    try{
+      while(S.queue.length&&S.ctl){
+        const u=S.queue.shift();
+        // 动画等待最多 9 秒：任何一个特效卡住（页面切到后台、元素被替换）都不能让界面永远不可操作
+        let wd;
+        const guard=new Promise((_,rej)=>{wd=setTimeout(()=>rej(new Error("animation watchdog")),9000);});
+        try{
+          await Promise.race([handle(u),guard]);
+        }catch(e){
+          console.error(e);
+          S.viewSeq=u.seq!==undefined?u.seq:S.viewSeq;
+          S.view=u.view;
+          try{render(true);}catch(e2){console.error("[render recover]",e2);}
+        }finally{
+          clearTimeout(wd);
+        }
+      }
+    }finally{
+      S.processing=false;
+      S.waiters.splice(0).forEach(f=>f());
+      try{render(false);}catch(e){console.error("[render final]",e);}
     }
-    S.processing=false;
-    S.waiters.splice(0).forEach(f=>f());
-    render(false);
   }
   function idle(){return(S.processing||S.queue.length)?new Promise(r=>S.waiters.push(r)):Promise.resolve();}
 
@@ -399,17 +412,28 @@ const GameUI=(()=>{
     const L=layoutHand(hand.length);let created=0;
     const rd=ready()&&!S.cast;
     hand.forEach((c,i)=>{
+      // 数据兜底：坏卡跳过，不要让一张坏卡把整个手牌渲染打断
+      if(!c||c.uid===undefined)return;
       let el=map.get(String(c.uid));
       if(el)map.delete(String(c.uid));
       else{el=document.createElement("div");el.dataset.uid=c.uid;box.appendChild(el);if(!full){el._enter=true;created++;setTimeout(()=>{el._enter=false;el.classList.remove("enter");},420);}}
-      const p=L(i),playable=rd&&!E.playError(c,v.me,v.foe);
+      const p=L(i);
+      // playError 现在对视图对象（无 deck 字段）安全，但仍然包一层防御
+      let playable=false;
+      try{playable=rd&&!E.playError(c,v.me,v.foe);}catch(err){console.error("[syncHand/playError]",err);}
       el.className="hcard"+(c.sealed?" sealed":"")+(playable?" play":"")+(S.sel&&S.sel.type==="hand"&&S.sel.uid===c.uid?" sel":"")+(S.drag&&S.drag.uid===c.uid?" drag":"")+(el._enter?" enter":"");
       el.style.left=p.left+"px";el.style.zIndex=S.sel&&S.sel.uid===c.uid?50:(i+1);
       el.style.setProperty("--rot",p.rot.toFixed(1)+"deg");el.style.setProperty("--ty",p.ty.toFixed(1)+"px");
       const html=V.card(c,{cant:v.myTurn&&v.phase==="play"&&c.cost>v.me.energy});
       if(el._sig!==html){el.innerHTML=html;el._sig=html;}
     });
-    map.forEach(el=>{el._dying=true;el.classList.add("dying");setTimeout(()=>el.remove(),220);});
+    // 弃牌立即移除，不走 setTimeout —— 避免卡死时残留空壳 DOM 元素
+    map.forEach(el=>{
+      el._dying=true;
+      el.classList.add("dying");
+      el.innerHTML="";
+      el.remove();
+    });
     if(created)Audio2.sfx("draw");
   }
   function syncFoeHand(){

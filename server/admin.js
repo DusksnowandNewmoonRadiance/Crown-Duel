@@ -31,6 +31,7 @@ module.exports=function adminRouter(ctx){
   });
 
   router.get("/api/status",(req,res)=>res.json(ctx.status()));
+  router.get("/api/stats",(req,res)=>res.json(Store.stats()));
 
   router.get("/api/announcements",(req,res)=>res.json(Store.announcements()));
   router.post("/api/announcements",(req,res)=>{

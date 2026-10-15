@@ -36,6 +36,18 @@ check("没有直接抽牌的法术（抽牌只能由废料触发）",!C.PROFILES
   const base=C.PROFILES["绘梨衣"].cards.find(x=>x.id===a.hand[0].id);
   check("转化出的牌费用 -1",a.hand[0].cost===base.cost-1);
 }
+{ // 转化 3（比转化 2 更好：4 选 1、费用 -2、池覆盖中费好牌）
+  const {g,a}=setup();
+  give(g,a,"scrap",3);const c=give(g,a,"remelt");
+  check("转化 3：废料足够时可以打出",!E.playError(c,a,g.players[1]));
+  const r=play(g,c);
+  check("转化 3：进入选择，4 个选项且费用 -2（≤3）",r.ok&&g.pending&&g.pending.cards.length===4&&g.pending.cards.every(x=>x.cost>=1&&x.cost<=3),g.pending&&g.pending.cards.map(x=>x.name+x.cost).join(","));
+  check("转化：3 张废料被弃掉",a.hand.filter(x=>x.scrap).length===0);
+  g.resolvePending(0,0);
+  check("转化 3：选中的牌进入手牌",a.hand.length===1&&!a.hand[0].scrap);
+  const b2=C.PROFILES["绘梨衣"].cards.find(x=>x.id===a.hand[0].id);
+  check("转化 3 出的牌费用 -2",a.hand[0].cost===b2.cost-2);
+}
 { const {g,a}=setup();
   give(g,a,"scrap");const c=give(g,a,"upcycle");
   check("废料不足 2 张不能打出",!!E.playError(c,a,g.players[1])); }

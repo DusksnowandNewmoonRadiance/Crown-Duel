@@ -52,12 +52,8 @@ const ELITE={
   "绘梨衣:neutral":{pattern:"ring",palette:"white",glyph:"⚐",target:"center"},
   "绘梨衣:crown":{pattern:"pillar",palette:"rose",glyph:"♛",target:"me"},
   "苏苏:awaSwap":{pattern:"rift",palette:"white",glyph:"∅",target:"foe"},
-  "苏苏:first":{pattern:"slash",palette:"crimson",glyph:"Ⅰ",target:"foe"},
-  "苏苏:marshal":{pattern:"burst",palette:"ember",glyph:"✚",target:"foe"},
-  "苏苏:katyusha":{pattern:"rain",palette:"amber",glyph:"✣",target:"foeBoard"},
-  "苏苏:armoredtrain":{pattern:"wave",palette:"steel",glyph:"▦",target:"meBoard"},
+  "苏苏:kazakh":{pattern:"wave",palette:"ember",glyph:"☭",target:"meBoard"},
   "苏苏:winter":{pattern:"ring",palette:"frost",glyph:"❄",target:"foeBoard"},
-  "苏苏:artillery":{native:true,label:"炮兵总司令（原有动画）"},
   "苏苏:peoplearmy":{native:true,label:"人民军（原有动画）"},
   "苏苏:reddawn":{native:true,label:"赤色黎明（原有动画）"},
   /* 字母 */
