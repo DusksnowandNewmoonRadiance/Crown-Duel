@@ -287,11 +287,13 @@ class Game{
     for(let i=0;i<n&&p.board.length<MAX_BOARD;i++){const u=this.clone(def,p.hero);p.board.push(u);this._enter(p,u);k++;}
     return k;
   }
-  takeover(from,to,u,label){
+  takeover(from,to,u,label,temp){
     if(to.board.length>=MAX_BOARD){this.note(`${label}：战场已满，无法策反`,to);return false;}
     from.board=from.board.filter(x=>x!==u);
-    this._ready(u);to.board.push(u);
-    this.note(`${label}：${u.name} 倒戈加入！`,to);
+    this._ready(u);
+    u.tempRebel=temp?from.idx:null;   // 临时策反记录原主人（下回合返回）；null=永久策反
+    to.board.push(u);
+    this.note(`${label}：${u.name} 倒戈加入！${temp?"（限一回合，下回合返回）":""}`,to);
     this.emit({t:"fx",name:"rebel",pi:to.idx,uid:u.uid});
     return true;
   }
@@ -347,6 +349,17 @@ class Game{
       if(u.lifespan>0){
         u.lifespan--;
         if(u.lifespan<=0){u.health=0;this.note(`${u.name} 消散了`,p);this.emit({t:"fx",name:"fade",pi,uid:u.uid});}
+      }
+    }
+    /* 临时策反：限一回合，下个回合开始返回原主人（战场满→回手牌，再满→消散） */
+    {
+      const ret=[];
+      for(const u of p.board)if(u.tempRebel!=null&&u.tempRebel!==undefined)ret.push(u);
+      for(const u of ret){
+        const orig=this.players[u.tempRebel];
+        if(orig.board.length<MAX_BOARD){p.board=p.board.filter(x=>x!==u);this._ready(u);orig.board.push(u);this.note(`${u.name} 策反结束，返回了 ${orig.name} 的战场`,p);}
+        else if(orig.hand.length<MAX_HAND){p.board=p.board.filter(x=>x!==u);orig.hand.push(u);this.note(`${u.name} 策反结束，${orig.name} 战场已满，返回其手牌`,p);}
+        else{u.health=0;this.note(`${u.name} 策反结束，无处可归，消散了`,p);}
       }
     }
     this.cleanup();
@@ -894,11 +907,11 @@ class Game{
         break;
       case"rebel":{
         const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
-        const t=o.board.find(u=>u.uid===id);if(t)this.takeover(o,s,t,"策动叛乱");
+        const t=o.board.find(u=>u.uid===id);if(t)this.takeover(o,s,t,"策动叛乱");   // 永久策反
         break;}
-      case"takeover":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>b.attack-a.attack)[0],"战术接管");break;
-      case"rebelLowest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.attack-b.attack)[0],"煽动哗变");break;
-      case"rebelWeakest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.health-b.health)[0],"内应接应");this.draw(s,1);break;
+      case"takeover":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>b.attack-a.attack)[0],"战术接管",true);break;
+      case"rebelLowest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.attack-b.attack)[0],"煽动哗变",true);break;
+      case"rebelWeakest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.health-b.health)[0],"内应接应",true);this.draw(s,1);break;
       case"disruption":o.board.forEach(u=>{u.stun=Math.max(u.stun,1);u.atkLeft=0;});this.damageHero(o,2);fx("gravityLock");break;
       case"gravityLock":o.board.forEach(u=>{u.stun=Math.max(u.stun,1);u.atkLeft=0;});fx("gravityLock");break;
       case"evasion":s.heroImmune=true;fx("evasion");break;

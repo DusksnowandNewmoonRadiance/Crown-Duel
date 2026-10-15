@@ -219,6 +219,30 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   check("炮火准备：只选 1 个也只伤它",r2.ok&&x.health===1&&y.health===3,r2.error||(x.health+","+y.health));
 }
 
+/* ---- 字母：临时策反限一回合，下回合返回 / 策动叛乱永久 ---- */
+{
+  const g=game("字母","苏苏");
+  const a=g.players[0],b=g.players[1];
+  const foe=mk(g,"苏苏","redheavy");b.board.push(foe);
+  ready(g,0,[mk(g,"字母","takeover")]);
+  play(g,0,a.hand[0]);
+  const u=a.board.find(x=>x.uid===foe.uid);
+  check("战术接管：临时策反单位进入你的战场",a.board.some(x=>x.uid===foe.uid)&&u&&u.tempRebel===1);
+  g.endTurn(0);settle(g);g.endTurn(1);
+  check("战术接管：你的下个回合开始单位返回原主人",b.board.some(x=>x.uid===foe.uid)&&!a.board.some(x=>x.uid===foe.uid));
+}
+{
+  const g=game("字母","苏苏");
+  const a=g.players[0],b=g.players[1];
+  const foe=mk(g,"苏苏","redheavy");b.board.push(foe);
+  ready(g,0,[mk(g,"字母","rebel")]);
+  play(g,0,a.hand[0],[foe.uid]);
+  const u=a.board.find(x=>x.uid===foe.uid);
+  check("策动叛乱：永久策反（无临时标记）",!!u&&(u.tempRebel==null));
+  g.endTurn(0);settle(g);g.endTurn(1);
+  check("策动叛乱：下个回合仍在你战场（永久）",a.board.some(x=>x.uid===foe.uid)&&!b.board.some(x=>x.uid===foe.uid));
+}
+
 /* ---- 数据一致性 ---- */
 {
   let bad=[];
