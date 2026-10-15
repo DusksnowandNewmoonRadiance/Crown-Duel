@@ -203,7 +203,7 @@ const PROFILES={
     {id:"gunner",name:"炮兵班",cost:2,kind:"unit",art:"◆",atk:2,hp:2,text:"无视嘲讽。部署：如果你控制其他火炮，获得 +1/+1。",ignoreTaunt:true,effect:"gunnerBoost",n:3,limit:3,gun:true,rarity:"rare"},
     {id:"cannon",name:"远程火炮",cost:2,kind:"unit",art:"✚",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 2 点伤害。",ignoreTaunt:true,effect:"hero2",n:2,limit:3,gun:true,rarity:"rare"},
     {id:"battery",name:"重炮连",cost:3,kind:"unit",art:"▥",atk:3,hp:4,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +1 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns1",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
-    {id:"commander",name:"火力指挥官",cost:3,kind:"unit",art:"★",atk:4,hp:5,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +2 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns2",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
+    {id:"commander",name:"火力指挥官",cost:4,kind:"unit",art:"★",atk:3,hp:5,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +2 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns2",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
     {id:"ammo",name:"弹药车",cost:2,kind:"unit",art:"▣",atk:2,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:1,limit:2,rarity:"special"},
     {id:"spotter",name:"前沿观察员",cost:1,kind:"unit",art:"◇",atk:2,hp:1,text:"冲锋。",charge:true,n:1,limit:2,rarity:"special"},
     {id:"howitzer",name:"榴弹炮",cost:4,kind:"unit",art:"✣",atk:4,hp:5,text:"无视嘲讽。",ignoreTaunt:true,n:2,limit:2,gun:true,rarity:"special"},
