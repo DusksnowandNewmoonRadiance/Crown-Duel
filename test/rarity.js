@@ -28,7 +28,7 @@ elites.forEach(c=>{const r=F.recipeFor(c);if(!r||r.native)return;
   if(!r.glyph)bad.push(c.id+" glyph");});
 check("精英配方字段合法",!bad.length,bad.join(","));
 check("精英名单里没有多余的配方",Object.keys(F.ELITE).every(k=>elites.some(c=>c.hero+":"+c.id===k)));
-check("原有专属动画的精英沿用原动画",Object.values(F.ELITE).filter(r=>r.native).length===9);
+check("原有专属动画的精英沿用原动画",Object.values(F.ELITE).filter(r=>r.native).length===8);
 
 /* 特殊：部分有通用特效，可重复 */
 const specials=all.filter(c=>c.rarity==="special");

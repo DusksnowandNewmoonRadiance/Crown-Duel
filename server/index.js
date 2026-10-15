@@ -51,6 +51,7 @@ app.use("/shared",express.static(path.join(__dirname,"..","shared"),noCache));
 app.get("/healthz",(req,res)=>res.json({ok:true,build:BUILD,online:onlineCount(),rooms:rooms.size,uptime:process.uptime()|0}));
 app.get("/api/announcements",(req,res)=>{res.setHeader("Cache-Control","no-cache");res.json(Store.announcements().slice(0,30));});
 app.get("/api/content",(req,res)=>{res.setHeader("Cache-Control","no-cache");const b=Store.balance();res.json({build:BUILD,version:VERSION,rev:b.rev,overrides:b.overrides||{},maintenance:maintView()});});
+app.get("/api/stats",(req,res)=>{res.setHeader("Cache-Control","no-cache");res.json(Store.stats());});
 app.use("/admin",adminRouter({
   status:()=>({build:BUILD,version:VERSION,uptime:process.uptime()|0,online:onlineCount(),queue:queue.length,rooms:rooms.size,
     matches:activeMatches(),maintenance:maintView(),dataDir:Store.DATA_DIR}),
@@ -319,6 +320,9 @@ class Match{
     const r=this.room;
     r.status="waiting";r.ready=[false,false];
     const g=this.game;
+    /* 联机胜率统计：按双方英雄记录胜负（平局各记一场） */
+    try{Store.recordMatch(this.seats.map(id=>{const u=users.get(id);return u&&u.hero||"?";}),g.winner);}
+    catch(e){console.error("[stats] 记录对局失败",e);}
     roomSys(r,g.winner==="draw"?"对局结束：平局":`对局结束：${g.players[g.winner].name} 获胜`);
     roomChanged(r);
   }

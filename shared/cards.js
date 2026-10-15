@@ -18,35 +18,30 @@ const RARITY={
 const RARITY_ORDER=["common","rare","special","elite"];
 
 const PROFILES={
-  "苏苏":{faction:"彗星国 · 架子班 · 鸭子系",style:"苏维埃体系 · 政体切换 · 整编爆发",hp:35,cards:[
-    /* 单位：rep 标明所属共和国（俄罗斯 rus / 乌克兰 ukr / 白俄罗斯 blr） */
+  "苏苏":{faction:"彗星国 · 架子班 · 鸭子系",style:"苏维埃体系 · 俄布海 · 整编爆发",hp:35,cards:[
+    /* 单位：俄布海核心，统一归入俄罗斯政体（开局经【苏维埃社会主义共和国联盟】确立政体） */
     {id:"red",name:"俄罗斯布尔什维克红军",cost:2,kind:"unit",art:"★",atk:2,hp:2,text:"",rep:"rus",n:4,limit:4,rarity:"common"},
-    {id:"redguard",name:"赤卫队",cost:1,kind:"unit",art:"⚑",atk:2,hp:1,text:"冲锋。",charge:true,rep:"rus",n:1,limit:3,rarity:"rare"},
+    {id:"redguard",name:"赤卫队",cost:1,kind:"unit",art:"⚑",atk:2,hp:1,text:"冲锋。",charge:true,rep:"rus",n:2,limit:3,rarity:"rare"},
     {id:"commissar",name:"苏维埃政委",cost:2,kind:"unit",art:"☭",atk:2,hp:3,text:"回收：被消灭时，把 1 张【红色动员令】放回你的手牌。",flavor:"人倒下了，命令还要传下去。",recycle:"mobilize",rep:"rus",n:2,limit:2,rarity:"special"},
-    {id:"sniper",name:"红军狙击手",cost:2,kind:"unit",art:"◉",atk:2,hp:2,text:"部署：对 1 个敌方单位造成 2 点伤害。",effect:"choose2",rep:"ukr",n:1,limit:2,rarity:"special",fx:"sp_strike"},
-    {id:"ukr",name:"乌克兰红军",cost:3,kind:"unit",art:"✦",atk:4,hp:3,text:"部署：对 1 个敌方单位造成 4 点伤害。",effect:"choose4",rep:"ukr",n:1,limit:2,rarity:"special",fx:"sp_strike"},
-    {id:"first",name:"苏一世",cost:3,kind:"unit",art:"Ⅰ",atk:4,hp:4,text:"冲锋。每次攻击后，失去 1 点生命。引渡：被消灭时，把【苏二世】置入你的手牌。",flavor:"旧大陆贫困地区出身，常年保持 1 段。",charge:true,effect:"selfDamage1",transfer:"second",rep:"rus",n:1,limit:1,rarity:"elite"},
-    {id:"blr",name:"白俄罗斯卫队",cost:4,kind:"unit",art:"◆",atk:5,hp:5,text:"嘲讽。",taunt:true,rep:"blr",n:1,limit:2,rarity:"special"},
-    {id:"katyusha",name:"喀秋莎火箭炮",cost:4,kind:"unit",art:"✣",atk:4,hp:4,text:"部署：对至多 3 个敌方单位各造成 2 点伤害。",effect:"choose3x2",rep:"ukr",n:1,limit:1,rarity:"elite"},
-    {id:"marshal",name:"炮兵总司令",cost:5,kind:"unit",art:"✚",atk:5,hp:5,text:"部署：对敌方英雄造成 3 点伤害。",effect:"hero3",rep:"ukr",n:1,limit:1,rarity:"elite"},
-    {id:"armoredtrain",name:"装甲列车",cost:6,kind:"unit",art:"▦",atk:7,hp:7,text:"嘲讽。",taunt:true,rep:"blr",n:1,limit:1,rarity:"elite"},
-    /* 政体法令：确立 / 更换政体，各带一个与共和国相称的效果 */
-    {id:"decreeRus",name:"十月宣言",cost:1,kind:"spell",art:"☭",text:"政体变为【俄罗斯】。召唤 1 个【俄布】。",effect:"decreeRus",rep:"rus",n:2,limit:2,rarity:"special"},
-    {id:"decreeUkr",name:"乌克兰苏维埃宣言",cost:1,kind:"spell",art:"✦",text:"政体变为【乌克兰】。对 1 个敌方单位造成 2 点伤害。",effect:"decreeUkr",rep:"ukr",n:2,limit:2,rarity:"special"},
-    {id:"decreeBlr",name:"白俄罗斯苏维埃宣言",cost:1,kind:"spell",art:"◆",text:"政体变为【白俄罗斯】。获得 2 点护甲。",effect:"decreeBlr",rep:"blr",n:2,limit:2,rarity:"special"},
+    {id:"redcharge",name:"红色突击队",cost:2,kind:"unit",art:"▶",atk:2,hp:2,text:"冲锋。",charge:true,rep:"rus",n:3,limit:4,rarity:"common"},
+    {id:"redOfficer",name:"红场指挥官",cost:3,kind:"unit",art:"☭",atk:3,hp:3,text:"部署：召唤 1 个【俄布】。",effect:"summonRed1",rep:"rus",n:2,limit:2,rarity:"special",fx:"sp_strike"},
+    {id:"redheavy",name:"红色重型步兵",cost:4,kind:"unit",art:"▦",atk:4,hp:5,text:"",rep:"rus",n:2,limit:2,rarity:"special"},
+    {id:"kazakh",name:"哈萨克布尔什维克红军",cost:5,kind:"unit",art:"★",atk:1,hp:8,text:"嘲讽。部署：使你的所有【俄布】获得 +2/+2。",taunt:true,effect:"buffRed",rep:"rus",n:1,limit:1,rarity:"elite"},
+    /* 法术：俄布生成 / 增益 / 过牌 */
     {id:"mobilize",name:"红色动员令",cost:1,kind:"spell",art:"☭",text:"召唤 1 个【俄布】。",effect:"summonRed1",n:2,limit:3,rarity:"rare"},
+    {id:"vanguard",name:"先锋动员",cost:2,kind:"spell",art:"☭",text:"召唤 1 个【俄布】。抽 1 张牌。",effect:"summonRed1Draw",n:2,limit:3,rarity:"rare"},
     {id:"october",name:"十月革命",cost:3,kind:"spell",art:"☭",text:"召唤 2 个【俄布】。",effect:"summonRed2",n:3,limit:3,rarity:"rare"},
     {id:"consolidate",name:"整编令",cost:3,kind:"spell",art:"▣",text:"整编：消灭你所有的【俄布】（至少 2 个），召唤 1 个【近卫红军】，攻击力和生命值等于它们的总和。",effect:"consolidate",n:2,limit:3,rarity:"rare"},
-    {id:"supply",name:"后勤补给",cost:1,kind:"spell",art:"▣",text:"补给：从你的牌库中随机展示 3 张单位牌，选择 1 张加入手牌。",effect:"supplyDeck",n:2,limit:2,rarity:"special"},
-    {id:"intelSteal",name:"窃取情报",cost:2,kind:"spell",art:"◎",text:"情报：查看敌方牌库顶的 3 张牌，选择 1 张加入你的手牌，它会从敌方牌库中移除。",effect:"intelSteal",n:2,limit:2,rarity:"special"},
-    {id:"fiveyear",name:"五年计划",cost:3,kind:"spell",art:"⇪",text:"对你的所有单位造成 2 点伤害，然后抽 X 张牌，X 为场上受伤单位的数量。",flavor:"为了计划，总要有人付出代价。",effect:"fiveYearPlan",n:1,limit:2,rarity:"special"},
-    {id:"intel",name:"情报调阅",cost:2,kind:"spell",art:"◎",text:"情报：查看敌方手牌，选择 1 张封存——对手在下个回合无法打出它。若敌方没有手牌，改为召唤 1 个【俄布】。",effect:"intel",n:2,limit:2,rarity:"special"},
+    {id:"rally",name:"红军集结",cost:2,kind:"spell",art:"☭",text:"使你的所有【俄布】获得 +1/+1。",effect:"buffReds1",n:2,limit:3,rarity:"rare"},
     {id:"forward",name:"为了革命的胜利前进",cost:3,kind:"spell",art:"→",text:"使你的所有单位获得 +2/+2。",effect:"buffAll2",n:2,limit:2,rarity:"special",fx:"sp_bless"},
+    {id:"warcom",name:"战时共产主义",cost:2,kind:"spell",art:"⇪",text:"你每控制 1 个【俄布】，抽 1 张牌。",flavor:"为了计划，总要有人付出代价。",effect:"redDraw",n:2,limit:2,rarity:"special"},
+    {id:"supply",name:"后勤补给",cost:1,kind:"spell",art:"▣",text:"补给：从你的牌库中随机展示 3 张单位牌，选择 1 张加入手牌。",effect:"supplyDeck",n:2,limit:2,rarity:"special"},
+    {id:"intel",name:"情报调阅",cost:2,kind:"spell",art:"◎",text:"情报：查看敌方手牌，选择 1 张封存——对手在下个回合无法打出它。若敌方没有手牌，改为召唤 1 个【俄布】。",effect:"intel",n:2,limit:2,rarity:"special"},
+    {id:"intelSteal",name:"窃取情报",cost:2,kind:"spell",art:"◎",text:"情报：查看敌方牌库顶的 3 张牌，选择 1 张加入你的手牌，它会从敌方牌库中移除。",effect:"intelSteal",n:2,limit:2,rarity:"special"},
     {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
-    {id:"artillery",name:"全亚洲炮兵总司令",cost:7,kind:"spell",art:"✣",text:"权限：本局确立或更换过 2 次政体，且你的战场上至少有 2 个单位。用【红军炮兵】填满你的战场，对所有敌方单位造成 3 点伤害。",effect:"artilleryCommand",n:1,limit:1,rarity:"elite"},
-    {id:"awaSwap",name:"undefined",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"},
-    {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"}
+    {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"},
+    {id:"awaSwap",name:"undefined",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[
     {id:"sentry",name:"卫戍哨兵",cost:1,kind:"unit",art:"盾",atk:1,hp:3,text:"嘲讽。",taunt:true,n:2,limit:3,rarity:"rare"},
@@ -203,19 +198,19 @@ const PROFILES={
     {id:"highcommand",name:"高层指令",cost:4,kind:"spell",art:"♛",text:"使你的所有单位获得 +2/+2。",effect:"highcommand",n:1,limit:2,rarity:"special",fx:"sp_bless"}
   ]},
   "下水":{faction:"架子班 · 鸭子系",style:"火炮体系 · 饱和炮击",hp:34,cards:[
-    {id:"smallcannon",name:"小炮组",cost:1,kind:"unit",art:"✚",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,gun:true,rarity:"rare"},
-    {id:"smallgun",name:"轻型炮台",cost:2,kind:"unit",art:"◆",atk:2,hp:3,text:"部署：召唤 1 个【小炮组】。",effect:"copySmallCannon",n:2,limit:3,gun:true,rarity:"rare"},
-    {id:"gunner",name:"炮兵班",cost:1,kind:"unit",art:"◆",atk:2,hp:3,text:"无视嘲讽。部署：如果你控制其他火炮，获得 +2/+2。",ignoreTaunt:true,effect:"gunnerBoost",n:3,limit:3,gun:true,rarity:"rare"},
-    {id:"cannon",name:"远程火炮",cost:2,kind:"unit",art:"✚",atk:2,hp:3,text:"无视嘲讽。部署：对敌方英雄造成 2 点伤害。",ignoreTaunt:true,effect:"hero2",n:2,limit:3,gun:true,rarity:"rare"},
-    {id:"battery",name:"重炮连",cost:3,kind:"unit",art:"▥",atk:3,hp:5,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +1 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns1",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
-    {id:"commander",name:"火力指挥官",cost:3,kind:"unit",art:"★",atk:5,hp:5,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +2 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns2",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
-    {id:"ammo",name:"弹药车",cost:2,kind:"unit",art:"▣",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:1,limit:2,rarity:"special"},
-    {id:"spotter",name:"前沿观察员",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"冲锋。",charge:true,n:1,limit:2,rarity:"special"},
+    {id:"smallcannon",name:"小炮组",cost:1,kind:"unit",art:"✚",atk:1,hp:1,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,gun:true,rarity:"rare"},
+    {id:"smallgun",name:"轻型炮台",cost:3,kind:"unit",art:"◆",atk:2,hp:3,text:"部署：召唤 1 个【小炮组】。",effect:"copySmallCannon",n:2,limit:3,gun:true,rarity:"rare"},
+    {id:"gunner",name:"炮兵班",cost:2,kind:"unit",art:"◆",atk:2,hp:2,text:"无视嘲讽。部署：如果你控制其他火炮，获得 +1/+1。",ignoreTaunt:true,effect:"gunnerBoost",n:3,limit:3,gun:true,rarity:"rare"},
+    {id:"cannon",name:"远程火炮",cost:2,kind:"unit",art:"✚",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 2 点伤害。",ignoreTaunt:true,effect:"hero2",n:2,limit:3,gun:true,rarity:"rare"},
+    {id:"battery",name:"重炮连",cost:3,kind:"unit",art:"▥",atk:3,hp:4,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +1 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns1",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
+    {id:"commander",name:"火力指挥官",cost:3,kind:"unit",art:"★",atk:4,hp:5,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +2 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns2",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
+    {id:"ammo",name:"弹药车",cost:2,kind:"unit",art:"▣",atk:2,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:1,limit:2,rarity:"special"},
+    {id:"spotter",name:"前沿观察员",cost:1,kind:"unit",art:"◇",atk:2,hp:1,text:"冲锋。",charge:true,n:1,limit:2,rarity:"special"},
     {id:"howitzer",name:"榴弹炮",cost:4,kind:"unit",art:"✣",atk:4,hp:5,text:"无视嘲讽。",ignoreTaunt:true,n:2,limit:2,gun:true,rarity:"special"},
     {id:"emplacement",name:"炮兵阵地",cost:5,kind:"unit",art:"▥",atk:4,hp:9,text:"嘲讽。",taunt:true,n:2,limit:2,gun:true,rarity:"special"},
-    {id:"magazine",name:"弹药库",cost:3,kind:"unit",art:"▣",atk:3,hp:6,text:"嘲讽。部署：抽 1 张牌。",taunt:true,effect:"draw",n:2,limit:2,rarity:"special"},
-    {id:"saturation",name:"饱和炮击",cost:3,kind:"spell",art:"▦",text:"你每控制 1 个火炮，对敌方英雄和所有敌方单位造成 2 点伤害。",effect:"saturation",n:4,limit:4,rarity:"common"},
-    {id:"reload",name:"快速装填",cost:1,kind:"spell",art:"↻",text:"本回合使你的所有火炮获得 +3 攻击力，抽 1 张牌。",effect:"reload",n:2,limit:3,rarity:"rare"},
+    {id:"magazine",name:"弹药库",cost:3,kind:"unit",art:"▣",atk:3,hp:5,text:"嘲讽。部署：抽 1 张牌。",taunt:true,effect:"draw",n:2,limit:2,rarity:"special"},
+    {id:"saturation",name:"饱和炮击",cost:5,kind:"spell",art:"▦",text:"你每控制 1 个火炮，对敌方英雄和所有敌方单位造成 2 点伤害。",effect:"saturation",n:4,limit:4,rarity:"common"},
+    {id:"reload",name:"快速装填",cost:1,kind:"spell",art:"↻",text:"本回合使你的所有火炮获得 +2 攻击力，抽 1 张牌。",effect:"reload",n:2,limit:3,rarity:"rare"},
     {id:"supply",name:"炮弹补给",cost:2,kind:"spell",art:"+",text:"抽 2 张牌，获得 2 点护甲。",effect:"supply",n:2,limit:2,rarity:"special"},
     {id:"cover",name:"火力覆盖",cost:3,kind:"spell",art:"✣",text:"对敌方英雄和所有敌方单位造成 2 点伤害。",effect:"aoe2",n:1,limit:2,rarity:"special",fx:"sp_storm"},
     {id:"volley",name:"齐射",cost:4,kind:"spell",art:"✣",text:"对所有敌方单位造成 4 点伤害。",effect:"aoe4",n:1,limit:2,rarity:"special",fx:"sp_storm"},
@@ -225,7 +220,7 @@ const PROFILES={
     {id:"resupply",name:"弹药补充",cost:2,kind:"spell",art:"+",text:"恢复 3 点生命，抽 1 张牌。",effect:"heal3draw",n:1,limit:2,rarity:"special"},
     {id:"bombardcmd",name:"轰炸指令",cost:5,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:2,rarity:"special",fx:"sp_strike"}
   ]},
-  "绘梨衣":{faction:"小怪兽国 · 架子班",style:"劣质资源转化 · 慢热",hp:34,passive:"皇冠产出：每个回合开始，你的手牌获得 1 张【碎纸】。",cards:[
+  "绘梨衣":{faction:"小怪兽国 · 架子班",style:"劣质资源转化 · 慢热",hp:34,passive:"皇冠产出：每个回合开始，你的手牌获得 2 张【碎纸】。",cards:[
     {id:"scavenger",name:"拾荒者",cost:1,kind:"unit",art:"♻",atk:2,hp:2,text:"回收：被消灭时，把 1 张【碎纸】放回你的手牌。",recycle:"scrap",n:3,limit:4,rarity:"common"},
     {id:"station",name:"废品回收站",cost:2,kind:"unit",art:"♲",atk:1,hp:4,text:"你手牌中的【废料】费用 +1。每当你打出 1 张【废料】，抽 1 张牌。",flavor:"什么都收，什么都不扔。",effect:"scrapTax",n:2,limit:2,rarity:"special"},
     {id:"temp",name:"临时工",cost:1,kind:"unit",art:"✂",atk:2,hp:2,text:"部署：弃掉手牌中的 1 张【废料】，获得 +2/+2。",effect:"scrapPump",n:3,limit:4,rarity:"common"},
@@ -274,7 +269,7 @@ const COLORS={绘梨衣:"#a8c97a",苏苏:"#e0664f",字母:"#6fb6dc",七星:"#a98
 /* 新手引导信息：难度 1~3 */
 const HERO_INFO={
   绘梨衣:{difficulty:3,title:"小怪兽国 · 架子班",tip:"每个回合开始你会得到一张【碎纸】——它们是废料，也是原料。前期靠废料单位撑住，攒够废料后用【变废为宝】【回炉重造】换成真正的好牌，或者一口气打成伤害和生命。手牌上限只有 10 张，别让废料把手牌塞满。"},
-  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"没有抽牌，靠场面说话：先用政体法令确立路线，铺满【俄布】后用【整编令】和增益一波推进；换满两次政体才能解锁隐藏终端【全亚洲炮兵总司令】。怕群伤清场，注意别一次铺太满。"},
+  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"开局自动打出【苏维埃社会主义共和国联盟】，选择一个政体成为它——俄布海通常选【俄罗斯】（新单位部署即可攻击）。铺满【俄布】后用【整编令】【红军集结】和增益一波推进，靠【战时共产主义】补牌。怕群伤清场，注意别一次铺太满。"},
   字母:{difficulty:2,title:"新式战法领袖",tip:"超模单位压场，用【消除限制】撕掉嘲讽和免疫后直伤突破；关键时刻策反对手最强的单位。"},
   七星:{difficulty:3,title:"彗星国领袖",tip:"不急着赢：压低对手的费用上限、封锁出牌，再用【衰减】一层一层磨死对手。"},
   核弹:{difficulty:2,title:"凹槽皇帝",tip:"卡组很薄，靠防御和逃跑撑住，找到【超人】后一击决胜——它每回合攻击两次，但只存在到你的下个回合开始。"},
@@ -379,6 +374,8 @@ function checkOverrides(map){
       if(!t){errs.push(`${key}：不支持修改字段「${f}」`);continue;}
       if(t==="num"&&!(Number.isInteger(o[f])&&o[f]>=0&&o[f]<=99))errs.push(`${key}.${f}：必须是 0~99 的整数`);
       if(t==="str"&&!(typeof o[f]==="string"&&o[f].length<=120))errs.push(`${key}.${f}：必须是 120 字以内的文字`);
+      // 后台把 name 改成空串会产生「有费用、无名字」的坏卡，这里堵住。
+      if(f==="name"&&(typeof o[f]!=="string"||!o[f].trim()))errs.push(`${key}.name：名称不能为空`);
       if(t==="rarity"&&!RARITY[o[f]])errs.push(`${key}.rarity：必须是 common / rare / special / elite 之一`);
       if((f==="atk"||f==="hp")&&c.kind!=="unit")errs.push(`${key}：法术牌没有 ${f}`);
       if(f==="hp"&&o[f]<1)errs.push(`${key}.hp：生命值至少为 1`);
