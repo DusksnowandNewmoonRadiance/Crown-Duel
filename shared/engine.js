@@ -557,10 +557,7 @@ class Game{
       case"summonScout":if(this.summon(s,"pirateScout",1))this.note("海盗统领：召唤了先锋海盗",s);break;
       case"pirateCommander":{
         if(this.summon(s,"pirateScout",1))this.note("海盗统领：召唤了先锋海盗",s);
-        const list=(targets&&targets.length)?targets:autoTargets(c,s,o);
-        let hit=0;
-        list.forEach(id=>{const t=s.board.find(u=>u.uid===id);if(t){t.attack+=3;t.health+=3;t.maxHealth+=3;hit++;}});
-        if(hit)this.note("海盗统领：目标单位 +3/+3",s);
+        if(this.addToHand(s,this.clone(TOKENS.pirateCry,s.hero)))this.note("海盗统领：获得 1 张【海盗战嚎】",s);
         break;}
       case"decay1":this.addDecay(s,o,1);break;
       case"copySmallCannon":if(this.summon(s,"smallcannon",1))this.note("轻型炮台复制了一个小炮组",s);break;

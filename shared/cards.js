@@ -153,7 +153,7 @@ const PROFILES={
     {id:"raider",name:"劫掠者",cost:2,kind:"unit",art:"⚑",atk:3,hp:3,text:"冲锋。",charge:true,n:3,limit:3,rarity:"rare"},
     {id:"ship",name:"海盗船",cost:2,kind:"unit",art:"⌁",atk:2,hp:2,text:"部署：随机召唤 1 个海盗。",effect:"summonRandomPirate",n:3,limit:3,rarity:"rare"},
     {id:"captain",name:"年轻船长",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"无视嘲讽。攻击敌方英雄时，额外造成 1 点伤害。",ignoreTaunt:true,n:2,limit:2,rarity:"special"},
-    {id:"pirateWarlord",name:"海盗统领",cost:4,kind:"unit",art:"♜",atk:3,hp:4,text:"冲锋。部署：召唤 1 个【先锋海盗】，并使 1 个你的单位 +3/+3。",charge:true,effect:"pirateCommander",n:2,limit:2,rarity:"special",fx:"sp_guard"},
+    {id:"pirateWarlord",name:"海盗统领",cost:4,kind:"unit",art:"♜",atk:3,hp:4,text:"冲锋。部署：召唤 1 个【先锋海盗】，并将 1 张【海盗战嚎】加入你的手牌。",charge:true,effect:"pirateCommander",n:2,limit:2,rarity:"special",fx:"sp_guard"},
     {id:"king",name:"海盗王",cost:4,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：使你的所有单位获得 +2/+2。",effect:"buffAll2",n:1,limit:1,rarity:"elite"},
     {id:"helmsman",name:"舵手",cost:1,kind:"unit",art:"◉",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"gunner",name:"火炮手",cost:2,kind:"unit",art:"✣",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 1 点伤害。",ignoreTaunt:true,effect:"hero1",n:1,limit:2,rarity:"special"},
@@ -254,6 +254,7 @@ const TOKENS={
   scrapUnit:{id:"scrapUnit",name:"废铜烂铁",cost:0,kind:"unit",art:"▪",atk:2,hp:1,scrap:true,recycle:"scrap",text:"废料。回收：被消灭时，把 1 张【碎纸】放回你的手牌。"},
   redArtillery:{id:"redArtillery",name:"红军炮兵",cost:2,kind:"unit",art:"✣",atk:3,hp:2,ignoreTaunt:true,text:"无视嘲讽。"},
   pirateScout:{id:"pirateScout",name:"先锋海盗",cost:2,kind:"unit",art:"⚓",atk:2,hp:2,charge:true,text:"冲锋。"},
+  pirateCry:{id:"pirateCry",name:"海盗战嚎",cost:1,kind:"spell",art:"♬",text:"选择一个你的单位，使其 +3/+3。",effect:"buffPirate3",fx:"sp_bless"},
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"}
 };
 

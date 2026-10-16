@@ -209,6 +209,11 @@ function scoreCard(s,o,c,lethal){
     if(e==="consolidate"&&redCount(s)>=4)sc+=4;
     if(e==="buffReds1"||e==="buffAll2")sc+=redCount(s)*1.5;
     if(e==="redDraw")sc+=redCount(s)*2;
+    // 苏苏应优先铺俄布：偷卡（情报调阅/窃取情报）倾向大幅降低——尤其前期/俄布少时，别傻前期不铺场
+    if(e==="intel"||e==="intelSteal"){
+      if(s.energy<=6||redCount(s)<2)sc-=30;   // 前期或没俄布场面：几乎不偷，先去铺俄布
+      else sc-=12;   // 中后期也保守
+    }
   }
   return sc;
 }

@@ -168,7 +168,7 @@ function cardBlock(stats){
   console.log("\n=== 卡牌统计（按角色 · 打出≥4局才显示 · 按总伤害排序）===");
   for(const s of stats){
     if(!s.games)continue;
-    const ids=Object.keys(s.cardPlayedGames).filter(id=>s.cardPlayedGames[id]>=4);
+    const ids=Object.keys(s.cardPlayedGames).filter(id=>s.cardPlayedGames[id]>=4&&s.cardPlays[id]>0);   // 只统计该角色亲手打出的卡（排除衍生 token/他人召唤的卡）
     if(!ids.length){console.log(`  [${pad(s.hero,6)}] （样本不足）`);continue;}
     ids.sort((x,y)=>(s.cardDmg[y]||0)-(s.cardDmg[x]||0));
     console.log(`  [${pad(s.hero,6)}] 卡牌胜率=打出该卡的对局胜率 · 场均出伤=总伤害/打出次数`);
@@ -177,9 +177,7 @@ function cardBlock(stats){
       const pg=s.cardPlayedGames[id],pl=s.cardPlays[id];
       const wrate=Math.round((s.cardWins[id]||0)/pg*100);
       const dmg=s.cardDmg[id]||0;
-      // 出伤次数分母 = 手牌打出次数 + 单位攻击次数（衍生 token 不占打出次数，用攻击次数做分母，避免场均虚高）
-      const denom=pl+(s.cardAtks[id]||0);
-      const per=denom?(dmg/denom).toFixed(1):"—";
+      const per=pl?(dmg/pl).toFixed(1):"—";
       console.log(`      ${pad(nm,10)} 局${pad(pg,3)}/次${pad(pl,3)} 胜率${pad(wrate+"%",4)} 总伤${pad(dmg,4)} 场均${per}`);
     });
   }
