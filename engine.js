@@ -92,6 +92,7 @@ function playError(card,me,foe){
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
   if(e==="cometStrike"&&me.hp<=40)return`彗星陨击需要你的英雄血量高于 40（不含护甲，当前 ${me.hp}）`;
+  if(e==="reshuffleDraw"&&!me.hand.length)return"调节：你手牌为空";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
@@ -600,6 +601,13 @@ class Game{
       case"summonRed2":this.summon(s,"red",2);break;
       case"alweiDeploy":this.draw(s,2);this.buffAll(s,1,1);this.note("阿伟：抽两张牌，全军 +1/+1",s);break;
       case"qixingDeploy":this.loseMax(o,1);this.note("七星：敌方费用上限 -1",s);break;
+      case"starCoreZero":{
+        // 星核卫士：选择手牌中 1 张牌，其费用变为 0（本局有效）
+        if(!s.hand.length){this.note("星核卫士：你没有手牌",s);break;}
+        this._pick(s,"星核卫士","选择 1 张手牌，其费用变为 0（本局有效）",s.hand.slice(),0,sel=>{
+          sel.cost=0;this.note(`星核卫士：【${sel.name}】的费用变为 0`,s);
+        });
+        break;}
       case"susuDeploy":{
         const def=PROFILES["苏苏"].cards.find(x=>x.id==="red");
         if(s.board.length<MAX_BOARD){const u=this.clone(def,"苏苏");this._ready(u);s.board.push(u);this.note("苏苏：召唤一个俄布",s);}
@@ -874,6 +882,24 @@ class Game{
         // 彗星陨击：英雄血量（不含护甲）高于 40 时，对敌方英雄造成 40 点伤害
         if(s.hp>40){this.damageHero(o,40);this.note("彗星陨击：紫色彗星划过，对敌方英雄造成 40 点伤害！",s);}
         else this.note("彗星陨击：血量不足 40，未能召唤彗星",s);
+        break;}
+      case"draw2heal6":this.draw(s,2);this.heal(s,6);this.note("星光祝福：抽 2 张牌，恢复 6 点生命",s);break;
+      case"cometTutor":{
+        // 彗星预言：从牌库检索彗星陨击；没有则抽 2 张
+        const want="cometStrike";
+        const ti=s.deck.findIndex(x=>x.id===want);
+        if(ti>=0){const card=s.deck.splice(ti,1)[0];if(this.addToHand(s,card))this.note(`彗星预言：检索到【${card.name}】！`,s);else this.burn(s,card);}
+        else{this.draw(s,2);this.note("彗星预言：牌库中没有彗星陨击，改为抽 2 张牌",s);}
+        break;}
+      case"reshuffleDraw":{
+        // 调节：手牌全部洗回牌库并洗牌，抽（洗入数+1）张——配合彗星观察者疯狂回血
+        const hand=s.hand.slice();
+        if(!hand.length){this.note("调节：手牌为空",s);break;}
+        s.hand=[];
+        s.deck=s.deck.concat(hand);
+        shuffle(s.deck);
+        this.draw(s,hand.length+1);
+        this.note(`调节：将 ${hand.length} 张手牌洗回牌库，抽取 ${hand.length+1} 张牌`,s);
         break;}
       case"buffAll2":case"highcommand":this.buffAll(s,2,2);break;
       case"buffAll1":this.buffAll(s,1,1);break;

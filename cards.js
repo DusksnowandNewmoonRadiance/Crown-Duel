@@ -95,6 +95,10 @@ const PROFILES={
     {id:"doomsday",name:"终焉倒计时",cost:5,kind:"spell",art:"⌛",text:"使敌方英雄的【衰减】层数翻倍（至少 +1 层）。",effect:"decayDouble",n:1,limit:1,rarity:"elite"},
     {id:"stasisfield",name:"凝滞时空",cost:6,kind:"spell",art:"❖",text:"敌方在下个回合最多只能打出 1 张牌，敌方的费用上限 -1。",effect:"lockCap1",n:1,limit:1,rarity:"elite"},
     {id:"cometfall",name:"彗星陨落",cost:6,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:1,rarity:"elite"},
+    {id:"starlightPray",name:"星光祝福",cost:3,kind:"spell",art:"✶",text:"抽 2 张牌，恢复 6 点生命。",effect:"draw2heal6",n:0,limit:1,rarity:"elite"},
+    {id:"cometTutor",name:"彗星预言",cost:3,kind:"spell",art:"☄",text:"从牌库中将【彗星陨击】加入手牌。如果没有，改为抽 2 张牌。",effect:"cometTutor",n:0,limit:2,rarity:"special",fx:"sp_insight"},
+    {id:"starcore",name:"星核卫士",cost:5,kind:"unit",art:"▥",atk:3,hp:12,text:"嘲讽。部署：选择你手牌中的 1 张牌，其费用变为 0。",taunt:true,effect:"starCoreZero",n:0,limit:1,rarity:"elite"},
+    {id:"tune",name:"调节",cost:2,kind:"spell",art:"⇄",text:"将你的手牌全部洗入牌库并洗牌，然后抽取等同于洗入数量 +1 的牌。",effect:"reshuffleDraw",n:0,limit:4,rarity:"common"},
     {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 40，对敌方英雄造成 40 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
   ]},
   "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:28,cards:[
@@ -345,12 +349,12 @@ const DECK_PRESETS={
   "七星":{
     "衰减流":defaultDeck("七星"),
     "星联邦流":[
-      "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger",
-      "bulwark","scholar","eclipser","eclipser","eclipser","orbitguard","orbitguard","gravityfield",
-      "foresee","foresee","forecast","mana","mana","mana","eclipse","eclipse","eclipse",
-      "timeShield","timeslow","crystalBreak","crystalBreak","gravitywell","gravitywell","starClimb",
-      "cardCap","cardCap","gravityLock","gravityFold","stasis","silence","doomsday",
-      "stasisfield","cometfall","cometStrike"
+      "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger","messenger",
+      "bulwark","bulwark","scholar","scholar","orbitguard","orbitguard","gravityfield","starcore",
+      "foresee","foresee","forecast","mana","mana","mana","timeShield","timeShield","timeslow",
+      "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
+      "silence","stasisfield","cometfall","cometStrike","starlightPray",
+      "cometTutor","cometTutor","tune","tune"
     ]
   }
 };

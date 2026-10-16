@@ -180,6 +180,13 @@ function scoreCard(s,o,c,lethal){
     if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
     if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
     if(/^(heal2|healDraw1|timeShield2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
+    if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者亏节奏少打
+      const w=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
+      sc+=w?(10+w*6):-6;
+    }
+    if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;   // 彗星预言：手里没陨击才检索
+    if(c.id==="starlightPray")sc+=4;   // 星光祝福：大回复+过牌
+    if(c.id==="starcore")sc+=2;   // 星核卫士：嘲讽大墙+0费联动
   }
   if(style.rebelWall&&/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(e)){   // 字母：敌方有嘲讽时策反稍偏拆墙
     const walls=o.board.filter(u=>u.taunt);
@@ -242,7 +249,18 @@ class AIPlayer{
     const lim=this.level==="easy"?7:5;
     return p.hand.filter(c=>c.cost>=lim&&!c.core&&c.id!=="superman").map(c=>c.uid);
   }
-  pickPending(game){return game.pending?game.pending.auto:0;}
+  pickPending(game){
+    const pd=game.pending;if(!pd)return 0;
+    if(pd.title==="星核卫士"){   // 星核卫士选 0 费：优先高费/引擎卡（陨击/预言/调节/星光祝福）
+      let bi=0,bs=-1;
+      pd.cards.forEach((c,i)=>{
+        const v=c.cost+(c.id==="cometStrike"?6:0)+(c.id==="cometTutor"?4:0)+(c.id==="tune"?3:0)+(c.id==="starlightPray"?2:0);
+        if(v>bs){bs=v;bi=i;}
+      });
+      return bi;
+    }
+    return pd.auto;
+  }
   /* 出牌目标（角色化）：字母策反/直伤优先嘲讽墙，其余走引擎默认 */
   aiTargets(c,s,o){
     if(c.effect==="buffPirate3"||c.effect==="pirateCommander"){   // 海盗buff：优先高攻击/冲锋单位（434部署时给先锋海盗或最强单位）
@@ -331,9 +349,10 @@ class AIPlayer{
       for(const u of ready){
         const v=attackTargets(u,o);
         const hd=u.attack+heroBonus(u);
+        const wG=u.id==="cometWatcher"?-8:0;   // 保护彗星观察者：不打（留场回血）
         const consider=(t,sc)=>{if(!best||sc>best.score)best={unit:u,target:t,score:sc};};
         if(v.hero){
-          let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp));
+          let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp))+wG;
           if(lethal)fs+=1000;
           if(u.lifespan>0)fs+=60;                       // 限时单位（超人）：打脸优先，不解场
           if(u.charge&&u.atkLeft>=u.strikes)fs+=aggro*hd*.8;   // 冲锋单位首回合抢血
@@ -347,7 +366,7 @@ class AIPlayer{
         for(const id of v.units){
           const t=o.board.find(x=>x.uid===id);
           const kills=u.attack>=t.health,dies=t.attack>=u.health;
-          let sc=(kills?unitValue(t):unitValue(t)*.12)-(dies?unitValue(u):0);
+          let sc=(kills?unitValue(t):unitValue(t)*.12)-(dies?unitValue(u):0)+wG;
           if(kills&&!dies)sc+=3;
           if(!kills&&dies)sc-=4;
           if(t.taunt&&kills)sc+=1.5;
