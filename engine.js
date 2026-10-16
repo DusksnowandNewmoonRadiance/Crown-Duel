@@ -65,7 +65,7 @@ function targetSpec(card,me,foe){
     case"killTough":return eligible(foe.board.filter(u=>u.health>u.attack&&u.health>0),1,1,"选择 1 个生命值高于攻击力的敌方单位","foe");
     case"stripTaunt":case"stripTauntDraw":return eligible(foe.board.filter(u=>u.taunt&&u.health>0),1,1,"选择 1 个敌方嘲讽单位","foe");
     case"stunOrKill":return eligible(foe.board,1,1,"选择 1 个敌方单位（眩晕或消灭）","foe");
-    case"stunOne":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
+    case"stunOneDraw":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
   }
   return null;
 }
@@ -92,7 +92,7 @@ function playError(card,me,foe){
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
-  if(e==="stunOne"&&!foe.board.length)return"敌方没有单位可以眩晕";
+  if(e==="stunOneDraw"&&!foe.board.length)return"敌方没有单位可以眩晕";
   if(e==="cometStrike"&&me.hp<=40)return`彗星陨击需要你的英雄血量高于 40（不含护甲，当前 ${me.hp}）`;
   if(e==="reshuffleDraw"&&!me.hand.length)return"调节：你手牌为空";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
@@ -889,17 +889,19 @@ class Game{
       case"armor3Draw1":this.armor(s,3);this.draw(s,1);this.note("彗星尾迹：获得 3 点护甲，抽 1 张牌",s);break;
       case"heal4Draw1":this.heal(s,4);this.draw(s,1);this.note("星辉回响：恢复 4 点生命，抽 1 张牌",s);break;
       case"heal5Armor2":this.heal(s,5);this.armor(s,2);this.note("星尘信标：恢复 5 点生命，获得 2 点护甲",s);break;
-      case"stunOne":{
-        // 星辉锁链：眩晕 1 个敌方单位（优先最高攻击）
+      case"stunOneDraw":{
+        // 星辉锁链：眩晕 1 个敌方单位（优先最高攻击），抽 1 张牌（联动观察者回血）
         const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
         const t=o.board.find(u=>u.uid===id);
         if(t){t.stun=Math.max(t.stun||0,1);t.atkLeft=0;this.note(`星辉锁链：${t.name} 被眩晕，下个回合无法攻击`,s);}
+        this.draw(s,1);
         break;}
-      case"stunAll":{
-        // 彗星枷锁：眩晕所有敌方单位
+      case"stunAllDraw":{
+        // 彗星枷锁：眩晕所有敌方单位，抽 1 张牌
         const hit=o.board.filter(u=>u.health>0);
         hit.forEach(u=>{u.stun=Math.max(u.stun||0,1);u.atkLeft=0;});
         this.note(`彗星枷锁：${hit.length} 个敌方单位被眩晕，下个回合无法攻击`,s);
+        this.draw(s,1);
         break;}
       case"cometTutor":{
         // 彗星预言：从牌库检索彗星陨击；没有则抽 2 张
