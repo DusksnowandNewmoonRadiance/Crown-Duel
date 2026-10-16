@@ -10,8 +10,12 @@
  *   2) AI 行为诊断：统计各角色已知"糖/低效"操作的发生次数
  *   3) 资源/峰值统计：单位峰值、血量最低、下水火炮/饱和/AOE、绘梨衣废料/转化等
  * ============================================================ */
-const C=require("./shared/cards.js"),E=require("./shared/engine.js"),{AIPlayer}=require("./shared/ai.js");
+const C=require("./shared/cards.js"),E=require("./shared/engine.js"),{AIPlayer,isLethal}=require("./shared/ai.js");
 const heroes=Object.keys(C.PROFILES);
+
+/* ---- cmd 友好对齐：中文按双宽，其余按单宽 ---- */
+function cw(s){let w=0;for(const ch of String(s))w+=ch.charCodeAt(0)>255?2:1;return w;}
+function pad(s,w){s=String(s);return s+" ".repeat(Math.max(0,w-cw(s)));}
 
 /* ---- 单局模拟：返回 winner + 双方诊断统计 ---- */
 function play(a,b,level){
@@ -38,10 +42,10 @@ function play(a,b,level){
     if(act.type==="play"){
       const c=p.hand.find(x=>x.uid===act.uid);
       const eff=c&&c.effect;
-      // --- 打出前：消耗己方单位的牌，若本回合还有能攻击但未攻击的单位 → 浪费 ---
+      // --- 打出前：消耗己方单位的牌，若场上仍有多只(≥2)能攻击却未攻击的单位 → 浪费（lethal 除外）---
       if(c&&/^(consolidate|sacAoe3|fireShip)$/.test(eff||"")){
-        const canButIdle=p.board.some(u=>!u.stun&&u.attack>0&&!turnAtk[pi].has(u.uid));
-        if(canButIdle)me.wastePreSac++;
+        const idle=p.board.filter(u=>!u.stun&&u.attack>0&&!turnAtk[pi].has(u.uid)).length;
+        if(idle>=2&&!isLethal(p,o))me.wastePreSac++;
       }
       // --- 燃烧弹：敌方没有可收的残血（hp<=3）→ 浪费 ---
       if(c&&eff==="sacAoe3"&&!o.board.some(u=>u.health<=3))me.firebombNoFin++;
@@ -105,7 +109,8 @@ function playOne(a,b,level){
     if(act.type==="play"){
       const c=p.hand.find(x=>x.uid===act.uid);const eff=c&&c.effect;
       if(c&&/^(consolidate|sacAoe3|fireShip)$/.test(eff||"")){
-        if(p.board.some(u=>!u.stun&&u.attack>0&&!turnAtk[pi].has(u.uid)))me.wastePreSac++;
+        const idle=p.board.filter(u=>!u.stun&&u.attack>0&&!turnAtk[pi].has(u.uid)).length;
+        if(idle>=2&&!isLethal(p,o))me.wastePreSac++;
       }
       if(c&&eff==="sacAoe3"&&!o.board.some(u=>u.health<=3))me.firebombNoFin++;
       if(c&&eff==="buffAllCharge"&&p.board.length<3)me.boardingThin++;
@@ -174,21 +179,21 @@ if(require.main===module){
       const t=aw+bw;dA.wins+=aw;dA.games+=t;
     }
     console.log(`${single} 对每个卡牌师胜率：`);
-    heroes.forEach(h=>{if(h!==single)console.log(`  对 ${h.padEnd(5)} ${rows[h]}%`);});
+    heroes.forEach(h=>{if(h!==single)console.log(`  对 ${pad(h,6)} ${rows[h]}%`);});
     console.log(`综合：${Math.round(dA.wins/dA.games*100)}%（${dA.games} 局）\n`);
     diag([dA]);
   }else{
     runAll(n);
-    // 矩阵
+    // 矩阵（cmd 友好：中文双宽对齐）
+    const colW=6,valW=5;
     console.log("=== 胜率矩阵（行 vs 列）===");
-    const pad=s=>s.length>=5?s:s+" ".repeat(5-s.length);
-    console.log("       "+heroes.map(pad).join("")+"  综合");
+    console.log(pad("",colW)+" "+heroes.map(h=>pad(h,colW)+" ").join("")+pad("综合",colW));
     for(const a of heroes){
-      const line=heroes.map(b=>a===b?"  —  ":pad((MATRIX[a][b]||0)+"%")).join("");
-      console.log(pad(a)+line+"  "+ovl(a,n)+"%");
+      const line=heroes.map(b=>a===b?pad("—",valW)+" ":pad((MATRIX[a][b]||0)+"%",valW)+" ").join("");
+      console.log(pad(a,colW)+" "+line+pad(ovl(a,n)+"%",valW));
     }
     console.log("\n=== 综合胜率 ===");
-    [...heroes].sort((x,y)=>ovl(y,n)-ovl(x,n)).forEach(h=>console.log(`  ${h.padEnd(5)} ${ovl(h,n)}%  (${agg[h].games} 局)`));
+    [...heroes].sort((x,y)=>ovl(y,n)-ovl(x,n)).forEach(h=>console.log(`  ${pad(h,6)} ${pad(ovl(h,n)+"%",5)}  (${agg[h].games} 局)`));
     console.log("\n=== AI 行为诊断（全角色累计）===");
     diag(heroes.map(h=>agg[h]));
   }
@@ -205,7 +210,7 @@ function diag(stats){
     if(s.rebelBlocked>0)lines.push(`策反被规则拦截(空场/条件不满足) ${s.rebelBlocked} 次`);
     const avg=s.turns/s.games;
     const gun= s.satGuns/s.sat||0;
-    console.log(`[${s.hero}] ${s.games}局 胜${s.wins} 均回合${avg.toFixed(1)} 单位峰值${s.maxBoard} 血量最低${s.minHp}`+(lines.length?"\n     "+lines.join("；"):""));
+    console.log(`[${pad(s.hero,6)}] ${s.games}局 胜${s.wins} 均回合${avg.toFixed(1)} 单位峰值${s.maxBoard} 血量最低${s.minHp}`+(lines.length?"\n     "+lines.join("；"):""));
     if(s.hero==="下水")console.log(`    火炮峰值${s.gunPeak} 饱和${s.sat}次(均${gun.toFixed(1)}火炮/次) AOE${s.aoeCnt}次`);
     if(s.hero==="绘梨衣")console.log(`    废料手牌峰值${s.scrapPeak} 转化${s.conv}次`);
   }

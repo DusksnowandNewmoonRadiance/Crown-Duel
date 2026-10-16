@@ -263,8 +263,8 @@ class AIPlayer{
         }
         if(best&&bs>-20){
           /* 需要场面的牌（整编/燃烧弹/策反/AOE）：先让己方单位攻击，避免浪费攻击次数 */
-          if(PRE_ATTACK.has(best.effect)&&!lethal&&s.board.some(u=>!canAttack(u))){
-            const mv=this.chooseAttack(s,o);
+          if(PRE_ATTACK.has(best.effect)&&!lethal&&s.board.some(u=>!canAttack(u)&&u.attack>0)){
+            const mv=this.chooseAttack(s,o)||this.forceAttack(s,o);
             if(mv)return mv;
           }
           this.plays++;
@@ -275,6 +275,24 @@ class AIPlayer{
     const mv=this.chooseAttack(s,o);
     if(mv)return{type:"attack",uid:mv.unit.uid,target:mv.target?mv.target.uid:null};
     return{type:"end"};
+  }
+  /* 强制攻击：消耗己方单位的牌（整编/燃烧弹/火船）前，即使正常选攻认为"不值"，
+   * 也要让攻击力>0且未攻击的单位打一次——这些单位反正要献祭，攻击不浪费。
+   * 优先打脸（快攻），其次打能斩杀的单位，兜底打任一目标。 */
+  forceAttack(s,o){
+    const ready=s.board.filter(u=>!canAttack(u)&&u.attack>0&&!this.passed.has(u.uid));
+    if(!ready.length)return null;
+    for(const u of ready){
+      const v=attackTargets(u,o);
+      if(v.hero)return{unit:u,target:null};
+    }
+    for(const u of ready){
+      const v=attackTargets(u,o);
+      const kills=v.units.map(id=>o.board.find(x=>x.uid===id)).filter(t=>t&&u.attack>=t.health).sort((x,y)=>unitValue(y)-unitValue(x));
+      if(kills.length)return{unit:u,target:kills[0].uid};
+    }
+    const u=ready[0],v=attackTargets(u,o);
+    return{unit:u,target:v.hero?null:(v.units[0]||null)};
   }
   chooseAttack(s,o){
     const style=HERO_STYLE[this.hero]||{};
