@@ -188,6 +188,14 @@ function scoreCard(s,o,c,lethal){
     if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;   // 彗星预言：手里没陨击才检索
     if(c.id==="starlightPray")sc+=4;   // 星光祝福：大回复+过牌
     if(c.id==="starcore")sc+=2;   // 星核卫士：嘲讽大墙+0费联动
+    if(e==="stunOne"){   // 星辉锁链：敌方有高攻单位才晕，否则浪费
+      const threat=o.board.some(u=>u.health>0&&u.attack>=3);
+      sc+=threat?4:o.board.length?-1:-10;
+    }
+    if(e==="stunAll"){   // 彗星枷锁：敌方 2+ 个攻击单位才全体晕
+      const n=o.board.filter(u=>u.health>0&&u.attack>=1).length;
+      sc+=n>=2?4+(n>=4?2:0):-6;
+    }
   }
   if(style.rebelWall&&/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(e)){   // 字母：敌方有嘲讽时策反稍偏拆墙
     const walls=o.board.filter(u=>u.taunt);
