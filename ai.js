@@ -178,6 +178,8 @@ function scoreCard(s,o,c,lethal){
     if(c.id==="cometWatcher")sc+=2;
     if(s.board.some(u=>u.effect==="drawHeal")&&/draw|foresee/.test(e))sc+=2;
     if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
+    if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
+    if(/^(heal2|healDraw1|timeShield2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
   }
   if(style.rebelWall&&/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(e)){   // 字母：敌方有嘲讽时策反稍偏拆墙
     const walls=o.board.filter(u=>u.taunt);

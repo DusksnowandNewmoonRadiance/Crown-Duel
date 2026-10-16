@@ -30,7 +30,7 @@ function mkStat(hero){return{hero,games:0,wins:0,maxBoard:0,minHp:99,sat:0,satGu
 
 /* ---- 跑某对（双向轮流）：单局，返回 winner + 双方统计 ---- */
 function playOne(a,b,level){
-  const g=new E.Game({players:[{name:"A",hero:a},{name:"B",hero:b}]});
+  const g=new E.Game({players:[{name:"A",hero:a,deck:C.aiDeck(a)},{name:"B",hero:b,deck:C.aiDeck(b)}]});
   const ai=[new AIPlayer(level||"normal"),new AIPlayer(level||"normal")];
   const st=[mkStat(a),mkStat(b)];
   // 伤害追踪：包装引擎伤害方法，归因给"当前动作方(curActor)"与"最近打出的卡(curPlayed)"

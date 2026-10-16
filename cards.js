@@ -94,7 +94,8 @@ const PROFILES={
     {id:"withering",name:"凋零彗尾",cost:4,kind:"spell",art:"☄",text:"敌方英雄获得 2 层【衰减】，抽 1 张牌。",effect:"decay2draw",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"doomsday",name:"终焉倒计时",cost:5,kind:"spell",art:"⌛",text:"使敌方英雄的【衰减】层数翻倍（至少 +1 层）。",effect:"decayDouble",n:1,limit:1,rarity:"elite"},
     {id:"stasisfield",name:"凝滞时空",cost:6,kind:"spell",art:"❖",text:"敌方在下个回合最多只能打出 1 张牌，敌方的费用上限 -1。",effect:"lockCap1",n:1,limit:1,rarity:"elite"},
-    {id:"cometfall",name:"彗星陨落",cost:6,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:1,rarity:"elite"}
+    {id:"cometfall",name:"彗星陨落",cost:6,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:1,rarity:"elite"},
+    {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 40，对敌方英雄造成 40 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
   ]},
   "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:28,cards:[
     {id:"refugee",name:"旧大陆难民",cost:1,kind:"unit",art:"◇",atk:1,hp:3,text:"嘲讽。",taunt:true,n:3,limit:3,rarity:"rare"},
@@ -339,6 +340,30 @@ function defaultDeck(hero){
   return list;
 }
 
+/* ---- 多套预设卡组：AI 随机选一套；单人模式可选敌方卡组 ---- */
+const DECK_PRESETS={
+  "七星":{
+    "衰减流":defaultDeck("七星"),
+    "星联邦流":[
+      "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger",
+      "bulwark","scholar","eclipser","eclipser","eclipser","orbitguard","orbitguard","gravityfield",
+      "foresee","foresee","forecast","mana","mana","mana","eclipse","eclipse","eclipse",
+      "timeShield","timeslow","crystalBreak","crystalBreak","gravitywell","gravitywell","starClimb",
+      "cardCap","cardCap","gravityLock","gravityFold","stasis","silence","doomsday",
+      "stasisfield","cometfall","cometStrike"
+    ]
+  }
+};
+/* 该卡牌师的预设卡组列表（无多套时为 null） */
+function presets(hero){return DECK_PRESETS[hero]||null;}
+/* 按名称取预设卡组 */
+function presetDeck(hero,name){const ps=DECK_PRESETS[hero];return ps&&ps[name]?ps[name]:null;}
+/* AI 用卡组：有预设时随机选一套，否则默认卡组 */
+function aiDeck(hero){
+  const ps=DECK_PRESETS[hero];if(!ps)return defaultDeck(hero);
+  const keys=Object.keys(ps);return ps[keys[Math.floor(Math.random()*keys.length)]];
+}
+
 /* 校验卡组：40 张、id 合法、不超上限。返回 null 表示合法，否则返回原因 */
 function deckError(hero,list){
   if(!PROFILES[hero])return "未知卡牌师";
@@ -407,5 +432,6 @@ function applyOverrides(map,rev){
 }
 
 return{REGIMES,RARITY,RARITY_ORDER,MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,defaultDeck,deckError,
+  DECK_PRESETS,presets,presetDeck,aiDeck,
   PATCHABLE,checkOverrides,applyOverrides,baseOf:key=>BASE[key],get overridesRev(){return overridesRev;}};
 });

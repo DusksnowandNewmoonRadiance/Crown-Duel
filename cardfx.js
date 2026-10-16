@@ -68,6 +68,7 @@ const ELITE={
   "七星:doomsday":{pattern:"flash",palette:"shadow",glyph:"⌛",target:"foe"},
   "七星:stasisfield":{pattern:"pillar",palette:"teal",glyph:"❖",target:"foe"},
   "七星:cometfall":{pattern:"slash",palette:"white",glyph:"☄",target:"foe"},
+  "七星:cometStrike":{pattern:"rain",palette:"violet",glyph:"☄",target:"foe"},
   "七星:gravityFold":{native:true,label:"引力折叠（原有动画）"},
   /* 核弹 */
   "核弹:superman":{native:true,label:"超人降临（原有动画）"},

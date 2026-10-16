@@ -91,6 +91,7 @@ function playError(card,me,foe){
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
+  if(e==="cometStrike"&&me.hp<=40)return`彗星陨击需要你的英雄血量高于 40（不含护甲，当前 ${me.hp}）`;
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
@@ -869,6 +870,11 @@ class Game{
         }
         break;}
       case"luckyCoin":if(this.lock!==null)this.note("停摆：无法增加费用",s);else{s.energy+=1;this.note("海盗的幸运币：获得 1 点费用",s);}break;
+      case"cometStrike":{
+        // 彗星陨击：英雄血量（不含护甲）高于 40 时，对敌方英雄造成 40 点伤害
+        if(s.hp>40){this.damageHero(o,40);this.note("彗星陨击：紫色彗星划过，对敌方英雄造成 40 点伤害！",s);}
+        else this.note("彗星陨击：血量不足 40，未能召唤彗星",s);
+        break;}
       case"buffAll2":case"highcommand":this.buffAll(s,2,2);break;
       case"buffAll1":this.buffAll(s,1,1);break;
       case"buffAll1draw":this.buffAll(s,1,1);this.draw(s,1);break;
