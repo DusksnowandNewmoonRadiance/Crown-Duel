@@ -851,10 +851,10 @@ class Game{
       case"handoff":this.draw(s,1);this.armor(s,1);break;
       case"crown":this.draw(s,3);this.armor(s,3);break;
       case"saturation":{
-        const n=gunCount(s),dmg=n*2;
-        this.note(`饱和炮击：火炮 ×${n}，造成 ${dmg} 点伤害`,s);
+        const n=gunCount(s);
+        this.note(`饱和炮击：火炮 ×${n}，对英雄造成 ${n*2}、对敌方单位各造成 ${n} 点伤害`,s);
         fx("saturation");
-        if(dmg>0){this.aoe(s,o,dmg);this.damageHero(o,dmg);}
+        if(n>0){this.aoe(s,o,n);this.damageHero(o,n*2);}
         break;}
       case"reload":s.board.forEach(u=>{if(u.gun){u.attack+=2;u.tempAtk=(u.tempAtk||0)+2;}});this.draw(s,1);break;
       case"buffGuns2draw":s.board.forEach(u=>{if(u.gun)u.attack+=2;});this.draw(s,1);break;

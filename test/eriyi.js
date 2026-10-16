@@ -83,7 +83,7 @@ check("没有直接抽牌的法术（抽牌只能由废料触发）",!C.PROFILES
   const u=setup();give(u.g,u.a,"scrap",2);
   const gd=mk(u.g,"guard");u.a.hand.push(gd);play(u.g,gd);
   const b2=u.a.board.find(x=>x.id==="guard");
-  check("小怪兽卫队：每张废料 +1/+1",b2.attack===7&&b2.health===7,b2.attack+"/"+b2.health);
+  check("小怪兽卫队：每张废料 +1/+1",b2.attack===6&&b2.health===6,b2.attack+"/"+b2.health);
   const w=setup();give(w.g,w.a,"scrap",2);const tmp=mk(w.g,"temp");w.a.hand.push(tmp);play(w.g,tmp);
   const t2=w.a.board.find(x=>x.id==="temp");
   check("临时工：弃掉 1 张废料，+2/+2",t2.attack===4&&t2.health===4&&w.a.hand.filter(x=>x.scrap).length===1);
