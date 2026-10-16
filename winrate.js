@@ -36,6 +36,17 @@ function playOne(a,b,level){
   // 伤害追踪：包装引擎伤害方法，归因给"当前动作方(curActor)"与"最近打出的卡(curPlayed)"
   let curActor=0;const curPlayed=[];
   const DH=g.damageHero.bind(g),DU=g.damageUnit.bind(g);
+  // 衍生卡追踪：包装 summon，把直接拉上场的 token（如翻箱倒柜的废铜烂铁）也计入打出次数与对局，归召唤方
+  const OS=g.summon.bind(g);
+  g.summon=function(p,id,n){
+    const k=OS(p,id,n);
+    if(p&&p.idx!==undefined){
+      const c=Number(n||1)||0;
+      st[p.idx].cardPlays[id]=(st[p.idx].cardPlays[id]||0)+c;
+      if(playedSet[p.idx])playedSet[p.idx].add(id);   // 该局含该卡（召唤也算）
+    }
+    return k;
+  };
   g.damageHero=function(p,n,o={}){
     const res=DH(p,n,o);
     if(!o.self&&!o.fatigue){   // 非自伤/非疲劳 = 对敌方英雄伤害
