@@ -96,6 +96,9 @@ const PROFILES={
     {id:"stasisfield",name:"凝滞时空",cost:6,kind:"spell",art:"❖",text:"敌方在下个回合最多只能打出 1 张牌，敌方的费用上限 -1。",effect:"lockCap1",n:1,limit:1,rarity:"elite"},
     {id:"cometfall",name:"彗星陨落",cost:6,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:1,rarity:"elite"},
     {id:"starlightPray",name:"星光祝福",cost:3,kind:"spell",art:"✶",text:"抽 2 张牌，恢复 6 点生命。",effect:"draw2heal6",n:0,limit:1,rarity:"elite"},
+    {id:"cometTrail",name:"彗星尾迹",cost:2,kind:"spell",art:"✦",text:"获得 3 点护甲，抽 1 张牌。",effect:"armor3Draw1",n:0,limit:3,rarity:"rare"},
+    {id:"starlightEcho",name:"星辉回响",cost:2,kind:"spell",art:"✧",text:"恢复 4 点生命，抽 1 张牌。",effect:"heal4Draw1",n:0,limit:3,rarity:"rare"},
+    {id:"stardustBeacon",name:"星尘信标",cost:3,kind:"spell",art:"✦",text:"恢复 5 点生命，获得 2 点护甲。",effect:"heal5Armor2",n:0,limit:3,rarity:"rare"},
     {id:"cometTutor",name:"彗星预言",cost:3,kind:"spell",art:"☄",text:"从牌库中将【彗星陨击】加入手牌。如果没有，改为抽 2 张牌。",effect:"cometTutor",n:0,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"starcore",name:"星核卫士",cost:5,kind:"unit",art:"▥",atk:3,hp:12,text:"嘲讽。部署：选择你手牌中的 1 张牌，其费用变为 0。",taunt:true,effect:"starCoreZero",n:0,limit:1,rarity:"elite"},
     {id:"tune",name:"调节",cost:2,kind:"spell",art:"⇄",text:"将你的手牌全部洗入牌库并洗牌，然后抽取等同于洗入数量 +1 的牌。",effect:"reshuffleDraw",n:0,limit:4,rarity:"common"},
@@ -350,10 +353,11 @@ const DECK_PRESETS={
     "衰减流":defaultDeck("七星"),
     "星联邦流":[
       "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger","messenger",
-      "bulwark","bulwark","scholar","scholar","orbitguard","orbitguard","gravityfield","starcore",
-      "foresee","foresee","forecast","mana","mana","mana","timeShield","timeShield","timeslow",
+      "bulwark","bulwark","scholar","orbitguard","orbitguard","gravityfield","starcore",
+      "foresee","forecast","mana","mana","mana","timeShield","timeShield","timeslow",
       "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
-      "silence","stasisfield","cometfall","cometStrike","starlightPray",
+      "silence","stasisfield","cometStrike","starlightPray",
+      "cometTrail","starlightEcho","stardustBeacon",
       "cometTutor","cometTutor","tune","tune"
     ]
   }

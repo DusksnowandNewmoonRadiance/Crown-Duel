@@ -179,10 +179,11 @@ function scoreCard(s,o,c,lethal){
     if(s.board.some(u=>u.effect==="drawHeal")&&/draw|foresee/.test(e))sc+=2;
     if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
     if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
-    if(/^(heal2|healDraw1|timeShield2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
-    if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者亏节奏少打
+    if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
+    if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者时仅手牌多才洗（重抽），手牌少绝不打（亏费，低于出牌底线直接跳过）
       const w=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
-      sc+=w?(10+w*6):-6;
+      if(w)sc+=10+w*6;
+      else sc+=s.hand.length>=4?2:-25;
     }
     if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;   // 彗星预言：手里没陨击才检索
     if(c.id==="starlightPray")sc+=4;   // 星光祝福：大回复+过牌

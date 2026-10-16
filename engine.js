@@ -884,6 +884,9 @@ class Game{
         else this.note("彗星陨击：血量不足 40，未能召唤彗星",s);
         break;}
       case"draw2heal6":this.draw(s,2);this.heal(s,6);this.note("星光祝福：抽 2 张牌，恢复 6 点生命",s);break;
+      case"armor3Draw1":this.armor(s,3);this.draw(s,1);this.note("彗星尾迹：获得 3 点护甲，抽 1 张牌",s);break;
+      case"heal4Draw1":this.heal(s,4);this.draw(s,1);this.note("星辉回响：恢复 4 点生命，抽 1 张牌",s);break;
+      case"heal5Armor2":this.heal(s,5);this.armor(s,2);this.note("星尘信标：恢复 5 点生命，获得 2 点护甲",s);break;
       case"cometTutor":{
         // 彗星预言：从牌库检索彗星陨击；没有则抽 2 张
         const want="cometStrike";

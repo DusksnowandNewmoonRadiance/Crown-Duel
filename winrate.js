@@ -204,7 +204,7 @@ function cardBlock(stats){
     if(!ids.length){console.log(`  [${pad(s.hero,6)}] （样本不足）`);continue;}
     ids.sort((x,y)=>(s.cardDmg[y]||0)-(s.cardDmg[x]||0));
     console.log(`  [${pad(s.hero,6)}] 卡牌胜率=打出该卡的对局胜率 · 场均出伤=总伤害/打出次数`);
-    ids.slice(0,14).forEach(id=>{
+    ids.forEach(id=>{
       const nm=cardName(s.hero,id);
       const pg=s.cardPlayedGames[id],pl=s.cardPlays[id];
       const wrate=Math.round((s.cardWins[id]||0)/pg*100);
@@ -219,7 +219,9 @@ function cardBlock(stats){
 
 if(require.main===module){
   const who=process.argv[2],n=parseInt(process.argv[3]||process.argv[2],10)||20;
-  const single=who&&!isNaN(+process.argv[3])?who:null;
+  let single=who&&!isNaN(+process.argv[3])?who:null;
+  /* 卡组简写：node winrate.js 星联邦流 50 → 七星-星联邦流（同样支持 衰减流） */
+  if(single&&!single.includes("-")&&(single==="星联邦流"||single==="衰减流"))single="七星-"+single;
   /* 七星指定卡组：node winrate.js 七星-衰减流 N / 七星-星联邦流 N */
   let fix=null,qxHead="",qxName=single;
   if(single&&single.includes("-")){
