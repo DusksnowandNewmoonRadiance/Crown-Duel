@@ -97,7 +97,10 @@ function scoreCard(s,o,c,lethal){
     if(e==="runaway")return s.money>=ESCAPE_TARGET?20000:-8;
     if(/^(aoe|redDawn)/.test(e)||e==="choose3x2")sc+=enN?enN*3:-100;
     else if(e==="saturation")sc+=gunCount(s)?(enN*2+gunCount(s)*2):-100;
-    else if(e==="sacAoe3")sc+=(enN&&myN)?enN*3-2:-100;
+    else if(e==="sacAoe3"){   // 燃烧弹：只在有残血(hp<=3)可收时打，否则不值得牺牲己方单位
+      const killable=o.board.filter(u=>u.health<=3).length;
+      sc+=killable>=1?killable*4+2:-12;
+    }
     else if(e==="fireShip")sc+=(enN>=2&&myN)?enN*2.5-myN*1.5:-100;
     else if(/^enemyAtkDown/.test(e))sc+=enN?o.board.reduce((a,u)=>a+Math.min(u.attack,2),0)*1.3:-100;
     else if(e==="gravityLock")sc+=enN>=2?4:-100;
@@ -186,10 +189,11 @@ function scoreCard(s,o,c,lethal){
   if(s.hero==="八幡"){   // 八幡：海盗抢血、燃烧弹只收残血、场面够才打 buff/斩杀
     if(e==="sacAoe3"){
       const killable=o.board.filter(u=>u.health<=3).length;
-      sc+=(killable>=1?killable*3.5:(enN>=3?3:-10));
+      const weak=o.board.filter(u=>u.health<=3&&unitValue(u)>=1.5).length;
+      sc+=(weak>=1?weak*4+3:(killable>=2?killable*3:-12));   // 无残血可收(值>=1.5)一律不打
     }
     if(e==="fireShip")sc+=(enN?enN*2:-100)+(o.board.filter(u=>u.health<=2).length*3||0);
-    if(e==="buffAllCharge")sc+=(myN>=3?4+myN*1.5:(myN>=2?2:-8));   // 登船战：场面≥3 才打
+    if(e==="buffAllCharge")sc+=(myN>=3?4+myN*1.5:-6);   // 登船战：场面<3 一律不打
     if(e==="finish"||e==="unitDamageHero")sc+=(myN>=3?myN*2.5:(myN>=2?myN*1:-6));   // 斩杀：场面≥3 才打
     if(e==="buffAll2"&&myN<2)sc-=6;   // 海盗王：空场/单单位不打
     if(c.charge)sc+=1;
@@ -248,6 +252,11 @@ class AIPlayer{
           }
         }
         let best=null,bs=-1e9;
+        /* AOE 优先：敌方单位多且非斩杀时，先清场再让己方单位打脸（避免先攻击后清场的浪费） */
+        if(!lethal){
+          const aoe=opts.find(c=>/^(aoe2|aoe4|aoe5|redDawn|choose3x2)/.test(c.effect)&&o.board.length>=2);
+          if(aoe){this.plays++;return{type:"play",uid:aoe.uid,targets:this.aiTargets(aoe,s,o),option:autoOption(aoe,s,o)};}
+        }
         for(const c of opts){
           const sc=scoreCard(s,o,c,lethal)+Math.random()*this.noise();
           if(sc>bs){bs=sc;best=c;}
