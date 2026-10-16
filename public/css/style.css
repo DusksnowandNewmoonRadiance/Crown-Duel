@@ -876,7 +876,19 @@ input{font:inherit;color:var(--text)}
 .camp-photo-fallback{position:relative;font-size:13px;color:rgba(255,255,255,.85);padding:0 10px;line-height:1.5;}
 .camp-txt{display:flex;flex-direction:column;gap:3px;padding:9px 8px 11px;border-top:1px solid var(--line);}
 .camp-txt strong{font-size:16px;color:var(--text);}
-.camp-hero-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px;}
+.camp-hero-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:16px;}
+.camp-hero-nav .btn{min-width:132px;padding:10px 18px;font-size:14px;font-weight:700;border-radius:12px;}
+.camp-hero-nav .btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold2);}
+#campPage{font-size:13px;color:var(--muted);min-width:56px;text-align:center;}
+/* 翻页动画：旧页滑出 → 新页从对侧滑入 */
+@keyframes campOutL{to{opacity:0;transform:translateX(-28px);}}
+@keyframes campOutR{to{opacity:0;transform:translateX(28px);}}
+@keyframes campInL{from{opacity:0;transform:translateX(28px);}}
+@keyframes campInR{from{opacity:0;transform:translateX(-28px);}}
+.camp-hero-list.out-l{animation:campOutL .17s ease forwards;pointer-events:none;}
+.camp-hero-list.out-r{animation:campOutR .17s ease forwards;pointer-events:none;}
+.camp-hero-list.in-l{animation:campInL .22s ease;}
+.camp-hero-list.in-r{animation:campInR .22s ease;}
 .camp-chapter{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
 .camp-chapter h2{color:var(--gold2);margin:0 0 6px;}
 .camp-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}

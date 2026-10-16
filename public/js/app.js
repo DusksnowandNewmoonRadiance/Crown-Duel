@@ -812,11 +812,25 @@ $("#campHeroList").addEventListener("click",e=>{
   const cam=Account.me&&Account.me.campaign&&Account.me.campaign[b.dataset.hero];
   if(!cam||!cam.unlocked){toast("先用该角色赢得一场普通对局解锁剧情",false);return;}
   Campaign.hero=b.dataset.hero;
+  const list=$("#campHeroList");list.classList.remove("out-l","out-r","in-l","in-r");Campaign._busy=false;
   $("#campListWrap").hidden=true;
   renderCampaignDetail();$("#campDetail").hidden=false;
 });
-$("#campPrev").addEventListener("click",()=>{Campaign.page--;renderCampaign();});
-$("#campNext").addEventListener("click",()=>{Campaign.page++;renderCampaign();});
+/* 翻页：点击按钮，带滑入/滑出动画 */
+function flipCampaign(dir){
+  if(Campaign._busy)return;Campaign._busy=true;
+  const list=$("#campHeroList");
+  list.classList.add(dir>0?"out-l":"out-r");          // 旧页向翻页方向滑出
+  setTimeout(()=>{
+    Campaign.page+=dir;
+    renderCampaign();
+    list.classList.remove("out-l","out-r");
+    list.classList.add(dir>0?"in-l":"in-r");          // 新页从对侧滑入
+    setTimeout(()=>{list.classList.remove("in-l","in-r");Campaign._busy=false;},220);
+  },170);
+}
+$("#campPrev").addEventListener("click",()=>flipCampaign(-1));
+$("#campNext").addEventListener("click",()=>flipCampaign(1));
 $("#campDetailBack").addEventListener("click",()=>{$("#campDetail").hidden=true;$("#campListWrap").hidden=false;renderCampaign();});
 function renderCampaignDetail(){
   const cam=C.campaignOf(Campaign.hero);
