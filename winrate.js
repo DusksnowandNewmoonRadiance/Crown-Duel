@@ -18,7 +18,7 @@ const heroes=Object.keys(C.PROFILES);
 /* ---- cmd 友好对齐：中文按双宽，其余按单宽 ---- */
 function cw(s){let w=0;for(const ch of String(s))w+=ch.charCodeAt(0)>255?2:1;return w;}
 function pad(s,w){s=String(s);return s+" ".repeat(Math.max(0,w-cw(s)));}
-function cardName(hero,id){const d=C.cardDef(hero,id);return d?d.name:(C.TOKENS[id]?C.TOKENS[id].name:id);}
+function cardName(hero,id){const d=C.cardDef(hero,id);return d&&d.name?d.name:(C.TOKENS[id]&&C.TOKENS[id].name?C.TOKENS[id].name:"未知卡牌");}
 
 function mkStat(hero){return{hero,games:0,wins:0,maxBoard:0,minHp:99,sat:0,satGuns:0,aoeCnt:0,conv:0,gunPeak:0,scrapPeak:0,wastePreSac:0,firebombNoFin:0,boardingThin:0,aoeLate:0,rebelBlocked:0,supermanFace:0,supermanBoard:0,turns:0,mull:0,
   heroDmg:0,unitDmg:0,winTurns:[],cardPlays:{},cardPlayedGames:{},cardWins:{},cardDmg:{}};}

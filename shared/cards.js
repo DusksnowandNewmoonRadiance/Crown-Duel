@@ -41,7 +41,7 @@ const PROFILES={
     {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
     {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"},
-    {id:"awaSwap",name:"undefined",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"}
+    {id:"awaSwap",name:"终局突袭",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[
     {id:"sentry",name:"卫戍哨兵",cost:1,kind:"unit",art:"盾",atk:1,hp:3,text:"嘲讽。",taunt:true,n:2,limit:3,rarity:"rare"},
