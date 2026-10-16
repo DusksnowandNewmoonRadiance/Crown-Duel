@@ -19,8 +19,8 @@ const REGIME_OF={decreeRus:"rus",decreeUkr:"ukr",decreeBlr:"blr"};
 
 /* 角色风格：aggro=抢血倾向(0~1)；rebelWall=策反过墙；scrapEngine=废料经济；slow=压制慢速 */
 const HERO_STYLE={
-  核弹:{aggro:.6},
-  八幡:{aggro:.75},
+  核弹:{aggro:.9},
+  八幡:{aggro:.9},
   字母:{aggro:.55,rebelWall:true},
   苏苏:{aggro:.5},
   绘梨衣:{aggro:.35,scrapEngine:true},
@@ -312,6 +312,7 @@ class AIPlayer{
           if(u.lifespan>0)fs+=60;                       // 限时单位（超人）：打脸优先，不解场
           if(u.charge&&u.atkLeft>=u.strikes)fs+=aggro*hd*.8;   // 冲锋单位首回合抢血
           fs+=(aggro-.5)*hd*2+(aggro>=.8?hd*1.5:0);     // 角色抢血倾向
+          if(aggro>=.85)fs+=hd*1.3;                     // 极致抢血（八幡/核弹）：打脸额外加成
           if(u.taunt&&!lethal&&s.hp<=14)fs-=3;
           if(!o.board.length)fs+=2;
           if(this.level==="easy")fs+=3;
@@ -325,6 +326,13 @@ class AIPlayer{
           if(!kills&&dies)sc-=4;
           if(t.taunt&&kills)sc+=1.5;
           if(this.level==="hard"&&t.id==="awaBand")sc+=4;
+          // 极致抢血（八幡/核弹）：不白吃 / 不过墙 / 非自危威胁时，解场大幅降分 → 专注打脸
+          // 白吃高值单位、或自己血量不健康/敌方威胁大(攻击高)时仍解场（保场面）
+          if(aggro>=.85&&!t.taunt){
+            const selfRisk=s.hp<=o.hp||s.hp<=10;
+            const threat=t.attack>=4&&(s.hp<=14||t.attack>=s.hp);
+            if(!(kills&&!dies)&&!selfRisk&&!threat)sc-=8;
+          }
           consider(t,sc+Math.random()*this.noise());
         }
       }
