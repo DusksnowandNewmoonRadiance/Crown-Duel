@@ -28,9 +28,18 @@ function cardName(hero,id){
 function mkStat(hero){return{hero,games:0,wins:0,maxBoard:0,minHp:99,sat:0,satGuns:0,aoeCnt:0,conv:0,gunPeak:0,scrapPeak:0,wastePreSac:0,firebombNoFin:0,boardingThin:0,aoeLate:0,rebelBlocked:0,supermanFace:0,supermanBoard:0,turns:0,mull:0,
   heroDmg:0,unitDmg:0,winTurns:[],cardPlays:{},cardPlayedGames:{},cardWins:{},cardDmg:{},cardAtks:{}};}
 
+/* ---- 选卡组：七星 AI 随机从预设卡组里选（衰减流/星联邦流）；fix 可强制指定某套预设 ---- */
+function pickDeck(hero,fix){
+  if(fix&&fix.preset){const d=C.presetDeck(hero,fix.preset);if(d)return{deck:d,preset:fix.preset};}
+  const ps=C.presets(hero);
+  if(ps){const keys=Object.keys(ps);if(keys.length){const name=keys[Math.floor(Math.random()*keys.length)];return{deck:ps[name],preset:name};}}
+  return{deck:C.defaultDeck(hero),preset:"默认"};
+}
+
 /* ---- 跑某对（双向轮流）：单局，返回 winner + 双方统计 ---- */
-function playOne(a,b,level){
-  const g=new E.Game({players:[{name:"A",hero:a,deck:C.aiDeck(a)},{name:"B",hero:b,deck:C.aiDeck(b)}]});
+function playOne(a,b,level,fix){
+  const da=pickDeck(a,fix&&fix.hero===a?fix:null),db=pickDeck(b,fix&&fix.hero===b?fix:null);
+  const g=new E.Game({players:[{name:"A",hero:a,deck:da.deck},{name:"B",hero:b,deck:db.deck}]});
   const ai=[new AIPlayer(level||"normal"),new AIPlayer(level||"normal")];
   const st=[mkStat(a),mkStat(b)];
   // 伤害追踪：包装引擎伤害方法，归因给"当前动作方(curActor)"与"最近打出的卡(curPlayed)"
@@ -118,7 +127,7 @@ function playOne(a,b,level){
     st[i].cardPlayedGames[id]=(st[i].cardPlayedGames[id]||0)+1;
     if(g.winner===i)st[i].cardWins[id]=(st[i].cardWins[id]||0)+1;
   });
-  return{winner:g.winner,turns:wt,st};
+  return{winner:g.winner,turns:wt,st,presets:[da.preset,db.preset]};
 }
 function merge(dst,src){for(const k in src){if(k==="hero")continue;
   if(k==="maxBoard"||k==="gunPeak"||k==="scrapPeak")dst[k]=Math.max(dst[k],src[k]);
@@ -130,6 +139,7 @@ function mergeObj(a,b){for(const k in b){a[k]=(a[k]||0)+b[k];}return a;}
 
 const agg={};heroes.forEach(h=>agg[h]=mkStat(h));
 const MATRIX={};
+const QX={};   /* 七星卡组拆分：预设 → 对手 → {w,l}（按随机匹配中的实际卡组归类） */
 function runAll(n){
   for(const a of heroes)for(const b of heroes){if(a===b)continue;
     MATRIX[a]=MATRIX[a]||{};MATRIX[b]=MATRIX[b]||{};
@@ -139,6 +149,12 @@ function runAll(n){
     for(let k=0;k<n;k++){
       const first=k%2===0;
       const r=first?playOne(a,b):playOne(b,a);
+      if(a==="七星"||b==="七星"){
+        const h0=first?a:b,h1=first?b:a;   // h0=players[0] 英雄，h1=players[1] 英雄
+        const p0=r.presets[0],p1=r.presets[1];
+        if(h0==="七星"&&p0!=="默认"){QX[p0]=QX[p0]||{};QX[p0][h1]=QX[p0][h1]||{w:0,l:0};r.winner===0?QX[p0][h1].w++:QX[p0][h1].l++;}
+        if(h1==="七星"&&p1!=="默认"){QX[p1]=QX[p1]||{};QX[p1][h0]=QX[p1][h0]||{w:0,l:0};r.winner===1?QX[p1][h0].w++:QX[p1][h0].l++;}
+      }
       if(r.winner===0){first?aw++:bw++;}
       else if(r.winner===1){first?bw++:aw++;}
       merge(dA,r.st[first?0:1]);merge(dB,r.st[first?1:0]);
@@ -204,21 +220,28 @@ function cardBlock(stats){
 if(require.main===module){
   const who=process.argv[2],n=parseInt(process.argv[3]||process.argv[2],10)||20;
   const single=who&&!isNaN(+process.argv[3])?who:null;
+  /* 七星指定卡组：node winrate.js 七星-衰减流 N / 七星-星联邦流 N */
+  let fix=null,qxHead="",qxName=single;
+  if(single&&single.includes("-")){
+    const h0=single.split("-")[0],p0=single.split("-")[1];
+    const ps0=C.presets(h0);
+    if(C.PROFILES[h0]&&ps0&&ps0[p0]){fix={hero:h0,preset:p0};qxHead=`（${p0}）`;qxName=h0;}
+  }
   console.log(`皇冠对决 · 胜率统计器 v3（每对 ${n} 局/座位，AI=normal，双向轮流先后手）\n`);
   if(single){
-    const dA=mkStat(single),dB=mkStat(single);
+    const dA=mkStat(qxName),dB=mkStat(qxName);
     const rows={};
-    for(const b of heroes){if(b===single)continue;
+    for(const b of heroes){if(b===qxName)continue;
       let aw=0,bw=0;
-      for(let k=0;k<n;k++){const f=k%2===0;const r=f?playOne(single,b):playOne(b,single);
+      for(let k=0;k<n;k++){const f=k%2===0;const r=f?playOne(qxName,b,undefined,fix):playOne(b,qxName,undefined,fix);
         if(r.winner===0)f?aw++:bw++;else if(r.winner===1)f?bw++:aw++;
         merge(dA,r.st[f?0:1]);merge(dB,r.st[f?1:0]);
       }
       rows[b]=Math.round(aw/(aw+bw)*100);
       const t=aw+bw;dA.wins+=aw;dA.games+=t;
     }
-    console.log(`${single} 对每个卡牌师胜率：`);
-    heroes.forEach(h=>{if(h!==single)console.log(`  对 ${pad(h,6)} ${rows[h]}%`);});
+    console.log(`${qxName}${qxHead} 对每个卡牌师胜率：`);
+    heroes.forEach(h=>{if(h!==qxName)console.log(`  对 ${pad(h,6)} ${rows[h]}%`);});
     console.log(`综合：${Math.round(dA.wins/dA.games*100)}%（${dA.games} 局）\n`);
     diag([dA]);
     console.log();
@@ -234,6 +257,25 @@ if(require.main===module){
     }
     console.log("\n=== 综合胜率 ===");
     [...heroes].sort((x,y)=>ovl(y,n)-ovl(x,n)).forEach(h=>console.log(`  ${pad(h,6)} ${pad(ovl(h,n)+"%",5)}  (${agg[h].games} 局)`));
+    console.log("\n=== 七星卡组拆分（随机匹配按实际卡组归类）===");
+    const qk=Object.keys(QX);
+    if(qk.length){
+      const colW2=9;
+      console.log(pad("",colW2)+["衰减流","星联邦流"].map(p=>pad(p,colW2)).join(""));
+      for(const foe of heroes){if(foe==="七星")continue;
+        const cells=["衰减流","星联邦流"].map(p=>{
+          const c=QX[p]&&QX[p][foe];
+          if(!c||!(c.w+c.l))return pad("—",colW2);
+          return pad(Math.round(c.w/(c.w+c.l)*100)+"%",colW2);
+        }).join("");
+        console.log(pad(foe,colW2)+cells);
+      }
+      for(const p of["衰减流","星联邦流"]){
+        let w=0,l=0;for(const foe in QX[p]){w+=QX[p][foe].w;l+=QX[p][foe].l;}
+        if(w+l)console.log(`  ${pad(p,6)} 综合 ${pad(Math.round(w/(w+l)*100)+"%",5)}  (${w+l} 局)`);
+      }
+      console.log(`  ${pad("随机",6)} 综合 ${pad(ovl("七星",n)+"%",5)}  (${agg["七星"].games} 局)`);
+    }else console.log("  （样本不足）");
     console.log("\n=== AI 行为诊断（全角色累计）===");
     diag(heroes.map(h=>agg[h]));
     console.log();
