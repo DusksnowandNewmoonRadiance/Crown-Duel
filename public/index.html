@@ -198,12 +198,14 @@
     <div class="topbar-r"><span class="chip gold-chip" id="campGold">🪙 0</span></div>
   </header>
   <main class="campaign">
-    <!-- 角色长条列表：一页 4 条，比例约 4:9，预留图片接口 -->
-    <div class="camp-hero-list" id="campHeroList"></div>
-    <div class="camp-hero-nav">
-      <button class="btn btn-ghost" id="campPrev" hidden>‹ 上一页</button>
-      <span class="muted" id="campPage"></span>
-      <button class="btn btn-ghost" id="campNext" hidden>下一页 ›</button>
+    <!-- 角色长条列表：一页横铺 4 条（4:9 竖长条），预留图片接口 -->
+    <div id="campListWrap">
+      <div class="camp-hero-list" id="campHeroList"></div>
+      <div class="camp-hero-nav">
+        <button class="btn btn-ghost" id="campPrev" hidden>‹ 上一页</button>
+        <span class="muted" id="campPage"></span>
+        <button class="btn btn-ghost" id="campNext" hidden>下一页 ›</button>
+      </div>
     </div>
     <!-- 关卡与存档位 -->
     <div id="campDetail" hidden>

@@ -778,27 +778,37 @@ function renderCampaign(){
   $("#campPrev").hidden=Campaign.page===0;
   $("#campNext").hidden=start+per>=HEROES.length;
   $("#campPage").textContent=`${Campaign.page+1} / ${Math.ceil(HEROES.length/per)}`;
-  /* 长条：比例约 4:9；预留 .camp-img 图片接口（暂无图片时用角色介绍顶替） */
+  /* 竖长条 4:9：图片区在上（预留 img 接口，暂无图片时用徽记+角色介绍顶替），文字在下 */
   list.innerHTML=slice.map(h=>{
     const info=C.HERO_INFO[h],cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
     const unlocked=cam&&cam.unlocked;
-    const badge=unlocked?"已解锁":"未解锁（用该角色赢得一场普通对局）";
     return`<button class="camp-bar ${unlocked?"":"locked"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
-      <div class="camp-img" style="--hcr:${V.heroRgb(h)}"><span class="crest" style="--hcr:${V.heroRgb(h)}">${V.esc(V.glyph(h))}</span></div>
-      <div class="camp-txt"><strong>${V.esc(h)}</strong><small>${V.esc(info.title)}</small><span class="muted">${unlocked?"★ 剧情已解锁":"🔒 "+badge}</span></div>
+      <div class="camp-img" style="--hcr:${V.heroRgb(h)}">
+        <img class="camp-photo" alt="" hidden data-hero-img="${V.esc(h)}">
+        <span class="crest" style="--hcr:${V.heroRgb(h)}">${V.esc(V.glyph(h))}</span>
+        <span class="camp-photo-fallback">${V.esc(info.title)}</span>
+      </div>
+      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${unlocked?"★ 剧情已解锁":"🔒 未解锁"}</span></div>
     </button>`;
   }).join("");
+  /* 预留图片接口：img.camp-photo 有 src 时自动替换徽记（后续接角色立绘） */
+  $$(".camp-photo[data-hero-img]").forEach(img=>{
+    const key="campart."+img.dataset.heroImg;
+    const src=store.get(key,"");
+    if(src){img.hidden=false;img.src=src;img.previousElementSibling.hidden=true;}
+  });
 }
 $("#campHeroList").addEventListener("click",e=>{
   const b=e.target.closest("button[data-hero]");if(!b)return;
   const cam=Account.me&&Account.me.campaign&&Account.me.campaign[b.dataset.hero];
   if(!cam||!cam.unlocked){toast("先用该角色赢得一场普通对局解锁剧情",false);return;}
-  Campaign.hero=b.dataset.hero;Campaign.page=0;
+  Campaign.hero=b.dataset.hero;
+  $("#campListWrap").hidden=true;
   renderCampaignDetail();$("#campDetail").hidden=false;
 });
 $("#campPrev").addEventListener("click",()=>{Campaign.page--;renderCampaign();});
 $("#campNext").addEventListener("click",()=>{Campaign.page++;renderCampaign();});
-$("#campDetailBack").addEventListener("click",()=>{$("#campDetail").hidden=true;renderCampaign();});
+$("#campDetailBack").addEventListener("click",()=>{$("#campDetail").hidden=true;$("#campListWrap").hidden=false;renderCampaign();});
 function renderCampaignDetail(){
   const cam=C.campaignOf(Campaign.hero);
   const ch=cam.chapters.ch1;
