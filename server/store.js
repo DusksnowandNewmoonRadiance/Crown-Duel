@@ -35,20 +35,22 @@ function calcRate(s){s.games=s.wins+s.losses+s.draws;s.winRate=s.games?Math.roun
    账号系统：登录 / 金币 / 仓库 / 剧情存档
    ============================================================ */
 function hashPass(pass,salt){return crypto.createHash("sha256").update(salt+"::"+pass).digest("hex");}
-function newUser(user,pass,nick){
+function newUser(user,pass,nick,email){
   const salt=crypto.randomBytes(8).toString("hex");
   const uid="u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,gold:0,
+  return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,email:email||"",gold:0,
     inv:[],                    // 仓库 [{id,qty}]
     campaign:{},               // [hero]:{unlocked,slots:[{deck,ch1,upgrades},×3]}
     token:crypto.randomBytes(16).toString("hex"),
+    resetCode:"",resetExp:0,
     createdAt:Date.now()};
 }
 /* 用户安全视图（不含密码/盐） */
 function pubUser(u){
-  return{uid:u.uid,user:u.user,nick:u.nick,gold:u.gold,inv:u.inv,campaign:u.campaign};
+  return{uid:u.uid,user:u.user,nick:u.nick,email:u.email||"",gold:u.gold,inv:u.inv,campaign:u.campaign};
 }
 function findUser(field,val){for(const k in users)if(users[k][field]===val)return users[k];return null;}
+function validEmail(v){return typeof v==="string"&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());}
 
 const Store={
   DATA_DIR,TYPES,
@@ -67,21 +69,58 @@ const Store={
     return stats;
   },
   /* ---------- 账号 ---------- */
-  register(user,pass,nick){
+  register(user,pass,nick,email){
     if(!user||!pass)throw new Error("用户名和密码不能为空");
     if(String(user).length<2||String(user).length>16)throw new Error("用户名需 2~16 个字符");
     if(String(pass).length<4)throw new Error("密码至少 4 位");
     if(findUser("user",user))throw new Error("用户名已被注册");
-    const u=newUser(String(user),String(pass),String(nick||"").trim());
+    let mail="";
+    if(email!==undefined&&email!==null&&String(email).trim()!==""){
+      if(!validEmail(email))throw new Error("邮箱格式不正确");
+      if(findUser("email",email))throw new Error("该邮箱已被绑定");
+      mail=String(email).trim();
+    }
+    const u=newUser(String(user),String(pass),String(nick||"").trim(),mail);
     users[u.uid]=u;write("users.json",users);
     return{token:u.token,me:pubUser(u)};
   },
   login(user,pass){
-    const u=findUser("user",user);if(!u)throw new Error("用户不存在");
+    const u=findUser("user",user)||(String(user).includes("@")?findUser("email",user):null);
+    if(!u)throw new Error("用户不存在");
     if(u.pass!==hashPass(pass,u.salt))throw new Error("密码错误");
     u.token=crypto.randomBytes(16).toString("hex");
     write("users.json",users);
     return{token:u.token,me:pubUser(u)};
+  },
+  bindEmail(uid,email){
+    const u=users[uid];if(!u)throw new Error("未登录");
+    if(!validEmail(email))throw new Error("邮箱格式不正确");
+    if(findUser("email",email))throw new Error("该邮箱已被绑定");
+    u.email=String(email).trim();
+    write("users.json",users);
+    return{email:u.email};
+  },
+  /* 忘记密码：生成 6 位验证码（开发模式直接返回，正式版应接入邮件发送） */
+  forgot(email){
+    if(!validEmail(email))throw new Error("请输入正确的邮箱");
+    const u=findUser("email",email);
+    if(!u)throw new Error("该邮箱未绑定任何账号");
+    u.resetCode=String(Math.floor(100000+Math.random()*900000));
+    u.resetExp=Date.now()+15*60*1000;
+    write("users.json",users);
+    return{code:u.resetCode};
+  },
+  reset(email,code,pass){
+    if(!validEmail(email))throw new Error("请输入正确的邮箱");
+    const u=findUser("email",email);
+    if(!u)throw new Error("该邮箱未绑定任何账号");
+    if(!u.resetCode||u.resetCode!==String(code).trim())throw new Error("验证码错误");
+    if(Date.now()>u.resetExp)throw new Error("验证码已过期，请重新获取");
+    if(String(pass).length<4)throw new Error("密码至少 4 位");
+    const salt=crypto.randomBytes(8).toString("hex");
+    u.pass=hashPass(String(pass),salt);u.salt=salt;u.resetCode="";u.resetExp=0;
+    write("users.json",users);
+    return{ok:true};
   },
   byToken(token){
     if(!token)return null;

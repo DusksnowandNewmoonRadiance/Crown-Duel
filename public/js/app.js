@@ -63,19 +63,19 @@ const Account={
     try{return await r.json();}catch(e){return{ok:false,msg:"网络错误"};}
   },
   async refresh(){
-    if(!this.token){this.me=null;renderGold();return;}
+    if(!this.token){this.me=null;renderGold();renderHome();return;}
     const r=await this.api("/me",{});
-    if(r.ok&&r.me){this.me=r.me;renderGold();}
-    else{this.token="";store.del("token");this.me=null;renderGold();}
+    if(r.ok&&r.me){this.me=r.me;renderGold();renderHome();}
+    else{this.token="";store.del("token");this.me=null;renderGold();renderHome();}
   },
   async login(user,pass){
     const r=await this.api("/auth/login",{user,pass});
-    if(r.ok){this.token=r.token;this.me=r.me;store.set("token",r.token);renderGold();return{ok:true};}
+    if(r.ok){this.token=r.token;this.me=r.me;store.set("token",r.token);renderGold();renderHome();return{ok:true};}
     return r;
   },
-  async register(user,pass,nick){
-    const r=await this.api("/auth/register",{user,pass,nick});
-    if(r.ok){this.token=r.token;this.me=r.me;store.set("token",r.token);renderGold();return{ok:true};}
+  async register(user,pass,nick,email){
+    const r=await this.api("/auth/register",{user,pass,nick,email});
+    if(r.ok){this.token=r.token;this.me=r.me;store.set("token",r.token);renderGold();renderHome();return{ok:true};}
     return r;
   },
   async logout(){
@@ -93,36 +93,69 @@ function renderGold(){
   const gc=$("#campGold");if(gc)gc.textContent="🪙 "+g;
   const a=$("#homeAuthTxt"),d=$("#homeAuth");
   if(a&&d){a.textContent=Account.me?(Account.me.nick||Account.me.user):"登录";d.title=Account.me?"退出登录":"登录/注册";}
+  const hb=$("#homeBind");
+  if(hb)hb.hidden=!(Account.me&&!Account.me.email);
 }
-/* 登录弹窗 */
-let authMode="login";
-function openAuth(){
-  authMode="login";
-  $("#authTitle").textContent="登录";
-  $("#authSwitch").textContent="没有账号？注册";
-  $("#authGo").textContent="登录";
-  $("#authNickField").hidden=true;
+/* 登录弹窗：login / register / forgot 三模式 */
+let authMode="login",forgotCode="";
+function authShow(){
+  const login=authMode==="login";
+  const forgot=authMode==="forgot";
+  $("#authTitle").textContent=forgot?"找回密码":(login?"登录":"注册");
+  $("#authSwitch").hidden=forgot;
+  $("#authSwitch").textContent=login?"没有账号？注册":"已有账号？登录";
+  $("#authGo").textContent=forgot?(forgotCode?"重置密码":"发送验证码"):(login?"登录":"注册");
+  $("#authUserField").hidden=forgot;
+  $("#authPassField").hidden=forgot&&!forgotCode;
+  $("#authNickField").hidden=login||forgot;
+  $("#authEmailField").hidden=!forgot&&!login;
+  $("#authCodeField").hidden=!(forgot&&forgotCode);
+  $("#authForgot").hidden=!login;
+  if(!forgot||!forgotCode)$("#authPass").placeholder="至少 4 位";
+  $("#authPass").type=forgot?"password":"password";
   $("#authMsg").textContent="";
+}
+function openAuth(){
+  authMode="login";forgotCode="";
+  authShow();
   openModal("#mAuth");
 }
 $("#homeAuth").addEventListener("click",()=>{if(Account.me){confirmBox("退出登录","确定要退出当前账号吗？","退出").then(ok=>{if(ok)Account.logout();});}else openAuth();});
 $("#authSwitch").addEventListener("click",()=>{
-  authMode=authMode==="login"?"register":"login";
-  $("#authTitle").textContent=authMode==="login"?"登录":"注册";
-  $("#authSwitch").textContent=authMode==="login"?"没有账号？注册":"已有账号？登录";
-  $("#authGo").textContent=authMode==="login"?"登录":"注册";
-  $("#authNickField").hidden=authMode==="login";
-  $("#authMsg").textContent="";
+  authMode=authMode==="login"?"register":"login";forgotCode="";
+  authShow();
 });
+$("#authForgot").addEventListener("click",()=>{authMode="forgot";forgotCode="";authShow();$("#authEmail").focus();});
 $("#authGo").addEventListener("click",async()=>{
-  const user=$("#authUser").value.trim(),pass=$("#authPass").value,nick=$("#authNick").value.trim();
+  const user=$("#authUser").value.trim(),pass=$("#authPass").value,nick=$("#authNick").value.trim(),
+        email=$("#authEmail").value.trim(),code=$("#authCode").value.trim();
   $("#authMsg").textContent="";
-  const r=authMode==="login"?await Account.login(user,pass):await Account.register(user,pass,nick);
+  if(authMode==="forgot"){
+    if(!forgotCode){
+      const r=await Account.api("/auth/forgot",{email});
+      if(r.ok){forgotCode=r.code;$("#authMsg").textContent="验证码已发送（开发模式直接显示）："+r.code;authShow();}
+      else $("#authMsg").textContent=r.msg||"发送失败";
+    }else{
+      const r=await Account.api("/auth/reset",{email,code,pass});
+      if(r.ok){toast("密码已重置，请用新密码登录",true);authMode="login";forgotCode="";authShow();}
+      else $("#authMsg").textContent=r.msg||"重置失败";
+    }
+    return;
+  }
+  const r=authMode==="login"?await Account.login(user,pass):await Account.register(user,pass,nick,email);
   if(r.ok){closeModal("#mAuth");toast("欢迎回来，"+(Account.me.nick||Account.me.user),true);renderHome();}
   else $("#authMsg").textContent=r.msg||"操作失败";
 });
 $("#authUser").addEventListener("keydown",e=>{if(e.key==="Enter")$("#authGo").click();});
 $("#authPass").addEventListener("keydown",e=>{if(e.key==="Enter")$("#authGo").click();});
+/* 绑定邮箱（登录后主页出现入口） */
+$("#homeBind").addEventListener("click",()=>{if(!Account.me){openAuth();return;}$("#bindEmail").value="";$("#bindMsg").textContent="";openModal("#mBindEmail");});
+$("#bindGo").addEventListener("click",async()=>{
+  const email=$("#bindEmail").value.trim();
+  const r=await Account.api("/auth/bindEmail",{email});
+  if(r.ok){Account.me=Object.assign({},Account.me,{email:r.email});closeModal("#mBindEmail");renderHome();toast("邮箱绑定成功",true);}
+  else $("#bindMsg").textContent=r.msg||"绑定失败";
+});
 
 /* ============================================================
    主页
@@ -844,7 +877,7 @@ function renderCampaignDetail(){
     const cnt=s.deck?s.deck.length:0,best=s.ch1?Math.max(s.ch1.best||0,0):0,first=s.ch1&&s.ch1.first;
     return`<button class="slot-card ${Campaign.slot===i?"on":""}" data-slot="${i}">
       <b>存档位 ${i+1}</b>
-      <span class="muted">${cnt} 张卡 · 最佳 ${best}★${first?" · 已首通":""}</span>
+      <span class="muted">${cnt?cnt+" 张卡":"初始弱卡组（开战自动补足）"} · 最佳 ${best}★${first?" · 已首通":""}</span>
     </button>`;
   }).join("");
   $("#campStart").disabled=false;
@@ -854,9 +887,7 @@ $("#campSlots").addEventListener("click",e=>{
   Campaign.slot=+b.dataset.slot;renderCampaignDetail();
 });
 $("#campStart").addEventListener("click",()=>{
-  const data=Account.me.campaign[Campaign.hero];
-  const s=data.slots[Campaign.slot];
-  if(!s.deck||!s.deck.length){toast("这个存档位还没有卡组，先买/放入剧情卡",false);return;}
+  // 存档位为空也能开战：开局自动用初始弱卡组补足 30 张
   startCampaign(Campaign.hero,Campaign.slot);
 });
 

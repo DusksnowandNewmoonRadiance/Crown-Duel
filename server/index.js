@@ -78,7 +78,7 @@ app.post("/api/reward/match",(req,res)=>{
   res.json({ok:true,gold:u.gold,campaign:u.campaign});
 });
 app.post("/api/auth/register",(req,res)=>{
-  try{const r=Store.register(req.body.user,req.body.pass,req.body.nick);res.json({ok:true,...r});}
+  try{const r=Store.register(req.body.user,req.body.pass,req.body.nick,req.body.email);res.json({ok:true,...r});}
   catch(e){res.json({ok:false,msg:e.message});}
 });
 app.post("/api/auth/login",(req,res)=>{
@@ -86,6 +86,21 @@ app.post("/api/auth/login",(req,res)=>{
   catch(e){res.json({ok:false,msg:e.message});}
 });
 app.post("/api/auth/logout",(req,res)=>{res.json({ok:Store.logout(tok(req))});});
+app.post("/api/auth/bindEmail",(req,res)=>{
+  try{
+    const u=Store.byToken(tok(req));
+    if(!u){res.json({ok:false,msg:"未登录"});return;}
+    const r=Store.bindEmail(u.uid,req.body.email);res.json({ok:true,...r});
+  }catch(e){res.json({ok:false,msg:e.message});}
+});
+app.post("/api/auth/forgot",(req,res)=>{
+  try{const r=Store.forgot(req.body.email);res.json({ok:true,...r});}
+  catch(e){res.json({ok:false,msg:e.message});}
+});
+app.post("/api/auth/reset",(req,res)=>{
+  try{const r=Store.reset(req.body.email,req.body.code,req.body.pass);res.json({ok:true,...r});}
+  catch(e){res.json({ok:false,msg:e.message});}
+});
 app.get("/api/me",(req,res)=>{
   const u=Store.byToken(tok(req));
   res.json(u?{ok:true,me:Store.pubUser(u)}:{ok:false,msg:"未登录"});
