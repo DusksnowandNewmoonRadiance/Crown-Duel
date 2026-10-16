@@ -857,8 +857,13 @@ input{font:inherit;color:var(--text)}
 .shop-kind{font-size:12px;color:var(--purple);}
 .shop-desc{font-size:13px;color:var(--muted);line-height:1.5;min-height:38px;}
 .shop-price{font-weight:700;color:var(--gold);}
-.vault-item{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:10px;}
-.vault-item b{color:var(--gold2);}
+/* 仓库：方块状储存网格 */
+.vault-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;}
+.vault-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:12px;padding:18px 8px 14px;cursor:pointer;transition:transform .15s,border-color .15s;}
+.vault-cell:hover{transform:translateY(-2px);border-color:var(--gold);}
+.vault-icon{font-size:34px;line-height:1;}
+.vault-name{font-size:13px;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vault-qty{font-size:12px;color:var(--gold2);font-weight:700;}
 /* 角色长条：一页横铺 4 条，每条为 4:9 竖长条（图片在上、文字在下） */
 .camp-hero-list{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
 .camp-bar{display:flex;flex-direction:column;align-items:stretch;text-align:center;background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s;}

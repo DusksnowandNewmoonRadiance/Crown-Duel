@@ -729,32 +729,41 @@ $("#shopList").addEventListener("click",async e=>{
 });
 
 /* ============================================================
-   仓库：把剧情卡 / 卡包加入指定存档位
+   仓库：所有角色共用一个仓库（方块网格），放入时选角色+存档位
    ============================================================ */
-const Vault={hero:"八幡",slot:0};
+const Vault={item:null,hero:"八幡",slot:0};
+const VAULT_ICON={villageHorn:"📯",militiaCaptain:"⚔",campaignPack:"🎁",upgradeToken:"🎫"};
 function renderVault(){
-  $("#vaultHero").innerHTML=HEROES.map(h=>`<button data-v="${V.esc(h)}" class="${Vault.hero===h?"on":""}">${V.esc(h)}</button>`).join("");
-  $("#vaultSlot").innerHTML=[0,1,2].map(i=>`<button data-v="${i}" class="${Vault.slot===i?"on":""}">存档位 ${i+1}</button>`).join("");
   const inv=Account.me.inv||[];
   const list=$("#vaultList");
   if(!inv.length){list.innerHTML='<p class="muted">仓库是空的。去商店买点东西吧。</p>';return;}
   list.innerHTML=inv.map(x=>{
     const it=SHOP_ITEMS[x.id];
-    const isToken=it&&it.kind==="token";
-    return`<div class="vault-item"><div>
-      <b>${it?V.esc(it.name):V.esc(x.id)}</b>
-      <span class="muted">×${x.qty}</span>
-      <p class="muted">${it?V.esc(it.desc):""}</p>
-    </div>${isToken?'<button class="btn" disabled title="升级券在剧情结算后的升级界面使用">升级用</button>':`<button class="btn" data-id="${V.esc(x.id)}">放入存档位 ${Vault.slot+1}</button>`}</div>`;
+    return`<button class="vault-cell" data-id="${V.esc(x.id)}" title="${it?V.esc(it.name):V.esc(x.id)}">
+      <span class="vault-icon">${VAULT_ICON[x.id]||"▫"}</span>
+      <span class="vault-name">${it?V.esc(it.name):V.esc(x.id)}</span>
+      <span class="vault-qty">×${x.qty}</span>
+    </button>`;
   }).join("");
 }
-$("#vaultHero").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Vault.hero=b.dataset.v;renderVault();});
-$("#vaultSlot").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Vault.slot=+b.dataset.v;renderVault();});
-$("#vaultList").addEventListener("click",async e=>{
+$("#vaultList").addEventListener("click",e=>{
   const b=e.target.closest("button[data-id]");if(!b)return;
-  const r=await Account.api("/inventory/use",{id:b.dataset.id,hero:Vault.hero,slot:Vault.slot});
-  if(r.ok){Account.me=Object.assign({},Account.me,{inv:r.inv,campaign:r.campaign});renderGold();renderVault();toast("已放入存档位 "+(Vault.slot+1),true);}
-  else toast(r.msg||"使用失败",false);
+  const it=SHOP_ITEMS[b.dataset.id];
+  if(it&&it.kind==="token"){toast("升级券在剧情结算后的升级界面使用",false);return;}
+  Vault.item=b.dataset.id;
+  $("#slotPickTitle").textContent="放入【"+(it?it.name:b.dataset.id)+"】";
+  $("#pickHero").innerHTML=HEROES.map(h=>`<button data-v="${V.esc(h)}" class="${Vault.hero===h?"on":""}">${V.esc(h)}</button>`).join("");
+  $("#pickSlot").innerHTML=[0,1,2].map(i=>`<button data-v="${i}" class="${Vault.slot===i?"on":""}">存档位 ${i+1}</button>`).join("");
+  $("#pickMsg").textContent="";
+  openModal("#mSlotPick");
+});
+$("#pickHero").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Vault.hero=b.dataset.v;$$("#pickHero button").forEach(x=>x.classList.toggle("on",x===b));});
+$("#pickSlot").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Vault.slot=+b.dataset.v;$$("#pickSlot button").forEach(x=>x.classList.toggle("on",x===b));});
+$("#pickGo").addEventListener("click",async()=>{
+  if(!Vault.item){toast("请先选择物品",false);return;}
+  const r=await Account.api("/inventory/use",{id:Vault.item,hero:Vault.hero,slot:Vault.slot});
+  if(r.ok){Account.me=Object.assign({},Account.me,{inv:r.inv,campaign:r.campaign});closeModal("#mSlotPick");renderGold();renderVault();toast("已放入 "+Vault.hero+" 存档位 "+(Vault.slot+1),true);}
+  else toast(r.msg||"放入失败",false);
 });
 /* 商品表（与 server 侧 SHOP 一致，供仓库显示名称） */
 const SHOP_ITEMS={

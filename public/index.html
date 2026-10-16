@@ -184,9 +184,8 @@
     <div class="topbar-r"><span class="chip gold-chip" id="vaultGold">🪙 0</span></div>
   </header>
   <main class="vault">
-    <div class="field"><label>选择角色</label><div class="seg" id="vaultHero"></div></div>
-    <div class="field"><label>放入的剧情存档位</label><div class="seg" id="vaultSlot"></div></div>
-    <div class="vault-list" id="vaultList"></div>
+    <p class="muted">所有角色共用一个仓库。点击物品方块，选择要放入的角色与存档位。</p>
+    <div class="vault-grid" id="vaultList"></div>
   </main>
 </section>
 
@@ -458,6 +457,15 @@
   <div class="reward-line"><span>升级花费</span><b id="upCost"></b></div>
   <p class="muted" id="upMsg"></p>
   <div class="panel-acts"><button class="btn" data-close>关闭</button><button class="btn btn-gold" id="upGo" disabled>升级</button></div>
+</div></div>
+
+<div class="modal" id="mSlotPick" hidden><div class="panel">
+  <h2 id="slotPickTitle">放入剧情牌库</h2>
+  <p class="muted">物品在所有角色间通用，放入后只在该角色的剧情存档里可用。</p>
+  <div class="field"><label>角色</label><div class="seg" id="pickHero"></div></div>
+  <div class="field"><label>存档位</label><div class="seg" id="pickSlot"></div></div>
+  <p class="muted" id="pickMsg"></p>
+  <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold" id="pickGo">放入</button></div>
 </div></div>
 
 <div class="modal" id="mRules" hidden><div class="panel wide rules">
