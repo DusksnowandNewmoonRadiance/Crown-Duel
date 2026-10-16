@@ -845,3 +845,52 @@ input{font:inherit;color:var(--text)}
 #stage.compact .hname{font-size:17px}
 #stage.compact .mana b,#stage.compact .counts{font-size:13.5px}
 #stage.compact .hpb{min-width:52px;height:52px;font-size:24px}
+
+/* ============================================================
+   账号 / 商店 / 仓库 / 剧情模式
+   ============================================================ */
+.chip.gold-chip{color:var(--gold2);background:linear-gradient(180deg,rgba(226,180,103,.16),rgba(226,180,103,.06));border-color:rgba(226,180,103,.35);font-weight:700;}
+.shop,.vault,.campaign{max-width:1000px;margin:0 auto;padding:20px 16px 40px;}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.shop-item{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;}
+.shop-name{font-weight:700;font-size:16px;color:var(--gold2);}
+.shop-kind{font-size:12px;color:var(--purple);}
+.shop-desc{font-size:13px;color:var(--muted);line-height:1.5;min-height:38px;}
+.shop-price{font-weight:700;color:var(--gold);}
+.vault-item{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:10px;}
+.vault-item b{color:var(--gold2);}
+.camp-hero-list{display:flex;flex-direction:column;gap:12px;}
+.camp-bar{display:flex;align-items:center;gap:14px;text-align:left;background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:10px 14px;cursor:pointer;transition:transform .15s,border-color .15s;}
+.camp-bar:hover{transform:translateY(-2px);border-color:var(--gold);}
+.camp-bar.locked{opacity:.62;}
+/* 长条：图片区与文字区比例约 4:9（整体略高于宽） */
+.camp-img{width:96px;height:216px;border-radius:10px;background:linear-gradient(180deg,var(--hcr,#a98fd9),#0d1419 78%);display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff;overflow:hidden;flex-shrink:0;}
+.camp-txt{display:flex;flex-direction:column;gap:4px;}
+.camp-txt strong{font-size:20px;color:var(--text);}
+.camp-txt small{color:var(--muted);}
+.camp-hero-nav{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:14px;}
+.camp-chapter{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
+.camp-chapter h2{color:var(--gold2);margin:0 0 6px;}
+.camp-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.slot-card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;cursor:pointer;}
+.slot-card.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold);}
+.camp-acts{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+/* AVG 开场 */
+#avgOverlay{position:fixed;inset:0;z-index:1000;background:#05080b;cursor:pointer;}
+.avg-scene{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:0 0 14vh;}
+.avg-sky{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 0%,#1a2430 0%,#0b1014 60%,#05080b 100%);}
+.avg-text{position:relative;padding:26px 34px;margin:0 6vw;background:rgba(10,16,20,.82);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:12px;font-size:19px;line-height:1.7;color:var(--text);min-height:120px;display:flex;align-items:center;box-shadow:0 -8px 40px rgba(0,0,0,.5);}
+.avg-skip{position:absolute;top:18px;right:18px;}
+/* 局内对话窗口 */
+#campDlg{position:absolute;right:150px;top:14px;width:300px;z-index:60;background:rgba(12,18,23,.94);border:1px solid var(--gold);border-radius:12px;box-shadow:0 6px 30px rgba(0,0,0,.5);overflow:hidden;}
+.camp-dlg-head{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(226,180,103,.14);color:var(--gold2);font-weight:700;font-size:13px;}
+.camp-dlg-body{padding:10px 12px;font-size:14px;line-height:1.6;color:var(--text);}
+/* 剧情结算 */
+.reward-crown{font-size:52px;text-align:center;color:var(--gold);margin:6px 0 2px;}
+.reward{max-width:460px;}
+.reward-line{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px dashed var(--line);font-size:15px;}
+.reward-line b{color:var(--gold2);}
+#mUpgrade .seg{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+#mUpgrade .seg button{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:7px 10px;cursor:pointer;}
+#mUpgrade .seg button.on{border-color:var(--gold);color:var(--gold2);}
+.up-preview{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;color:var(--text);}

@@ -20,6 +20,8 @@
   <header class="topbar">
     <div class="brand-mini"><span class="crown">♛</span> 皇冠对决</div>
     <div class="topbar-r">
+      <button class="chip gold-chip" id="homeGold" title="金币" hidden>🪙 0</button>
+      <button class="chip" id="homeAuth" title="登录/注册"><span class="dot"></span><span id="homeAuthTxt">登录</span></button>
       <button class="chip news-btn" id="homeNews" title="公告">📢 公告<span class="red-dot" hidden></span></button>
       <button class="chip" id="homeNick" title="修改昵称"><span class="dot"></span><span id="homeNickTxt">设置昵称</span> ✎</button>
       <button class="icon-btn" id="homeSound" title="声音">♪</button>
@@ -38,6 +40,9 @@
         <div class="home-actions-row">
           <button class="btn" id="btnDeck">编辑卡组</button>
           <button class="btn" id="btnCodex">图鉴</button>
+          <button class="btn" id="btnCampaign">剧情模式</button>
+          <button class="btn" id="btnShop">商店</button>
+          <button class="btn" id="btnVault">仓库</button>
           <button class="btn" id="btnRules">玩法说明</button>
         </div>
         <div class="ver" id="verLabel"></div>
@@ -158,6 +163,60 @@
   </nav>
 </section>
 
+<!-- ======================= 商店 ======================= -->
+<section class="screen" id="scrShop" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="shopBack">‹ 返回</button>
+    <div class="brand-mini">商店</div>
+    <div class="topbar-r"><span class="chip gold-chip" id="shopGold">🪙 0</span></div>
+  </header>
+  <main class="shop">
+    <p class="muted">用金币购买剧情卡与卡包。登录后普通模式胜利可获得 20 金币。</p>
+    <div class="shop-grid" id="shopList"></div>
+  </main>
+</section>
+
+<!-- ======================= 仓库 ======================= -->
+<section class="screen" id="scrVault" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="vaultBack">‹ 返回</button>
+    <div class="brand-mini">仓库</div>
+    <div class="topbar-r"><span class="chip gold-chip" id="vaultGold">🪙 0</span></div>
+  </header>
+  <main class="vault">
+    <div class="field"><label>选择角色</label><div class="seg" id="vaultHero"></div></div>
+    <div class="field"><label>放入的剧情存档位</label><div class="seg" id="vaultSlot"></div></div>
+    <div class="vault-list" id="vaultList"></div>
+  </main>
+</section>
+
+<!-- ======================= 剧情模式 ======================= -->
+<section class="screen" id="scrCampaign" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="campBack">‹ 返回</button>
+    <div class="brand-mini">剧情模式</div>
+    <div class="topbar-r"><span class="chip gold-chip" id="campGold">🪙 0</span></div>
+  </header>
+  <main class="campaign">
+    <!-- 角色长条列表：一页 4 条，比例约 4:9，预留图片接口 -->
+    <div class="camp-hero-list" id="campHeroList"></div>
+    <div class="camp-hero-nav">
+      <button class="btn btn-ghost" id="campPrev" hidden>‹ 上一页</button>
+      <span class="muted" id="campPage"></span>
+      <button class="btn btn-ghost" id="campNext" hidden>下一页 ›</button>
+    </div>
+    <!-- 关卡与存档位 -->
+    <div id="campDetail" hidden>
+      <div class="camp-chapter" id="campChapter"></div>
+      <div class="camp-slots" id="campSlots"></div>
+      <div class="camp-acts">
+        <button class="btn btn-ghost" id="campDetailBack">‹ 返回角色列表</button>
+        <button class="btn btn-gold btn-lg" id="campStart" disabled>开始剧情</button>
+      </div>
+    </div>
+  </main>
+</section>
+
 <!-- ======================= 图鉴 ======================= -->
 <section class="screen" id="scrCodex" hidden>
   <header class="topbar">
@@ -197,6 +256,11 @@
 <section class="screen" id="scrGame" hidden>
   <div id="rotate"><div class="phone"></div><h2>请横屏游玩</h2><p>旋转手机后自动继续</p><button class="btn btn-gold" id="rotFull" hidden>进入全屏</button><p class="small" id="rotIos" hidden>iPhone：点浏览器的「分享」→「添加到主屏幕」，从桌面图标打开即可全屏。</p></div>
   <div id="stageWrap"><div id="stage">
+    <!-- 剧情模式：局内对话窗口（右上角） -->
+    <div id="campDlg" hidden>
+      <div class="camp-dlg-head"><b>剧情</b><button class="x" id="campDlgClose" title="关闭">✕</button></div>
+      <div class="camp-dlg-body" id="campDlgBody"></div>
+    </div>
     <div class="table-bg"></div>
 
     <!-- 左：英雄 -->
@@ -290,6 +354,9 @@
   <h2>单人练习</h2>
   <div class="field"><label>你的卡牌师</label><div class="solo-me" id="soloMe"></div></div>
   <div class="field"><label>对手</label><div class="opp-grid" id="soloOpp"></div></div>
+  <div class="field" id="soloOppDeckField" hidden><label>敌方卡组</label><div class="seg" id="soloOppDeck">
+    <button data-v="random" class="on">随机</button><button data-v="decay">衰减流</button><button data-v="federation">星联邦流</button>
+  </div></div>
   <div class="field"><label>电脑难度</label><div class="seg" id="soloLevel">
     <button data-v="easy">简单</button><button data-v="normal">普通</button><button data-v="hard">困难</button>
   </div></div>
@@ -353,6 +420,44 @@
   <div class="panel-acts"><button class="btn" id="cfNo">取消</button><button class="btn btn-danger" id="cfYes">确定</button></div>
 </div></div>
 
+<div class="modal" id="mAuth" hidden><div class="panel">
+  <h2 id="authTitle">登录</h2>
+  <div class="field"><label>用户名</label><input id="authUser" maxlength="16" placeholder="2~16 个字符" autocomplete="username"></div>
+  <div class="field"><label>密码</label><input id="authPass" type="password" maxlength="32" placeholder="至少 4 位" autocomplete="current-password"></div>
+  <div class="field" id="authNickField" hidden><label>昵称（可选）</label><input id="authNick" maxlength="12" placeholder="联机时显示的名字"></div>
+  <p class="muted" id="authMsg"></p>
+  <div class="panel-acts">
+    <button class="btn" data-close>取消</button>
+    <button class="btn" id="authSwitch">没有账号？注册</button>
+    <button class="btn btn-gold" id="authGo">登录</button>
+  </div>
+</div></div>
+
+<div class="modal" id="mReward" hidden><div class="panel wide reward">
+  <button class="x-btn" data-close aria-label="关闭">✕</button>
+  <div class="reward-crown" id="rewardCrown">★</div>
+  <h2 id="rewardTitle">剧情胜利</h2>
+  <p class="muted" id="rewardSub"></p>
+  <div class="reward-line"><span>本次星级</span><b id="rewardStars"></b></div>
+  <div class="reward-line"><span>获得金币</span><b id="rewardGold">0</b></div>
+  <div class="reward-line" id="rewardCardLine" hidden><span>首通奖励卡</span><b id="rewardCard"></b></div>
+  <div class="reward-line" id="rewardNewBest" hidden><span>刷新纪录</span><b>★</b></div>
+  <div class="ov-acts">
+    <button class="btn" id="rewardBack">返回剧情</button>
+    <button class="btn btn-gold" id="rewardUpgrade" hidden>升级剧情卡</button>
+    <button class="btn btn-primary" id="rewardAgain">再战一局</button>
+  </div>
+</div></div>
+
+<div class="modal" id="mUpgrade" hidden><div class="panel">
+  <h2>升级剧情卡</h2>
+  <div class="seg" id="upCardList"></div>
+  <div class="up-preview" id="upPreview"></div>
+  <div class="reward-line"><span>升级花费</span><b id="upCost"></b></div>
+  <p class="muted" id="upMsg"></p>
+  <div class="panel-acts"><button class="btn" data-close>关闭</button><button class="btn btn-gold" id="upGo" disabled>升级</button></div>
+</div></div>
+
 <div class="modal" id="mRules" hidden><div class="panel wide rules">
   <h2>玩法说明</h2>
   <div class="rules-grid">
@@ -374,6 +479,15 @@
 <div id="toast"></div>
 <div id="sysBar"></div>
 <div id="connBanner" hidden>与服务器的连接中断，正在重连…</div>
+
+<!-- 剧情模式：AVG 开场 -->
+<div id="avgOverlay" hidden>
+  <div class="avg-scene">
+    <div class="avg-sky"></div>
+    <div class="avg-text" id="avgText"></div>
+    <div class="avg-skip"><button class="btn btn-ghost" id="avgSkip">跳过 ›</button></div>
+  </div>
+</div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/shared/cards.js"></script>

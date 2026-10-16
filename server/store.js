@@ -2,6 +2,7 @@
 "use strict";
 const fs=require("fs");
 const path=require("path");
+const crypto=require("crypto");
 
 const DATA_DIR=process.env.DATA_DIR||path.join(__dirname,"..","data");
 fs.mkdirSync(DATA_DIR,{recursive:true});
@@ -26,11 +27,32 @@ if(!Array.isArray(announcements)){
 }
 let balance=read("balance.json",{rev:"",overrides:{},updatedAt:0});
 let stats=read("stats.json",{});
+let users=read("users.json",{});
 /* 胜率统计：{ [hero]: {wins,losses,draws,games,winRate} }，记录联机对局结果 */
 function calcRate(s){s.games=s.wins+s.losses+s.draws;s.winRate=s.games?Math.round(s.wins/s.games*1000)/10:0;return s;}
 
+/* ============================================================
+   账号系统：登录 / 金币 / 仓库 / 剧情存档
+   ============================================================ */
+function hashPass(pass,salt){return crypto.createHash("sha256").update(salt+"::"+pass).digest("hex");}
+function newUser(user,pass,nick){
+  const salt=crypto.randomBytes(8).toString("hex");
+  const uid="u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,gold:0,
+    inv:[],                    // 仓库 [{id,qty}]
+    campaign:{},               // [hero]:{unlocked,slots:[{deck,ch1,upgrades},×3]}
+    token:crypto.randomBytes(16).toString("hex"),
+    createdAt:Date.now()};
+}
+/* 用户安全视图（不含密码/盐） */
+function pubUser(u){
+  return{uid:u.uid,user:u.user,nick:u.nick,gold:u.gold,inv:u.inv,campaign:u.campaign};
+}
+function findUser(field,val){for(const k in users)if(users[k][field]===val)return users[k];return null;}
+
 const Store={
   DATA_DIR,TYPES,
+  pubUser,
   stats(){return stats;},
   /* heroes:[h0,h1]，winner:0|1|"draw" */
   recordMatch(heroes,winner){
@@ -43,6 +65,77 @@ const Store={
     calcRate(A);calcRate(B);
     write("stats.json",stats);
     return stats;
+  },
+  /* ---------- 账号 ---------- */
+  register(user,pass,nick){
+    if(!user||!pass)throw new Error("用户名和密码不能为空");
+    if(String(user).length<2||String(user).length>16)throw new Error("用户名需 2~16 个字符");
+    if(String(pass).length<4)throw new Error("密码至少 4 位");
+    if(findUser("user",user))throw new Error("用户名已被注册");
+    const u=newUser(String(user),String(pass),String(nick||"").trim());
+    users[u.uid]=u;write("users.json",users);
+    return{token:u.token,me:pubUser(u)};
+  },
+  login(user,pass){
+    const u=findUser("user",user);if(!u)throw new Error("用户不存在");
+    if(u.pass!==hashPass(pass,u.salt))throw new Error("密码错误");
+    u.token=crypto.randomBytes(16).toString("hex");
+    write("users.json",users);
+    return{token:u.token,me:pubUser(u)};
+  },
+  byToken(token){
+    if(!token)return null;
+    for(const k in users)if(users[k].token===token)return users[k];
+    return null;
+  },
+  logout(token){const u=this.byToken(token);if(u){u.token="";write("users.json",users);}return!!u;},
+  /* ---------- 金币与仓库 ---------- */
+  addGold(uid,n){const u=users[uid];if(!u)return 0;u.gold=Math.max(0,u.gold+n);write("users.json",users);return u.gold;},
+  /* 商品由 server 侧的 SHOP 定义；buy(item) 返回 {ok,msg} */
+  buy(uid,item){
+    const u=users[uid];if(!u)return{ok:false,msg:"未登录"};
+    if(u.gold<item.price)return{ok:false,msg:"金币不足"};
+    u.gold-=item.price;
+    const e=u.inv.find(x=>x.id===item.id);
+    if(e)e.qty++;
+    else u.inv.push({id:item.id,qty:1});
+    write("users.json",users);
+    return{ok:true,gold:u.gold,inv:u.inv};
+  },
+  useInv(uid,id){const u=users[uid];if(!u)return{ok:false,msg:"未登录"};const e=u.inv.find(x=>x.id===id);if(!e||e.qty<=0)return{ok:false,msg:"仓库里没有这件物品"};e.qty--;if(e.qty<=0)u.inv=u.inv.filter(x=>x.id!==id);write("users.json",users);return{ok:true,inv:u.inv};},
+  /* ---------- 剧情存档 ---------- */
+  camp(uid,hero){
+    const u=users[uid];if(!u)return null;
+    const c=u.campaign[hero]||(u.campaign[hero]={unlocked:false,slots:[
+      {deck:[],ch1:{best:0,first:false},upgrades:{}},
+      {deck:[],ch1:{best:0,first:false},upgrades:{}},
+      {deck:[],ch1:{best:0,first:false},upgrades:{}}
+    ]});
+    u.campaign[hero]=c;return c;
+  },
+  /* 普通模式获胜 → 解锁该角色剧情 */
+  unlockCampaign(uid,hero){
+    const c=this.camp(uid,hero);c.unlocked=true;write("users.json",users);return c;
+  },
+  /* 存档位：deck=剧情牌库 id 列表；upgrades={cardId:lvl}；ch1={best,first} */
+  saveSlot(uid,hero,slot,data){
+    const c=this.camp(uid,hero);
+    const s=c.slots[slot]||(c.slots[slot]={deck:[],ch1:{best:0,first:false},upgrades:{}});
+    if(data.deck!==undefined)s.deck=data.deck;
+    if(data.ch1)s.ch1=Object.assign({},s.ch1,data.ch1);
+    if(data.upgrades)s.upgrades=Object.assign({},s.upgrades,data.upgrades);
+    write("users.json",users);return s;
+  },
+  finishCampaign(uid,hero,slot,turns,stars){
+    const c=this.camp(uid,hero);if(!c.unlocked)c.unlocked=true;
+    const s=c.slots[slot]||(c.slots[slot]={deck:[],ch1:{best:0,first:false},upgrades:{}});
+    const ch=s.ch1;
+    const best=Math.max(ch.best||0,stars);
+    const first=!(ch.first)&&stars>=1;
+    if(first)ch.first=true;
+    ch.best=best;
+    write("users.json",users);
+    return{best:ch.best,first};
   },
   announcements(){return announcements.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt);},
   upsertAnnouncement(a){

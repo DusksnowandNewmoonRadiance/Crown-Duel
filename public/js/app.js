@@ -17,9 +17,9 @@ const store={
    ============================================================ */
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
-  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrGame"].forEach(s=>$(s).hidden=s!==id);
   if(id==="#scrGame")GameUI.fit();
-  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex")Audio2.music("menu");
+  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign")Audio2.music("menu");
 }
 function openModal(id){$(id).hidden=false;}
 function closeModal(id){$(id).hidden=true;}
@@ -49,6 +49,80 @@ const Me={
   deckName(h){return Decks.active(h).name;},
   get cid(){let c=store.get("cid","");if(!/^[A-Za-z0-9_-]{8,64}$/.test(c)){c=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9-]/g,"");store.set("cid",c);}return c;}
 };
+
+/* ============================================================
+   账号系统：登录 / 注册 / 金币 / 仓库 / 剧情存档
+   ============================================================ */
+const Account={
+  token:store.get("token",""),
+  me:null,
+  async api(path,body){
+    const b=Object.assign({},body||{});
+    if(this.token&&!b.token)b.token=this.token;
+    const r=await fetch("/api"+path,{method:body?"POST":"GET",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(b):undefined});
+    try{return await r.json();}catch(e){return{ok:false,msg:"网络错误"};}
+  },
+  async refresh(){
+    if(!this.token){this.me=null;renderGold();return;}
+    const r=await this.api("/me",{});
+    if(r.ok&&r.me){this.me=r.me;renderGold();}
+    else{this.token="";store.del("token");this.me=null;renderGold();}
+  },
+  async login(user,pass){
+    const r=await this.api("/auth/login",{user,pass});
+    if(r.ok){this.token=r.token;this.me=r.me;store.set("token",r.token);renderGold();return{ok:true};}
+    return r;
+  },
+  async register(user,pass,nick){
+    const r=await this.api("/auth/register",{user,pass,nick});
+    if(r.ok){this.token=r.token;this.me=r.me;store.set("token",r.token);renderGold();return{ok:true};}
+    return r;
+  },
+  async logout(){
+    await this.api("/auth/logout",{});
+    this.token="";store.del("token");this.me=null;renderGold();renderHome();
+  },
+  get gold(){return this.me?this.me.gold:0;}
+};
+function renderGold(){
+  const g=Account.gold;
+  $("#homeGold").hidden=!Account.me;
+  $("#homeGold").textContent="🪙 "+g;
+  const gp=$("#shopGold");if(gp)gp.textContent="🪙 "+g;
+  const gv=$("#vaultGold");if(gv)gv.textContent="🪙 "+g;
+  const gc=$("#campGold");if(gc)gc.textContent="🪙 "+g;
+  const a=$("#homeAuthTxt"),d=$("#homeAuth");
+  if(a&&d){a.textContent=Account.me?(Account.me.nick||Account.me.user):"登录";d.title=Account.me?"退出登录":"登录/注册";}
+}
+/* 登录弹窗 */
+let authMode="login";
+function openAuth(){
+  authMode="login";
+  $("#authTitle").textContent="登录";
+  $("#authSwitch").textContent="没有账号？注册";
+  $("#authGo").textContent="登录";
+  $("#authNickField").hidden=true;
+  $("#authMsg").textContent="";
+  openModal("#mAuth");
+}
+$("#homeAuth").addEventListener("click",()=>{if(Account.me){confirmBox("退出登录","确定要退出当前账号吗？","退出").then(ok=>{if(ok)Account.logout();});}else openAuth();});
+$("#authSwitch").addEventListener("click",()=>{
+  authMode=authMode==="login"?"register":"login";
+  $("#authTitle").textContent=authMode==="login"?"登录":"注册";
+  $("#authSwitch").textContent=authMode==="login"?"没有账号？注册":"已有账号？登录";
+  $("#authGo").textContent=authMode==="login"?"登录":"注册";
+  $("#authNickField").hidden=authMode==="login";
+  $("#authMsg").textContent="";
+});
+$("#authGo").addEventListener("click",async()=>{
+  const user=$("#authUser").value.trim(),pass=$("#authPass").value,nick=$("#authNick").value.trim();
+  $("#authMsg").textContent="";
+  const r=authMode==="login"?await Account.login(user,pass):await Account.register(user,pass,nick);
+  if(r.ok){closeModal("#mAuth");toast("欢迎回来，"+(Account.me.nick||Account.me.user),true);renderHome();}
+  else $("#authMsg").textContent=r.msg||"操作失败";
+});
+$("#authUser").addEventListener("keydown",e=>{if(e.key==="Enter")$("#authGo").click();});
+$("#authPass").addEventListener("keydown",e=>{if(e.key==="Enter")$("#authGo").click();});
 
 /* ============================================================
    主页
@@ -88,6 +162,12 @@ $("#btnCodex").addEventListener("click",()=>openCodex());
 $("#homeNick").addEventListener("click",()=>askNick());
 $("#homeSound").addEventListener("click",()=>{const on=!(Audio2.musicOn||Audio2.sfxOn);Audio2.setSfx(on);Audio2.setMusic(on);if(on)Audio2.music("menu");toast(on?"声音已开启":"声音已关闭",true);renderHome();});
 $("#btnRules").addEventListener("click",()=>openModal("#mRules"));
+$("#btnShop").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderShop();show("#scrShop");});
+$("#btnVault").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderVault();show("#scrVault");});
+$("#btnCampaign").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderCampaign();show("#scrCampaign");});
+$("#shopBack").addEventListener("click",()=>{show("#scrHome");renderHome();});
+$("#vaultBack").addEventListener("click",()=>{show("#scrHome");renderHome();});
+$("#campBack").addEventListener("click",()=>{show("#scrHome");renderHome();});
 $("#rulesCoach").addEventListener("click",()=>{closeModal("#mRules");if(!$("#scrGame").hidden&&GameUI.active){$("#pause").hidden=true;GameUI.openCoach();}else{store.del("coach");toast("下次对局开始时会重新显示新手引导",true);}});
 $("#btnSolo").addEventListener("click",openSolo);
 $("#btnDeck").addEventListener("click",()=>openDecks(Me.hero));
@@ -105,7 +185,7 @@ function askNick(){
 /* ============================================================
    单人练习
    ============================================================ */
-const Solo={opp:store.get("soloOpp",""),level:store.get("soloLevel","normal")};
+const Solo={opp:store.get("soloOpp",""),level:store.get("soloLevel","normal"),oppDeck:store.get("soloOppDeck","random")};
 function openSolo(){
   const me=Me.hero;
   $("#soloMe").innerHTML=`${crest(me)}<span style="--hcr:${V.heroRgb(me)}">${V.esc(me)}<small class="muted" style="display:block;font:500 12px var(--sans)">卡组：${V.esc(Me.deckName(me))}</small></span><button class="btn" id="soloChange">更换</button>`;
@@ -113,10 +193,15 @@ function openSolo(){
   $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();});
   if(Solo.opp===me)Solo.opp="";
   $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+HEROES.filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}</button>`).join("");
+  /* 敌方卡组选择：选七星作战时出现（随机 / 衰减流 / 星联邦流） */
+  const df=$("#soloOppDeckField");
+  df.hidden=!(me==="七星");
+  $$("#soloOppDeck button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.oppDeck));
   $$("#soloLevel button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.level));
   openModal("#mSolo");
 }
 $("#soloOpp").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.opp=b.dataset.v;store.set("soloOpp",Solo.opp);openSolo();});
+$("#soloOppDeck").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.oppDeck=b.dataset.v;store.set("soloOppDeck",Solo.oppDeck);openSolo();});
 $("#soloLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.level=b.dataset.v;store.set("soloLevel",Solo.level);$$("#soloLevel button").forEach(x=>x.classList.toggle("on",x===b));});
 $("#soloGo").addEventListener("click",()=>{closeModal("#mSolo");startSolo();});
 
@@ -125,7 +210,13 @@ class LocalController{
     const me=Me.hero;
     const others=HEROES.filter(h=>h!==me);
     const foe=Solo.opp&&Solo.opp!==me?Solo.opp:others[Math.floor(Math.random()*others.length)];
-    this.game=new E.Game({players:[{name:Me.nick||"你",hero:me,deck:Me.deck(me)},{name:"电脑 · "+foe,hero:foe,deck:C.defaultDeck(foe)}]});
+    /* 敌方卡组：七星 AI 可用衰减流/星联邦流——选了七星作战时可指定，否则随机 */
+    let foeDeck=C.aiDeck(foe);
+    if(foe==="七星"&&Solo.oppDeck&&Solo.oppDeck!=="random"){
+      const pd=C.presetDeck("七星",Solo.oppDeck);
+      if(pd)foeDeck=pd;
+    }
+    this.game=new E.Game({players:[{name:Me.nick||"你",hero:me,deck:Me.deck(me)},{name:"电脑 · "+foe,hero:foe,deck:foeDeck}]});
     this.ai=new A.AIPlayer(Solo.level);
     this.dead=false;this.running=false;
   }
@@ -190,8 +281,14 @@ function startSolo(){
   if(solo)solo.dispose();
   solo=new LocalController();
   show("#scrGame");
-  GameUI.start(solo,"solo",{tutorial:store.get("coach","")!=="1",onAgain:()=>startSolo(),onExit:()=>exitGame()});
+  GameUI.start(solo,"solo",{tutorial:store.get("coach","")!=="1",onAgain:()=>startSolo(),onExit:()=>exitGame(),onWin:()=>reportWin(Me.hero)});
   solo.begin();
+}
+/* 普通模式获胜：+金币 并 解锁该角色剧情（仅登录后上报） */
+async function reportWin(hero){
+  if(!Account.me||!hero)return;
+  const r=await Account.api("/reward/match",{won:true,hero});
+  if(r.ok){Account.me=Object.assign({},Account.me,{gold:r.gold,campaign:r.campaign});renderGold();}
 }
 function exitGame(){
   if(solo){solo.dispose();solo=null;}
@@ -591,6 +688,7 @@ $("#newsList").addEventListener("click",e=>{const b=e.target.closest(".news-item
 renderHome();
 show("#scrHome");
 Live.boot();
+Account.refresh();   // 恢复登录会话（若本地有 token）
 const qs=new URLSearchParams(location.search);
 const inviteCode=qs.get("room");
 if(!inviteCode&&store.get("online","")==="1"&&Me.nick)Net.enterLobby();
@@ -602,4 +700,291 @@ if(inviteCode&&/^\d{4,10}$/.test(inviteCode)){
   })();
 }
 window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;}};
+
+/* ============================================================
+   商店
+   ============================================================ */
+async function renderShop(){
+  const r=await Account.api("/shop",{});
+  if(!r.ok||!r.items){toast("商店加载失败",false);return;}
+  const inv=Account.me.inv||[];
+  $("#shopList").innerHTML=r.items.map(it=>{
+    const owned=(inv.find(x=>x.id===it.id)||{}).qty||0;
+    return`<div class="shop-item">
+      <div class="shop-card" style="--hcr:#e2b467">
+        <div class="shop-name">${V.esc(it.name)}</div>
+        <div class="shop-kind">${it.kind==="card"?"剧情卡":it.kind==="pack"?"卡包":"升级券"}</div>
+        <div class="shop-desc">${V.esc(it.desc)}</div>
+        <div class="shop-price">🪙 ${it.price}</div>
+        <button class="btn btn-gold" data-id="${V.esc(it.id)}" ${Account.gold<it.price?"disabled":""}>购买${owned?"（拥有 "+owned+"）":""}</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+$("#shopList").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-id]");if(!b)return;
+  const r=await Account.api("/shop/buy",{id:b.dataset.id});
+  if(r.ok){Account.me=Object.assign({},Account.me,{gold:r.gold,inv:r.inv});renderGold();renderShop();toast("购买成功",true);}
+  else toast(r.msg||"购买失败",false);
+});
+
+/* ============================================================
+   仓库：把剧情卡 / 卡包加入指定存档位
+   ============================================================ */
+const Vault={hero:"八幡",slot:0};
+function renderVault(){
+  $("#vaultHero").innerHTML=HEROES.map(h=>`<button data-v="${V.esc(h)}" class="${Vault.hero===h?"on":""}">${V.esc(h)}</button>`).join("");
+  $("#vaultSlot").innerHTML=[0,1,2].map(i=>`<button data-v="${i}" class="${Vault.slot===i?"on":""}">存档位 ${i+1}</button>`).join("");
+  const inv=Account.me.inv||[];
+  const list=$("#vaultList");
+  if(!inv.length){list.innerHTML='<p class="muted">仓库是空的。去商店买点东西吧。</p>';return;}
+  list.innerHTML=inv.map(x=>{
+    const it=SHOP_ITEMS[x.id];
+    const isToken=it&&it.kind==="token";
+    return`<div class="vault-item"><div>
+      <b>${it?V.esc(it.name):V.esc(x.id)}</b>
+      <span class="muted">×${x.qty}</span>
+      <p class="muted">${it?V.esc(it.desc):""}</p>
+    </div>${isToken?'<button class="btn" disabled title="升级券在剧情结算后的升级界面使用">升级用</button>':`<button class="btn" data-id="${V.esc(x.id)}">放入存档位 ${Vault.slot+1}</button>`}</div>`;
+  }).join("");
+}
+$("#vaultHero").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Vault.hero=b.dataset.v;renderVault();});
+$("#vaultSlot").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Vault.slot=+b.dataset.v;renderVault();});
+$("#vaultList").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-id]");if(!b)return;
+  const r=await Account.api("/inventory/use",{id:b.dataset.id,hero:Vault.hero,slot:Vault.slot});
+  if(r.ok){Account.me=Object.assign({},Account.me,{inv:r.inv,campaign:r.campaign});renderGold();renderVault();toast("已放入存档位 "+(Vault.slot+1),true);}
+  else toast(r.msg||"使用失败",false);
+});
+/* 商品表（与 server 侧 SHOP 一致，供仓库显示名称） */
+const SHOP_ITEMS={
+  villageHorn:{name:"渔村号角",desc:"3 费：召唤 2 个 2/1 冲锋起义村民",kind:"card"},
+  militiaCaptain:{name:"民兵队长",desc:"4 费 3/3 嘲讽：部署时全军 +1/+1",kind:"card"},
+  campaignPack:{name:"剧情卡包",desc:"随机获得 1 张剧情专属卡",kind:"pack"},
+  upgradeToken:{name:"升级券",desc:"将剧情牌库中的一张卡升级一阶",kind:"token"}
+};
+
+/* ============================================================
+   剧情模式
+   ============================================================ */
+const Campaign={
+  page:0,hero:"八幡",slot:0,chapter:null,pending:null,
+  camp:{hero:"",slot:0,turns:0,star:0,rewardCard:""}
+};
+const SHOP_CARDS=["villageHorn","militiaCaptain"];   // 商店直接买的剧情卡（放 pack 奖励池同源）
+function renderCampaign(){
+  const list=$("#campHeroList");
+  const per=4,start=Campaign.page*per,slice=HEROES.slice(start,start+per);
+  $("#campPrev").hidden=Campaign.page===0;
+  $("#campNext").hidden=start+per>=HEROES.length;
+  $("#campPage").textContent=`${Campaign.page+1} / ${Math.ceil(HEROES.length/per)}`;
+  /* 长条：比例约 4:9；预留 .camp-img 图片接口（暂无图片时用角色介绍顶替） */
+  list.innerHTML=slice.map(h=>{
+    const info=C.HERO_INFO[h],cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
+    const unlocked=cam&&cam.unlocked;
+    const badge=unlocked?"已解锁":"未解锁（用该角色赢得一场普通对局）";
+    return`<button class="camp-bar ${unlocked?"":"locked"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
+      <div class="camp-img" style="--hcr:${V.heroRgb(h)}"><span class="crest" style="--hcr:${V.heroRgb(h)}">${V.esc(V.glyph(h))}</span></div>
+      <div class="camp-txt"><strong>${V.esc(h)}</strong><small>${V.esc(info.title)}</small><span class="muted">${unlocked?"★ 剧情已解锁":"🔒 "+badge}</span></div>
+    </button>`;
+  }).join("");
+}
+$("#campHeroList").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-hero]");if(!b)return;
+  const cam=Account.me&&Account.me.campaign&&Account.me.campaign[b.dataset.hero];
+  if(!cam||!cam.unlocked){toast("先用该角色赢得一场普通对局解锁剧情",false);return;}
+  Campaign.hero=b.dataset.hero;Campaign.page=0;
+  renderCampaignDetail();$("#campDetail").hidden=false;
+});
+$("#campPrev").addEventListener("click",()=>{Campaign.page--;renderCampaign();});
+$("#campNext").addEventListener("click",()=>{Campaign.page++;renderCampaign();});
+$("#campDetailBack").addEventListener("click",()=>{$("#campDetail").hidden=true;renderCampaign();});
+function renderCampaignDetail(){
+  const cam=C.campaignOf(Campaign.hero);
+  const ch=cam.chapters.ch1;
+  const data=Account.me.campaign[Campaign.hero];
+  $("#campChapter").innerHTML=`<h2>${V.esc(ch.title)}</h2>
+    <p class="muted">${V.esc((cam.intro||[])[0]||"")}</p>
+    <p>胜利条件：撑过 <b>${ch.survive[0]}</b> 回合（1★）· <b>${ch.survive[1]}</b>（2★）· <b>${ch.survive[2]}</b>（3★）</p>
+    <p class="muted">奖励：${ch.rewards[1]} / ${ch.rewards[2]} / ${ch.rewards[3]} 金币 · 首通随机剧情卡</p>`;
+  $("#campSlots").innerHTML=data.slots.map((s,i)=>{
+    const cnt=s.deck?s.deck.length:0,best=s.ch1?Math.max(s.ch1.best||0,0):0,first=s.ch1&&s.ch1.first;
+    return`<button class="slot-card ${Campaign.slot===i?"on":""}" data-slot="${i}">
+      <b>存档位 ${i+1}</b>
+      <span class="muted">${cnt} 张卡 · 最佳 ${best}★${first?" · 已首通":""}</span>
+    </button>`;
+  }).join("");
+  $("#campStart").disabled=false;
+}
+$("#campSlots").addEventListener("click",e=>{
+  const b=e.target.closest("button[data-slot]");if(!b)return;
+  Campaign.slot=+b.dataset.slot;renderCampaignDetail();
+});
+$("#campStart").addEventListener("click",()=>{
+  const data=Account.me.campaign[Campaign.hero];
+  const s=data.slots[Campaign.slot];
+  if(!s.deck||!s.deck.length){toast("这个存档位还没有卡组，先买/放入剧情卡",false);return;}
+  startCampaign(Campaign.hero,Campaign.slot);
+});
+
+/* ---------- 剧情对局 ---------- */
+let campGame=null;
+function startCampaign(hero,slot){
+  if(campGame)campGame.dispose();
+  const cam=C.campaignOf(hero),ch=cam.chapters.ch1;
+  const data=Account.me.campaign[hero],s=data.slots[slot];
+  const deck=s.deck.slice();
+  /* 若不足 30 张，用该角色初始弱卡补足，保证可玩 */
+  const base=C.campaignInitialDeck(hero,slot);
+  for(const id of base){if(deck.length>=30)break;deck.push(id);}
+  const upgrades=s.upgrades||{};
+  const me={name:Account.me.nick||Account.me.user,hero,deck,upgrades};
+  const foe={name:"土匪",hero:ch.enemy.hero,deck:ch.enemy.deck.slice()};
+  const g=new E.Game({players:[me,foe],campaign:{player:0,survive:ch.survive,events:ch.events,boss:"bd_boss",hero,ch:"ch1"}});
+  const ai=new A.AIPlayer("normal");ai.campaignStyle="bandit1";
+  const ctl={
+    game:g,ai,dead:false,running:false,
+    push(full){const ev=g.takeEvents();GameUI.push({view:g.viewFor(0),events:full?[]:g.eventsFor(ev,0),timer:null,full});},
+    begin(){this.push(true);g.mulligan(1,ai.mulligan(g,1));this.push(false);},
+    async act(a){
+      if(this.dead)return{ok:false};
+      let r;
+      switch(a.type){
+        case"mulligan":r=g.mulligan(0,a.uids);break;
+        case"play":r=g.playCard(0,a.uid,a.targets,a.option);break;
+        case"attack":r=g.attack(0,a.uid,a.target);break;
+        case"end":r=g.endTurn(0);break;
+        case"pick":r=g.resolvePending(0,a.index);break;
+        case"concede":r=g.concede(0);break;
+        default:r={ok:false,error:"未知操作"};
+      }
+      if(r.ok){this.push(false);this.runAI();}
+      return r;
+    },
+    async runAI(){
+      if(this.running)return;this.running=true;
+      try{
+        while(!this.dead&&g.phase==="play"&&g.current===1){
+          await GameUI.idle();await sleep(420);
+          if(this.dead)break;
+          if(g.pending&&g.pending.pi===1){g.resolvePending(1,ai.pickPending(g));this.push(false);continue;}
+          const a=ai.next(g,1);let r;
+          if(a.type==="play")r=g.playCard(1,a.uid,a.targets,a.option);
+          else if(a.type==="attack")r=g.attack(1,a.uid,a.target);
+          else{await sleep(250);r=g.endTurn(1);}
+          if(!r.ok){if(a.type==="play")ai.plays=99;else if(a.type==="attack")ai.passed.add(a.uid);else break;continue;}
+          this.push(false);
+        }
+      }finally{this.running=false;}
+    },
+    async chat(){return{ok:true};},
+    dispose(){this.dead=true;}
+  };
+  campGame=ctl;
+  show("#scrGame");
+  GameUI.start(ctl,"campaign",{campaign:{hero,slot,ch,data},onAgain:()=>{exitCampaign();startCampaign(hero,slot);},onExit:()=>exitCampaign(),onOver:(v)=>{
+    const star=g.campaign?g.campaign.reachedStar:0;
+    finishCampaign(v.winner==="me"?0:1,g.players[0].turnsStarted,star);
+  }});
+  /* 先放 AVG 开场，再启动对局 */
+  playAVG(cam.intro||[],()=>{ctl.begin();});
+  window.__cd.campSession={hero,slot,ch};
+}
+function exitCampaign(){
+  if(campGame){campGame.dispose();campGame=null;}
+  GameUI.stop();window.__cd.campSession=null;
+  show("#scrCampaign");renderCampaignDetail();
+}
+/* AVG 开场：逐句点击推进 */
+function playAVG(lines,done){
+  const ov=$("#avgOverlay");ov.hidden=false;
+  const tx=$("#avgText");let i=0;
+  tx.textContent=lines[0]||"";
+  const next=()=>{
+    i++;
+    if(i>=lines.length){ov.hidden=true;done&&done();}
+    else tx.textContent=lines[i];
+  };
+  ov.onclick=next;$("#avgSkip").onclick=()=>{ov.hidden=true;done&&done();};
+}
+/* 局内对话窗口（ce 事件） */
+function onCampaignEvent(e){
+  const dlg=$("#campDlg");
+  if(!dlg)return;
+  $("#campDlgBody").textContent=e.text||"";
+  dlg.hidden=false;
+  clearTimeout(onCampaignEvent._t);
+  onCampaignEvent._t=setTimeout(()=>{if(dlg&&!dlg.hidden)dlg.hidden=true;},9000);
+}
+$("#campDlgClose").addEventListener("click",()=>{$("#campDlg").hidden=true;});
+/* 剧情结算：星级上报 → 奖励弹窗 */
+async function finishCampaign(winner,turns,star){
+  const s=window.__cd.campSession;if(!s)return;
+  if(winner===0){
+    const r=await Account.api("/campaign/finish",{hero:s.hero,slot:s.slot,stars:star||1});
+    if(r.ok){
+      Account.me=Object.assign({},Account.me,{gold:r.gold,campaign:r.campaign});
+      renderGold();
+      const ch=C.campaignOf(s.hero).chapters.ch1;
+      $("#rewardStars").innerHTML=stars(star||1);
+      $("#rewardGold").textContent="+ "+r.gold;
+      $("#rewardCardLine").hidden=!r.rewardCard;
+      if(r.rewardCard){
+        const def=C.cardDef(s.hero,r.rewardCard);
+        $("#rewardCard").textContent="【"+(def?def.name:r.rewardCard)+"】已加入你的剧情牌库";
+      }
+      $("#rewardNewBest").hidden=true;
+      $("#rewardTitle").textContent="渔村守住了！";
+      $("#rewardSub").textContent=`撑过了 ${turns} 个回合`;
+      $("#rewardUpgrade").hidden=false;
+      openModal("#mReward");
+    }
+  }else{
+    $("#rewardTitle").textContent="渔村失守…";
+    $("#rewardSub").textContent="别灰心，升级卡牌或换个策略再来！";
+    $("#rewardStars").innerHTML=stars(star||0);
+    $("#rewardGold").textContent="+ 0";
+    $("#rewardCardLine").hidden=true;
+    $("#rewardUpgrade").hidden=true;
+    openModal("#mReward");
+  }
+}
+/* 升级剧情卡 */
+let upTarget="";
+function upgradableCards(sl){
+  const ids=sl.deck||[];
+  return ids.filter(id=>C.CAMPAIGN_UPGRADES[id]);
+}
+function openUpgrade(){
+  const s=window.__cd.campSession;if(!s)return;
+  const data=Account.me.campaign[s.hero],sl=data.slots[s.slot];
+  const path=upgradableCards(sl);
+  upTarget=path[0]||"";
+  $("#upCardList").innerHTML=path.map(id=>`<button data-id="${V.esc(id)}" class="${upTarget===id?"on":""}">${V.esc(C.cardDef(s.hero,id).name)}（Lv${(sl.upgrades[id]||0)}）</button>`).join("");
+  renderUpPreview();
+  $("#upGo").disabled=false;
+  openModal("#mUpgrade");
+}
+function renderUpPreview(){
+  const s=window.__cd.campSession;if(!s)return;
+  const data=Account.me.campaign[s.hero],sl=data.slots[s.slot];
+  const def=C.cardDef(s.hero,upTarget),lvl=sl.upgrades[upTarget]||0;
+  const steps=C.campaignUpgradePath(s.hero,upTarget)||[];
+  const up=steps[lvl+1];
+  $("#upPreview").innerHTML=`<b>${V.esc(def.name)}</b>（Lv${lvl}）→ ${up?V.esc(up.desc||("Lv"+(lvl+1))):"已满级"}`;
+  $("#upCost").textContent=up?up.cost+" 金币":"—";
+  $("#upMsg").textContent="";
+  $("#upGo").disabled=!up;
+}
+$("#upCardList").addEventListener("click",e=>{const b=e.target.closest("button[data-id]");if(!b)return;upTarget=b.dataset.id;renderUpPreview();$$("#upCardList button").forEach(x=>x.classList.toggle("on",x===b));});
+$("#upGo").addEventListener("click",async()=>{
+  const s=window.__cd.campSession;if(!s)return;
+  const r=await Account.api("/campaign/upgrade",{hero:s.hero,slot:s.slot,cardId:upTarget});
+  if(r.ok){Account.me=Object.assign({},Account.me,{gold:r.gold,campaign:r.campaign});renderGold();renderUpPreview();toast("升级成功！",true);}
+  else toast(r.msg||"升级失败",false);
+});
+$("#rewardBack").addEventListener("click",()=>{closeModal("#mReward");exitCampaign();});
+$("#rewardAgain").addEventListener("click",()=>{closeModal("#mReward");const s=window.__cd.campSession;if(s)startCampaign(s.hero,s.slot);});
+$("#rewardUpgrade").addEventListener("click",()=>{closeModal("#mReward");openUpgrade();});
+window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;},Account,Campaign,renderGold,onCampaignEvent};
 })();

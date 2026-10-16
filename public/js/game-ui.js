@@ -105,6 +105,7 @@ const GameUI=(()=>{
     for(const e of u.events){
       if(e.t==="turn"){turnEv=e;continue;}
       if(e.t==="toast"){gtoast(e.text,true,2400);continue;}
+      if(e.t==="ce"&&window.__cd&&window.__cd.onCampaignEvent){window.__cd.onCampaignEvent(e);continue;}
       if(fast)continue;
       if(e.t==="play")await animPlay(e);
       else if(e.t==="attack")await animAttack(e);
@@ -523,6 +524,11 @@ const GameUI=(()=>{
     $("#cbOk").disabled=cs.picked.length<cs.spec.min;
   }
   function showResult(v){
+    /* 剧情模式：交给 app 侧的结算弹窗（星级/奖励/升级），不再显示默认结果页 */
+    if(S.mode==="campaign"&&S.opts.onOver){
+      setTimeout(()=>{if(S.ctl||S.mode==="solo")S.opts.onOver(v);},1100);
+      return;
+    }
     const win=v.winner==="me",draw=v.winner==="draw";
     setTimeout(()=>{
       if(!S.ctl&&S.mode!=="solo")return;
@@ -537,6 +543,7 @@ const GameUI=(()=>{
       $("#resAgain").textContent=S.mode==="solo"?"再来一局":"返回房间";
       $("#resBack").textContent=S.mode==="solo"?"返回主页":"返回大厅";
       ov.hidden=false;
+      if(win&&S.opts.onWin)S.opts.onWin(v);
       FX.play("endGame",win);
       Audio2.music(win?"win":"lose");
     },1100);

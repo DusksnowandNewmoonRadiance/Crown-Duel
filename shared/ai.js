@@ -72,8 +72,13 @@ function isLethal(s,o){
   if(canBreakWall(s,o)&&faceReachAll(s,o)+dmg>=o.hp+o.armor)return true;
   return false;
 }
-function scoreCard(s,o,c,lethal){
+function scoreCard(s,o,c,lethal,stage){
   const e=c.effect,myN=s.board.length,enN=o.board.length,burn=burnOf(s,c);
+  /* 剧情·土匪AI：stage0 前期不铺场不打高费 */
+  if(stage!==null&&stage===0){
+    if(c.cost>1)return-30;
+    if(c.kind==="unit")return-12;
+  }
   let sc;
   if(c.kind==="unit"){
     sc=c.cost*1.1+(c.attack+c.health)*.45+(c.charge?2.5:0)+(c.ignoreTaunt?1.5:0);
@@ -178,6 +183,24 @@ function scoreCard(s,o,c,lethal){
     if(c.id==="cometWatcher")sc+=2;
     if(s.board.some(u=>u.effect==="drawHeal")&&/draw|foresee/.test(e))sc+=2;
     if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
+    if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
+    if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
+    if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者时仅手牌多才洗（重抽），手牌少绝不打（亏费，低于出牌底线直接跳过）
+      const w=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
+      if(w)sc+=10+w*6;
+      else sc+=s.hand.length>=4?2:-25;
+    }
+    if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;   // 彗星预言：手里没陨击才检索
+    if(c.id==="starlightPray")sc+=4;   // 星光祝福：大回复+过牌
+    if(c.id==="starcore")sc+=2;   // 星核卫士：嘲讽大墙+0费联动
+    if(e==="stunOneDraw"){   // 星辉锁链：敌方有高攻单位才晕，否则浪费（抽牌联动观察者）
+      const threat=o.board.some(u=>u.health>0&&u.attack>=3);
+      sc+=threat?5:o.board.length?0:-10;
+    }
+    if(e==="stunAllDraw"){   // 彗星枷锁：敌方 2+ 个攻击单位才全体晕
+      const n=o.board.filter(u=>u.health>0&&u.attack>=1).length;
+      sc+=n>=2?5+(n>=4?2:0):-6;
+    }
   }
   if(style.rebelWall&&/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(e)){   // 字母：敌方有嘲讽时策反稍偏拆墙
     const walls=o.board.filter(u=>u.taunt);
@@ -186,13 +209,27 @@ function scoreCard(s,o,c,lethal){
   if(s.hero==="核弹"){   // 核弹：积极找超人（直伤抢血由通用 burn 分处理）
     if(c.id==="superman"||e==="summonSuperman"||e==="tutorSuperman"||e==="filterSuperman")sc+=4;
   }
-  if(s.hero==="八幡"){   // 八幡：海盗抢血、燃烧弹只收残血、场面够才打 buff/斩杀
+  if(s.hero==="八幡"){   // 八幡：海盗抢血、燃烧弹只收残血、场面够才打 buff/斩杀、破墙卡有嘲讽墙才打
     if(e==="sacAoe3"){
       const killable=o.board.filter(u=>u.health<=3).length;
       const weak=o.board.filter(u=>u.health<=3&&unitValue(u)>=1.5).length;
       sc+=(weak>=1?weak*4+3:(killable>=2?killable*3:-12));   // 无残血可收(值>=1.5)一律不打
     }
-    if(e==="pirateDiscover")sc+=(myN>=1?4+myN*1.2:-6)+((s.hand.length<=5)?2:0);   // 发现海盗：有海盗场面或需过牌才打（海盗过牌buff + 发现加入手牌）
+    if(e==="pirateDiscover2")sc+=10+(s.hand.length<=5?2:0);   // 发现海盗(新)：发现3张海盗选3次+此后海盗+1/+1，永久增强海盗，非常强
+    if(e==="killTough"){   // 破阵者：敌方有"生命>攻击"的单位(尤其嘲讽墙)才下，专杀嘲讽
+      const tough=o.board.filter(u=>u.health>u.attack&&u.health>0);
+      sc+=tough.length?(tough.some(t=>t.taunt)?tough.length*5+6:tough.length*3):-6;
+    }
+    if(e==="stripTauntDraw"){   // 恐吓：敌方有嘲讽墙才打；有友方海盗能抽卡更赚
+      const wt=o.board.filter(u=>u.taunt&&u.health>0);
+      sc+=wt.length?(4+wt[0].health*0.8+(s.board.some(u=>u.health>0&&(u.hero==="八幡"||u.id==="pirateScout"))?2:0)):-10;
+    }
+    if(e==="stunOrKill"){   // 闷棍：优先已眩晕的可直接杀，其次高威胁单位
+      sc+=o.board.some(u=>u.stun>0&&u.health>0)?9:(o.board.filter(u=>u.health>0&&u.attack>=4).length?3:0);
+    }
+    if(e==="clubberDeploy")sc+=1.5;   // 持棍海盗：1费冲锋铺场 + 送闷棍过墙
+    if(e==="luckyCoin")sc+=8;   // 幸运币：0费给1费，必打
+    if(e==="stripTaunt")sc+=o.board.some(u=>u.taunt&&u.health>0)?3:0;   // 潜行海盗：有嘲讽墙时部署更有价值
     if(e==="fireShip")sc+=(enN?enN*2:-100)+(o.board.filter(u=>u.health<=2).length*3||0);
     if(e==="buffAllCharge")sc+=(myN>=3?4+myN*1.5:-6);   // 登船战：场面<3 一律不打
     if(e==="finish"||e==="unitDamageHero")sc+=(myN>=3?myN*2.5:(myN>=2?myN*1:-6));   // 斩杀：场面≥3 才打
@@ -215,18 +252,38 @@ function scoreCard(s,o,c,lethal){
       else sc-=12;   // 中后期也保守
     }
   }
+  /* 剧情·土匪AI：stage0 前期不铺场不打高费；stage1 中期少铺场少直伤；stage2 后期加速 */
+  if(stage===1){
+    if(c.kind==="unit")sc-=5;
+    if(burn)sc-=burn*.3;
+  }
+  if(stage===2){
+    if(c.kind==="unit")sc+=c.cost*.35;
+    if(burn)sc+=burn*.35;
+  }
   return sc;
 }
 
 class AIPlayer{
-  constructor(level){this.level=level||"normal";this.passed=new Set();this.plays=0;this.turnSeen=-1;this.hero=null;}
+  constructor(level){this.level=level||"normal";this.passed=new Set();this.plays=0;this.turnSeen=-1;this.hero=null;this.campaignStyle=null;this.campStage=null;}
   noise(){return this.level==="easy"?6:this.level==="hard"?0:.4;}
   mulligan(game,pi){
     const p=game.players[pi];
     const lim=this.level==="easy"?7:5;
     return p.hand.filter(c=>c.cost>=lim&&!c.core&&c.id!=="superman").map(c=>c.uid);
   }
-  pickPending(game){return game.pending?game.pending.auto:0;}
+  pickPending(game){
+    const pd=game.pending;if(!pd)return 0;
+    if(pd.title==="星核卫士"){   // 星核卫士选 0 费：优先高费/引擎卡（陨击/预言/调节/星光祝福）
+      let bi=0,bs=-1;
+      pd.cards.forEach((c,i)=>{
+        const v=c.cost+(c.id==="cometStrike"?6:0)+(c.id==="cometTutor"?4:0)+(c.id==="tune"?3:0)+(c.id==="starlightPray"?2:0);
+        if(v>bs){bs=v;bi=i;}
+      });
+      return bi;
+    }
+    return pd.auto;
+  }
   /* 出牌目标（角色化）：字母策反/直伤优先嘲讽墙，其余走引擎默认 */
   aiTargets(c,s,o){
     if(c.effect==="buffPirate3"||c.effect==="pirateCommander"){   // 海盗buff：优先高攻击/冲锋单位（434部署时给先锋海盗或最强单位）
@@ -249,8 +306,11 @@ class AIPlayer{
     if(game.turn!==this.turnSeen){this.turnSeen=game.turn;this.passed.clear();this.plays=0;}
     const s=game.players[pi],o=game.players[1-pi];
     this.hero=s.hero;
+    /* 剧情·土匪AI 阶段：前期(≤2回合)极弱 → 中期(≤5回合)保守 → 后期提速 */
+    if(this.campaignStyle==="bandit1")this.campStage=game.turn<=2?0:game.turn<=5?1:2;
     if(this.plays<12){
-      const opts=s.hand.filter(c=>!playError(c,s,o));
+      let opts=s.hand.filter(c=>!playError(c,s,o));
+      if(this.campStage===0)opts=opts.filter(c=>c.cost<=1);
       if(opts.length){
         const lethal=this.level!=="easy"&&isLethal(s,o);
         /* 0) 过墙斩杀：手上有策反/拆墙牌且能斩杀时，先打它拆墙 */
@@ -268,7 +328,7 @@ class AIPlayer{
           if(aoe){this.plays++;return{type:"play",uid:aoe.uid,targets:this.aiTargets(aoe,s,o),option:autoOption(aoe,s,o)};}
         }
         for(const c of opts){
-          const sc=scoreCard(s,o,c,lethal)+Math.random()*this.noise();
+          const sc=scoreCard(s,o,c,lethal,this.campStage)+Math.random()*this.noise();
           if(sc>bs){bs=sc;best=c;}
         }
         if(best&&bs>-20){
@@ -282,7 +342,10 @@ class AIPlayer{
         }
       }
     }
+    /* 剧情·土匪AI：前期不攻击；中期只解场不打脸 */
+    if(this.campStage===0)return{type:"end"};
     const mv=this.chooseAttack(s,o);
+    if(mv&&this.campStage===1&&mv.target===null){this.passed.add(mv.unit.uid);return this.next(game,pi);}
     if(mv)return{type:"attack",uid:mv.unit.uid,target:mv.target?mv.target.uid:null};
     return{type:"end"};
   }
@@ -315,9 +378,10 @@ class AIPlayer{
       for(const u of ready){
         const v=attackTargets(u,o);
         const hd=u.attack+heroBonus(u);
+        const wG=u.id==="cometWatcher"?-8:0;   // 保护彗星观察者：不打（留场回血）
         const consider=(t,sc)=>{if(!best||sc>best.score)best={unit:u,target:t,score:sc};};
         if(v.hero){
-          let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp));
+          let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp))+wG;
           if(lethal)fs+=1000;
           if(u.lifespan>0)fs+=60;                       // 限时单位（超人）：打脸优先，不解场
           if(u.charge&&u.atkLeft>=u.strikes)fs+=aggro*hd*.8;   // 冲锋单位首回合抢血
@@ -331,7 +395,7 @@ class AIPlayer{
         for(const id of v.units){
           const t=o.board.find(x=>x.uid===id);
           const kills=u.attack>=t.health,dies=t.attack>=u.health;
-          let sc=(kills?unitValue(t):unitValue(t)*.12)-(dies?unitValue(u):0);
+          let sc=(kills?unitValue(t):unitValue(t)*.12)-(dies?unitValue(u):0)+wG;
           if(kills&&!dies)sc+=3;
           if(!kills&&dies)sc-=4;
           if(t.taunt&&kills)sc+=1.5;
