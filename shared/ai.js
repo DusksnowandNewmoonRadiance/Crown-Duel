@@ -192,7 +192,7 @@ function scoreCard(s,o,c,lethal){
       const weak=o.board.filter(u=>u.health<=3&&unitValue(u)>=1.5).length;
       sc+=(weak>=1?weak*4+3:(killable>=2?killable*3:-12));   // 无残血可收(值>=1.5)一律不打
     }
-    if(e==="buffPirate3")sc+=(myN?4+myN*.6:-100);   // 海盗战嚎：有单位才打，场面越多越赚
+    if(e==="pirateDiscover")sc+=(myN>=1?4+myN*1.2:-6)+((s.hand.length<=5)?2:0);   // 发现海盗：有海盗场面或需过牌才打（海盗过牌buff + 发现加入手牌）
     if(e==="fireShip")sc+=(enN?enN*2:-100)+(o.board.filter(u=>u.health<=2).length*3||0);
     if(e==="buffAllCharge")sc+=(myN>=3?4+myN*1.5:-6);   // 登船战：场面<3 一律不打
     if(e==="finish"||e==="unitDamageHero")sc+=(myN>=3?myN*2.5:(myN>=2?myN*1:-6));   // 斩杀：场面≥3 才打
@@ -224,7 +224,7 @@ class AIPlayer{
   pickPending(game){return game.pending?game.pending.auto:0;}
   /* 出牌目标（角色化）：字母策反/直伤优先嘲讽墙，其余走引擎默认 */
   aiTargets(c,s,o){
-    if(c.effect==="buffPirate3"){   // 海盗战嚎：优先 buff 高攻击/冲锋单位
+    if(c.effect==="buffPirate3"||c.effect==="pirateCommander"){   // 海盗buff：优先高攻击/冲锋单位（434部署时给先锋海盗或最强单位）
       const pool=s.board.filter(u=>u.health>0);
       if(pool.length)return[pool.slice().sort((a,b)=>(b.attack+b.charge*2)-(a.attack+a.charge*2))[0].uid];
     }

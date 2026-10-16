@@ -153,7 +153,7 @@ const PROFILES={
     {id:"raider",name:"劫掠者",cost:2,kind:"unit",art:"⚑",atk:3,hp:3,text:"冲锋。",charge:true,n:3,limit:3,rarity:"rare"},
     {id:"ship",name:"海盗船",cost:2,kind:"unit",art:"⌁",atk:2,hp:2,text:"部署：随机召唤 1 个海盗。",effect:"summonRandomPirate",n:3,limit:3,rarity:"rare"},
     {id:"captain",name:"年轻船长",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"无视嘲讽。攻击敌方英雄时，额外造成 1 点伤害。",ignoreTaunt:true,n:2,limit:2,rarity:"special"},
-    {id:"pirateWarlord",name:"海盗统领",cost:4,kind:"unit",art:"♜",atk:3,hp:4,text:"冲锋。部署：召唤 1 个【先锋海盗】。",charge:true,effect:"summonScout",n:2,limit:2,rarity:"special",fx:"sp_guard"},
+    {id:"pirateWarlord",name:"海盗统领",cost:4,kind:"unit",art:"♜",atk:3,hp:4,text:"冲锋。部署：召唤 1 个【先锋海盗】，并使 1 个你的单位 +3/+3。",charge:true,effect:"pirateCommander",n:2,limit:2,rarity:"special",fx:"sp_guard"},
     {id:"king",name:"海盗王",cost:4,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：使你的所有单位获得 +2/+2。",effect:"buffAll2",n:1,limit:1,rarity:"elite"},
     {id:"helmsman",name:"舵手",cost:1,kind:"unit",art:"◉",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"gunner",name:"火炮手",cost:2,kind:"unit",art:"✣",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 1 点伤害。",ignoreTaunt:true,effect:"hero1",n:1,limit:2,rarity:"special"},
@@ -167,7 +167,7 @@ const PROFILES={
     {id:"broadside",name:"侧舷炮击",cost:3,kind:"spell",art:"✣",text:"对敌方英雄造成等同于你的单位数量的伤害。",effect:"unitDamageHero",n:1,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"finish",name:"海盗大斩杀",cost:4,kind:"spell",art:"☠",text:"对敌方英雄造成等同于你的单位数量 ×2 的伤害。",effect:"finish",n:1,limit:1,rarity:"elite"},
     {id:"boarding",name:"登船战",cost:3,kind:"spell",art:"⚑",text:"使你的所有单位获得 +1/+1，并可在本回合攻击。",effect:"buffAllCharge",n:2,limit:2,rarity:"special",fx:"sp_bless"},
-    {id:"pirateCry",name:"海盗战嚎",cost:1,kind:"spell",art:"♬",text:"选择一个你的单位，使其 +3/+3。",effect:"buffPirate3",n:2,limit:2,rarity:"special",fx:"sp_bless"}
+    {id:"pirateDiscover",name:"发现海盗",cost:3,kind:"spell",art:"◎",text:"发现 3 张随机的海盗牌，选择 1 张加入手牌；并使你的所有海盗部署时抽 1 张牌。",effect:"pirateDiscover",n:2,limit:2,rarity:"special",fx:"sp_insight"}
   ]},
   "045":{faction:"普鲁士国 · 架子班",style:"高层名片 · 开发他人卡组",hp:31,cards:[
     {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},

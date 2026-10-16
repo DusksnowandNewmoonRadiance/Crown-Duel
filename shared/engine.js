@@ -59,6 +59,7 @@ function targetSpec(card,me,foe){
     case"rebel":return eligible(foe.board,1,1,"选择 1 个敌方单位策反","foe");
     case"buffOneDraw":return eligible(me.board,1,1,"选择 1 个友方单位 +2/+2","me");
     case"buffPirate3":return eligible(me.board,1,1,"选择 1 个你的单位 +3/+3","me");
+    case"pirateCommander":return eligible(me.board,1,1,"选择 1 个你的单位 +3/+3","me");
     case"sacAoe3":return eligible(me.board,1,1,"选择要献祭的己方单位","me");
     case"decreeUkr":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 2 点伤害","foe");
   }
@@ -122,6 +123,7 @@ function autoTargets(card,me,foe){
   }else if(e==="choose3x2")sorted=pool.slice().sort((a,b)=>((b.health<=2?10:0)+unitValue(b))-((a.health<=2?10:0)+unitValue(a)));
   else if(e==="rebel")sorted=pool.slice().sort((a,b)=>unitValue(b)-unitValue(a));
   else if(e==="sacAoe3")sorted=pool.slice().sort((a,b)=>unitValue(a)-unitValue(b));
+  else if(e==="pirateCommander")sorted=pool.slice().sort((a,b)=>((a.id==="pirateScout"?1e6:b.attack))-((b.id==="pirateScout"?1e6:a.attack)));
   else sorted=pool.slice().sort((a,b)=>b.attack-a.attack);
   return sorted.slice(0,spec.max).map(u=>u.uid);
 }
@@ -530,6 +532,8 @@ class Game{
 
   /* ---------- 部署效果 ---------- */
   deploy(s,c,o,targets,option){
+    // 发现海盗：己方海盗此后部署时各抽 1 张牌
+    if(s.pirateDeployDraw&&c.kind==="unit"&&(c.hero==="八幡"||c.id==="pirateScout"))this.draw(s,1);
     const T=()=>targets&&targets.length?targets:autoTargets(c,s,o);
     switch(c.effect){
       case"heal2":this.heal(s,2);break;
@@ -551,6 +555,13 @@ class Game{
         if(this.summon(s,id,1)){const d=PROFILES["八幡"].cards.find(x=>x.id===id);this.note(`海盗船：召唤了【${d?d.name:"海盗"}】`,s);}
         break;}
       case"summonScout":if(this.summon(s,"pirateScout",1))this.note("海盗统领：召唤了先锋海盗",s);break;
+      case"pirateCommander":{
+        if(this.summon(s,"pirateScout",1))this.note("海盗统领：召唤了先锋海盗",s);
+        const list=(targets&&targets.length)?targets:autoTargets(c,s,o);
+        let hit=0;
+        list.forEach(id=>{const t=s.board.find(u=>u.uid===id);if(t){t.attack+=3;t.health+=3;t.maxHealth+=3;hit++;}});
+        if(hit)this.note("海盗统领：目标单位 +3/+3",s);
+        break;}
       case"decay1":this.addDecay(s,o,1);break;
       case"copySmallCannon":if(this.summon(s,"smallcannon",1))this.note("轻型炮台复制了一个小炮组",s);break;
       case"buffAll1":this.buffAll(s,1,1);break;
@@ -793,6 +804,15 @@ class Game{
         list.forEach(id=>{const t=s.board.find(u=>u.uid===id);if(t){t.attack+=3;t.health+=3;t.maxHealth+=3;hit++;}});
         if(hit)this.note("海盗战嚎：目标单位 +3/+3",s);
         fx("buff",{n:hit});
+        break;}
+      case"pirateDiscover":{
+        s.pirateDeployDraw=true;
+        this.note("发现海盗：己方海盗此后部署时各抽 1 张牌",s);
+        const pool=PROFILES["八幡"].cards.filter(x=>x.kind==="unit");
+        const top=[...pool].sort(()=>Math.random()-.5).slice(0,3);
+        this._pick(s,c.name,"发现 3 张随机的海盗：选择 1 张加入手牌",top,0,card=>{
+          if(!this.addToHand(s,this.clone(card,s.hero)))this.burn(s,card);
+        });
         break;}
       case"buffAll2":case"highcommand":this.buffAll(s,2,2);break;
       case"buffAll1":this.buffAll(s,1,1);break;
