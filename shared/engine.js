@@ -58,6 +58,7 @@ function targetSpec(card,me,foe){
     case"choose3x2":return eligible(foe.board,1,3,"选择 1~3 个敌方单位，各造成 2 点伤害","foe");
     case"rebel":return eligible(foe.board,1,1,"选择 1 个敌方单位策反","foe");
     case"buffOneDraw":return eligible(me.board,1,1,"选择 1 个友方单位 +2/+2","me");
+    case"buffPirate3":return eligible(me.board,1,1,"选择 1 个你的单位 +3/+3","me");
     case"sacAoe3":return eligible(me.board,1,1,"选择要献祭的己方单位","me");
     case"decreeUkr":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 2 点伤害","foe");
   }
@@ -549,6 +550,7 @@ class Game{
         const id=pool[Math.floor(Math.random()*pool.length)];
         if(this.summon(s,id,1)){const d=PROFILES["八幡"].cards.find(x=>x.id===id);this.note(`海盗船：召唤了【${d?d.name:"海盗"}】`,s);}
         break;}
+      case"summonScout":if(this.summon(s,"pirateScout",1))this.note("海盗统领：召唤了先锋海盗",s);break;
       case"decay1":this.addDecay(s,o,1);break;
       case"copySmallCannon":if(this.summon(s,"smallcannon",1))this.note("轻型炮台复制了一个小炮组",s);break;
       case"buffAll1":this.buffAll(s,1,1);break;
@@ -785,6 +787,13 @@ class Game{
       case"traceBoost":this.armor(s,6);this.draw(s,2);break;
       case"timeShield2":this.armor(s,5);this.heal(s,3);break;
       case"nebulaShield2":this.armor(s,10);this.draw(s,2);break;
+      case"buffPirate3":{
+        const list=(targets&&targets.length)?targets:autoTargets(c,s,o);
+        let hit=0;
+        list.forEach(id=>{const t=s.board.find(u=>u.uid===id);if(t){t.attack+=3;t.health+=3;t.maxHealth+=3;hit++;}});
+        if(hit)this.note("海盗战嚎：目标单位 +3/+3",s);
+        fx("buff",{n:hit});
+        break;}
       case"buffAll2":case"highcommand":this.buffAll(s,2,2);break;
       case"buffAll1":this.buffAll(s,1,1);break;
       case"buffAll1draw":this.buffAll(s,1,1);this.draw(s,1);break;

@@ -153,10 +153,10 @@ const PROFILES={
     {id:"raider",name:"劫掠者",cost:2,kind:"unit",art:"⚑",atk:3,hp:3,text:"冲锋。",charge:true,n:3,limit:3,rarity:"rare"},
     {id:"ship",name:"海盗船",cost:2,kind:"unit",art:"⌁",atk:2,hp:2,text:"部署：随机召唤 1 个海盗。",effect:"summonRandomPirate",n:3,limit:3,rarity:"rare"},
     {id:"captain",name:"年轻船长",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"无视嘲讽。攻击敌方英雄时，额外造成 1 点伤害。",ignoreTaunt:true,n:2,limit:2,rarity:"special"},
-    {id:"mate",name:"大副",cost:3,kind:"unit",art:"✦",atk:3,hp:3,text:"冲锋。",charge:true,n:1,limit:2,rarity:"special"},
+    {id:"pirateWarlord",name:"海盗统领",cost:4,kind:"unit",art:"♜",atk:3,hp:4,text:"冲锋。部署：召唤 1 个【先锋海盗】。",charge:true,effect:"summonScout",n:2,limit:2,rarity:"special",fx:"sp_guard"},
     {id:"king",name:"海盗王",cost:4,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：使你的所有单位获得 +2/+2。",effect:"buffAll2",n:1,limit:1,rarity:"elite"},
     {id:"helmsman",name:"舵手",cost:1,kind:"unit",art:"◉",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
-    {id:"gunner",name:"火炮手",cost:2,kind:"unit",art:"✣",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 1 点伤害。",ignoreTaunt:true,effect:"hero1",n:2,limit:2,rarity:"special"},
+    {id:"gunner",name:"火炮手",cost:2,kind:"unit",art:"✣",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 1 点伤害。",ignoreTaunt:true,effect:"hero1",n:1,limit:2,rarity:"special"},
     {id:"submarine",name:"海盗潜艇",cost:7,kind:"unit",art:"⛴",atk:8,hp:3,text:"冲锋。无视嘲讽。",charge:true,ignoreTaunt:true,n:1,limit:1,rarity:"elite"},
     {id:"fullspeed",name:"全速前进",cost:0,kind:"spell",art:"→",text:"抽 1 张牌。",effect:"draw1",n:2,limit:3,rarity:"rare"},
     {id:"rum",name:"酒馆补给",cost:1,kind:"spell",art:"●",text:"恢复 2 点生命，抽 1 张牌。",effect:"healDraw",n:2,limit:3,rarity:"rare"},
@@ -167,7 +167,7 @@ const PROFILES={
     {id:"broadside",name:"侧舷炮击",cost:3,kind:"spell",art:"✣",text:"对敌方英雄造成等同于你的单位数量的伤害。",effect:"unitDamageHero",n:1,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"finish",name:"海盗大斩杀",cost:4,kind:"spell",art:"☠",text:"对敌方英雄造成等同于你的单位数量 ×2 的伤害。",effect:"finish",n:1,limit:1,rarity:"elite"},
     {id:"boarding",name:"登船战",cost:3,kind:"spell",art:"⚑",text:"使你的所有单位获得 +1/+1，并可在本回合攻击。",effect:"buffAllCharge",n:2,limit:2,rarity:"special",fx:"sp_bless"},
-    {id:"jollyroger",name:"海盗旗",cost:2,kind:"spell",art:"☠",text:"抽 2 张牌。",effect:"draw2",n:1,limit:2,rarity:"special"}
+    {id:"pirateCry",name:"海盗战嚎",cost:1,kind:"spell",art:"♬",text:"选择一个你的单位，使其 +3/+3。",effect:"buffPirate3",n:2,limit:2,rarity:"special",fx:"sp_bless"}
   ]},
   "045":{faction:"普鲁士国 · 架子班",style:"高层名片 · 开发他人卡组",hp:31,cards:[
     {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
@@ -253,6 +253,7 @@ const TOKENS={
   scrap:{id:"scrap",name:"碎纸",cost:0,kind:"spell",art:"▫",text:"废料。没有任何效果。",scrap:true},
   scrapUnit:{id:"scrapUnit",name:"废铜烂铁",cost:0,kind:"unit",art:"▪",atk:2,hp:1,scrap:true,recycle:"scrap",text:"废料。回收：被消灭时，把 1 张【碎纸】放回你的手牌。"},
   redArtillery:{id:"redArtillery",name:"红军炮兵",cost:2,kind:"unit",art:"✣",atk:3,hp:2,ignoreTaunt:true,text:"无视嘲讽。"},
+  pirateScout:{id:"pirateScout",name:"先锋海盗",cost:2,kind:"unit",art:"⚓",atk:2,hp:2,charge:true,text:"冲锋。"},
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"}
 };
 
