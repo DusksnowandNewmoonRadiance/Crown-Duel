@@ -1,5 +1,12 @@
 /* 皇冠对决 · 电脑对手（单机练习用；服务器也可复用）
-   难度：easy / normal / hard */
+   难度：easy / normal / hard
+   v2.7.1：角色差异化 AI —— 每个卡牌师按风格出牌（抢血/铺场/策反/攒废料/能量压制），
+   并修复一批"过糖"操作：
+   - 先让己方单位攻击完，再打整编/燃烧弹/AOE/策反（不浪费攻击次数）
+   - 限时单位【超人】必打脸，不解场；高抢血角色优先打脸
+   - 字母能用策反/消除限制过墙斩杀
+   - 燃烧弹只用来收残血，不敲大哥
+   - 绘梨衣攒够废料再转化/爆发；七星观察者+抽牌联动 */
 (function(root,factory){
   if(typeof module==="object"&&module.exports)module.exports=factory(require("./cards.js"),require("./engine.js"));
   else root.DuelAI=factory(root.DuelCards,root.DuelEngine);
@@ -9,6 +16,25 @@ const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET}=C;
 const {unitValue,heroBonus,gunCount,playError,attackTargets,canAttack,autoTargets,autoOption,bestRegime,redCount}=E;
 const SCRAP_SPELLS={convert1:1,scrapSearch:1,convert2:2,convert3:3,scrapStun:1,scrapBlast:1,scrapSweep:1,crownCopy:2};
 const REGIME_OF={decreeRus:"rus",decreeUkr:"ukr",decreeBlr:"blr"};
+
+/* 角色风格：aggro=抢血倾向(0~1)；rebelWall=策反过墙；scrapEngine=废料经济；slow=压制慢速 */
+const HERO_STYLE={
+  核弹:{aggro:.9},
+  八幡:{aggro:.9},
+  字母:{aggro:.55,rebelWall:true},
+  苏苏:{aggro:.5},
+  绘梨衣:{aggro:.35,scrapEngine:true},
+  七星:{aggro:.3,slow:true},
+  下水:{aggro:.5},
+  猪瘟鱼:{aggro:.3},
+  "045":{aggro:.45}
+};
+
+/* 打出前需要先让己方单位攻击的法术：只含"消耗己方单位"的牌（单位攻击完再献祭/整编，避免浪费攻击次数）。
+   清场类（AOE/单体伤害）不在此列：正确顺序是先清场、单位再攻击打脸。 */
+const PRE_ATTACK=new Set([
+  "consolidate","sacAoe3","fireShip"
+]);
 
 const BURN={hero99:99,damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
 function burnOf(s,c){
@@ -26,11 +52,25 @@ function faceReach(s,o){
   }
   return t;
 }
+/* 无视嘲讽的打脸伤害（用于判断过墙斩杀） */
+function faceReachAll(s,o){
+  let t=0;
+  for(const u of s.board)if(!canAttack(u))t+=(u.attack+heroBonus(u))*u.atkLeft;
+  return t;
+}
+/* 手牌能否拆掉嘲讽墙（策反 / 消除限制 / 摧毁最高攻） */
+function canBreakWall(s,o){
+  if(!o.board.some(u=>u.taunt))return false;
+  return s.hand.some(c=>!playError(c,s,o)&&(/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(c.effect)||c.effect==="removeRestrict"||c.effect==="adapt"));
+}
 function isLethal(s,o){
   let en=s.energy,dmg=0;
   const burns=s.hand.filter(c=>burnOf(s,c)>0&&!playError(c,s,o)).sort((a,b)=>burnOf(s,b)/(b.cost||1)-burnOf(s,a)/(a.cost||1));
   for(const c of burns)if(c.cost<=en){en-=c.cost;dmg+=burnOf(s,c);}
-  return faceReach(s,o)+dmg>=o.hp+o.armor;
+  if(faceReach(s,o)+dmg>=o.hp+o.armor)return true;
+  /* 能拆/策反嘲讽墙时，按"无墙"的伤害判断可否斩杀（字母策动过墙） */
+  if(canBreakWall(s,o)&&faceReachAll(s,o)+dmg>=o.hp+o.armor)return true;
+  return false;
 }
 function scoreCard(s,o,c,lethal){
   const e=c.effect,myN=s.board.length,enN=o.board.length,burn=burnOf(s,c);
@@ -57,13 +97,21 @@ function scoreCard(s,o,c,lethal){
     if(e==="runaway")return s.money>=ESCAPE_TARGET?20000:-8;
     if(/^(aoe|redDawn)/.test(e)||e==="choose3x2")sc+=enN?enN*3:-100;
     else if(e==="saturation")sc+=gunCount(s)?(enN*2+gunCount(s)*2):-100;
-    else if(e==="sacAoe3")sc+=(enN&&myN)?enN*3-2:-100;
+    else if(e==="sacAoe3"){   // 燃烧弹：只在有残血(hp<=3)可收时打，否则不值得牺牲己方单位
+      const killable=o.board.filter(u=>u.health<=3).length;
+      sc+=killable>=1?killable*4+2:-12;
+    }
     else if(e==="fireShip")sc+=(enN>=2&&myN)?enN*2.5-myN*1.5:-100;
     else if(/^enemyAtkDown/.test(e))sc+=enN?o.board.reduce((a,u)=>a+Math.min(u.attack,2),0)*1.3:-100;
     else if(e==="gravityLock")sc+=enN>=2?4:-100;
     else if(e==="removeRestrict")sc+=3+(o.heroImmune?4:0)+o.board.filter(u=>u.taunt).length*2;
     else if(/^(remove|adapt)/.test(e))sc+=enN?Math.max(...o.board.map(unitValue))*.9:(e==="adapt"?-2:-100);
-    else if(/^(rebel|takeover)/.test(e))sc+=enN?Math.max(...o.board.map(unitValue))*1.1:-100;
+    else if(/^(rebel|takeover)/.test(e)){
+      const top=enN?Math.max(...o.board.map(unitValue)):0;
+      const temp=/^(takeover|rebelLowest|rebelWeakest)/.test(e);   // 临时策反：限一回合，价值大减
+      sc+=enN?(temp?(top>=5?top*1.0-3:top*.3-6):top*1.1):-100;
+      if(!myN)sc-=3;   // 自己空场时更不该急着策反
+    }
     else if(/^(buffAll|pirateBuff|highcommand)/.test(e))sc+=myN?myN*2.4:-100;
     else if(/^(buffGuns|reload)/.test(e))sc+=gunCount(s)?gunCount(s)*2.5:-100;
     else if(e==="buffOneDraw")sc+=myN?3:-2;
@@ -113,11 +161,65 @@ function scoreCard(s,o,c,lethal){
     if(e==="evasion")sc+=s.hp<=12&&o.board.length?4:-3;
     if(e==="disruption")sc+=enN?3:0;
   }
+  /* —— 角色风格修正（叠加在通用打分之上） —— */
+  const style=HERO_STYLE[s.hero]||{};
+  if(style.scrapEngine){   // 绘梨衣：攒废料，够了才转化/爆发
+    const scrapN=s.hand.filter(x=>x.scrap).length;
+    if(e==="convert2"||e==="convert3"||e==="crownCopy"){
+      const need=SCRAP_SPELLS[e];
+      sc+=(scrapN>=need?4+scrapN*.5:-4);
+    }
+    if(e==="scrapBlast")sc+=(scrapN>=4||lethal)?scrapN*2:scrapN*.5-4;
+    if(e==="scrapSweep")sc+=(s.maxHp-s.hp>=6)?scrapN*1.5:-6;
+    if(c.id==="scavenger"||c.id==="station"||c.id==="temp")sc+=2;
+    if(c.scrap&&!e)sc-=10;
+  }
+  if(style.slow&&s.hero==="七星"){   // 七星：观察者+抽牌回血联动，能量压制优先
+    if(c.id==="cometWatcher")sc+=2;
+    if(s.board.some(u=>u.effect==="drawHeal")&&/draw|foresee/.test(e))sc+=2;
+    if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
+  }
+  if(style.rebelWall&&/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(e)){   // 字母：敌方有嘲讽时策反稍偏拆墙
+    const walls=o.board.filter(u=>u.taunt);
+    if(walls.length)sc+=Math.min(4,walls.length*2);
+  }
+  if(s.hero==="核弹"){   // 核弹：积极找超人（直伤抢血由通用 burn 分处理）
+    if(c.id==="superman"||e==="summonSuperman"||e==="tutorSuperman"||e==="filterSuperman")sc+=4;
+  }
+  if(s.hero==="八幡"){   // 八幡：海盗抢血、燃烧弹只收残血、场面够才打 buff/斩杀
+    if(e==="sacAoe3"){
+      const killable=o.board.filter(u=>u.health<=3).length;
+      const weak=o.board.filter(u=>u.health<=3&&unitValue(u)>=1.5).length;
+      sc+=(weak>=1?weak*4+3:(killable>=2?killable*3:-12));   // 无残血可收(值>=1.5)一律不打
+    }
+    if(e==="pirateDiscover")sc+=(myN>=1?4+myN*1.2:-6)+((s.hand.length<=5)?2:0);   // 发现海盗：有海盗场面或需过牌才打（海盗过牌buff + 发现加入手牌）
+    if(e==="fireShip")sc+=(enN?enN*2:-100)+(o.board.filter(u=>u.health<=2).length*3||0);
+    if(e==="buffAllCharge")sc+=(myN>=3?4+myN*1.5:-6);   // 登船战：场面<3 一律不打
+    if(e==="finish"||e==="unitDamageHero")sc+=(myN>=3?myN*2.5:(myN>=2?myN*1:-6));   // 斩杀：场面≥3 才打
+    if(e==="buffAll2"&&myN<2)sc-=6;   // 海盗王：空场/单单位不打
+    if(c.charge)sc+=1;
+  }
+  if(s.hero==="下水"){   // 下水：火炮铺场（饱和时机已由通用分处理）
+    if(c.gun&&myN<MAX_BOARD)sc+=.8;
+  }
+  if(s.hero==="猪瘟鱼"){   // 猪瘟鱼：离逃跑越近越要偷
+    if(/steal/.test(e)||e==="bribeDraw"||e==="vaultBurst")sc+=(s.money/ESCAPE_TARGET)*2.5;
+  }
+  if(s.hero==="苏苏"){   // 苏苏：俄布越多，集结/整编/战时共产越赚
+    if(e==="consolidate"&&redCount(s)>=4)sc+=4;
+    if(e==="buffReds1"||e==="buffAll2")sc+=redCount(s)*1.5;
+    if(e==="redDraw")sc+=redCount(s)*2;
+    // 苏苏应优先铺俄布：偷卡（情报调阅/窃取情报）倾向大幅降低——尤其前期/俄布少时，别傻前期不铺场
+    if(e==="intel"||e==="intelSteal"){
+      if(s.energy<=6||redCount(s)<2)sc-=30;   // 前期或没俄布场面：几乎不偷，先去铺俄布
+      else sc-=12;   // 中后期也保守
+    }
+  }
   return sc;
 }
 
 class AIPlayer{
-  constructor(level){this.level=level||"normal";this.passed=new Set();this.plays=0;this.turnSeen=-1;}
+  constructor(level){this.level=level||"normal";this.passed=new Set();this.plays=0;this.turnSeen=-1;this.hero=null;}
   noise(){return this.level==="easy"?6:this.level==="hard"?0:.4;}
   mulligan(game,pi){
     const p=game.players[pi];
@@ -125,22 +227,58 @@ class AIPlayer{
     return p.hand.filter(c=>c.cost>=lim&&!c.core&&c.id!=="superman").map(c=>c.uid);
   }
   pickPending(game){return game.pending?game.pending.auto:0;}
+  /* 出牌目标（角色化）：字母策反/直伤优先嘲讽墙，其余走引擎默认 */
+  aiTargets(c,s,o){
+    if(c.effect==="buffPirate3"||c.effect==="pirateCommander"){   // 海盗buff：优先高攻击/冲锋单位（434部署时给先锋海盗或最强单位）
+      const pool=s.board.filter(u=>u.health>0);
+      if(pool.length)return[pool.slice().sort((a,b)=>(b.attack+b.charge*2)-(a.attack+a.charge*2))[0].uid];
+    }
+    if(this.hero==="字母"&&(c.effect==="rebel"||c.effect==="choose2"||c.effect==="choose4"||c.effect==="choose3x2"||c.effect==="decreeUkr")){
+      const pool=o.board.filter(u=>u.health>0);
+      if(pool.length){
+        const walls=pool.filter(u=>u.taunt);
+        const sorted=(walls.length?walls:pool).slice().sort((a,b)=>unitValue(b)-unitValue(a));
+        const maxN=c.effect==="choose3x2"?Math.min(3,pool.length):1;
+        return sorted.slice(0,maxN).map(u=>u.uid);
+      }
+    }
+    return autoTargets(c,s,o);
+  }
   /* 返回下一步动作：{type:"play",uid,targets,option} / {type:"attack",uid,target} / {type:"end"} */
   next(game,pi){
     if(game.turn!==this.turnSeen){this.turnSeen=game.turn;this.passed.clear();this.plays=0;}
     const s=game.players[pi],o=game.players[1-pi];
+    this.hero=s.hero;
     if(this.plays<12){
       const opts=s.hand.filter(c=>!playError(c,s,o));
       if(opts.length){
         const lethal=this.level!=="easy"&&isLethal(s,o);
+        /* 0) 过墙斩杀：手上有策反/拆墙牌且能斩杀时，先打它拆墙 */
+        if(lethal){
+          const breaker=opts.find(c=>/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(c.effect)||c.effect==="removeRestrict");
+          if(breaker){
+            this.plays++;
+            return{type:"play",uid:breaker.uid,targets:this.aiTargets(breaker,s,o),option:autoOption(breaker,s,o)};
+          }
+        }
         let best=null,bs=-1e9;
+        /* AOE 优先：敌方单位多且非斩杀时，先清场再让己方单位打脸（避免先攻击后清场的浪费） */
+        if(!lethal){
+          const aoe=opts.find(c=>/^(aoe2|aoe4|aoe5|redDawn|choose3x2)/.test(c.effect)&&o.board.length>=2);
+          if(aoe){this.plays++;return{type:"play",uid:aoe.uid,targets:this.aiTargets(aoe,s,o),option:autoOption(aoe,s,o)};}
+        }
         for(const c of opts){
           const sc=scoreCard(s,o,c,lethal)+Math.random()*this.noise();
           if(sc>bs){bs=sc;best=c;}
         }
         if(best&&bs>-20){
+          /* 需要场面的牌（整编/燃烧弹/策反/AOE）：先让己方单位攻击，避免浪费攻击次数 */
+          if(PRE_ATTACK.has(best.effect)&&!lethal&&s.board.some(u=>!canAttack(u)&&u.attack>0)){
+            const mv=this.chooseAttack(s,o)||this.forceAttack(s,o);
+            if(mv)return mv;
+          }
           this.plays++;
-          return{type:"play",uid:best.uid,targets:autoTargets(best,s,o),option:autoOption(best,s,o)};
+          return{type:"play",uid:best.uid,targets:this.aiTargets(best,s,o),option:autoOption(best,s,o)};
         }
       }
     }
@@ -148,7 +286,27 @@ class AIPlayer{
     if(mv)return{type:"attack",uid:mv.unit.uid,target:mv.target?mv.target.uid:null};
     return{type:"end"};
   }
+  /* 强制攻击：消耗己方单位的牌（整编/燃烧弹/火船）前，即使正常选攻认为"不值"，
+   * 也要让攻击力>0且未攻击的单位打一次——这些单位反正要献祭，攻击不浪费。
+   * 优先打脸（快攻），其次打能斩杀的单位，兜底打任一目标。 */
+  forceAttack(s,o){
+    const ready=s.board.filter(u=>!canAttack(u)&&u.attack>0&&!this.passed.has(u.uid));
+    if(!ready.length)return null;
+    for(const u of ready){
+      const v=attackTargets(u,o);
+      if(v.hero)return{unit:u,target:null};
+    }
+    for(const u of ready){
+      const v=attackTargets(u,o);
+      const kills=v.units.map(id=>o.board.find(x=>x.uid===id)).filter(t=>t&&u.attack>=t.health).sort((x,y)=>unitValue(y)-unitValue(x));
+      if(kills.length)return{unit:u,target:kills[0].uid};
+    }
+    const u=ready[0],v=attackTargets(u,o);
+    return{unit:u,target:v.hero?null:(v.units[0]||null)};
+  }
   chooseAttack(s,o){
+    const style=HERO_STYLE[this.hero]||{};
+    const aggro=style.aggro!==undefined?style.aggro:.5;
     for(let guard=0;guard<20;guard++){
       const ready=s.board.filter(u=>!canAttack(u)&&!this.passed.has(u.uid));
       if(!ready.length)return null;
@@ -161,6 +319,10 @@ class AIPlayer{
         if(v.hero){
           let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp));
           if(lethal)fs+=1000;
+          if(u.lifespan>0)fs+=60;                       // 限时单位（超人）：打脸优先，不解场
+          if(u.charge&&u.atkLeft>=u.strikes)fs+=aggro*hd*.8;   // 冲锋单位首回合抢血
+          fs+=(aggro-.5)*hd*2+(aggro>=.8?hd*1.5:0);     // 角色抢血倾向
+          if(aggro>=.85)fs+=hd*1.3;                     // 极致抢血（八幡/核弹）：打脸额外加成
           if(u.taunt&&!lethal&&s.hp<=14)fs-=3;
           if(!o.board.length)fs+=2;
           if(this.level==="easy")fs+=3;
@@ -174,6 +336,13 @@ class AIPlayer{
           if(!kills&&dies)sc-=4;
           if(t.taunt&&kills)sc+=1.5;
           if(this.level==="hard"&&t.id==="awaBand")sc+=4;
+          // 极致抢血（八幡/核弹）：不白吃 / 不过墙 / 非自危威胁时，解场大幅降分 → 专注打脸
+          // 白吃高值单位、或自己血量不健康/敌方威胁大(攻击高)时仍解场（保场面）
+          if(aggro>=.85&&!t.taunt){
+            const selfRisk=s.hp<=o.hp||s.hp<=10;
+            const threat=t.attack>=4&&(s.hp<=14||t.attack>=s.hp);
+            if(!(kills&&!dies)&&!selfRisk&&!threat)sc-=8;
+          }
           consider(t,sc+Math.random()*this.noise());
         }
       }
