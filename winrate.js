@@ -21,7 +21,7 @@ function pad(s,w){s=String(s);return s+" ".repeat(Math.max(0,w-cw(s)));}
 function cardName(hero,id){const d=C.cardDef(hero,id);return d&&d.name?d.name:(C.TOKENS[id]&&C.TOKENS[id].name?C.TOKENS[id].name:"未知卡牌");}
 
 function mkStat(hero){return{hero,games:0,wins:0,maxBoard:0,minHp:99,sat:0,satGuns:0,aoeCnt:0,conv:0,gunPeak:0,scrapPeak:0,wastePreSac:0,firebombNoFin:0,boardingThin:0,aoeLate:0,rebelBlocked:0,supermanFace:0,supermanBoard:0,turns:0,mull:0,
-  heroDmg:0,unitDmg:0,winTurns:[],cardPlays:{},cardPlayedGames:{},cardWins:{},cardDmg:{}};}
+  heroDmg:0,unitDmg:0,winTurns:[],cardPlays:{},cardPlayedGames:{},cardWins:{},cardDmg:{},cardAtks:{}};}
 
 /* ---- 跑某对（双向轮流）：单局，返回 winner + 双方统计 ---- */
 function playOne(a,b,level){
@@ -84,7 +84,7 @@ function playOne(a,b,level){
       const u=p.board.find(x=>x.uid===act.uid);
       const tgt=o.board.find(x=>x.uid===act.target)||null;
       if(u&&u.id==="superman"){if(tgt)me.supermanBoard++;else me.supermanFace++;}
-      if(u)curPlayed.push({id:u.id,pi});   // 单位攻击伤害归因到该单位卡
+      if(u){st[pi].cardAtks[u.id]=(st[pi].cardAtks[u.id]||0)+1;curPlayed.push({id:u.id,pi});}   // 单位攻击伤害归因到该单位卡
       r=g.attack(pi,act.uid,act.target);
       if(curPlayed.length)curPlayed.pop();
       if(r.ok&&u)turnAtk[pi].add(u.uid);
@@ -108,7 +108,7 @@ function merge(dst,src){for(const k in src){if(k==="hero")continue;
   if(k==="maxBoard"||k==="gunPeak"||k==="scrapPeak")dst[k]=Math.max(dst[k],src[k]);
   else if(k==="minHp")dst[k]=Math.min(dst[k],src[k]);
   else if(k==="winTurns")dst.winTurns=dst.winTurns.concat(src.winTurns);
-  else if(k==="cardPlays"||k==="cardPlayedGames"||k==="cardWins"||k==="cardDmg")mergeObj(dst[k],src[k]);
+  else if(k==="cardPlays"||k==="cardPlayedGames"||k==="cardWins"||k==="cardDmg"||k==="cardAtks")mergeObj(dst[k],src[k]);
   else dst[k]+=src[k];}}
 function mergeObj(a,b){for(const k in b){a[k]=(a[k]||0)+b[k];}return a;}
 
@@ -177,7 +177,9 @@ function cardBlock(stats){
       const pg=s.cardPlayedGames[id],pl=s.cardPlays[id];
       const wrate=Math.round((s.cardWins[id]||0)/pg*100);
       const dmg=s.cardDmg[id]||0;
-      const per=(dmg/pl).toFixed(1);
+      // 出伤次数分母 = 手牌打出次数 + 单位攻击次数（衍生 token 不占打出次数，用攻击次数做分母，避免场均虚高）
+      const denom=pl+(s.cardAtks[id]||0);
+      const per=denom?(dmg/denom).toFixed(1):"—";
       console.log(`      ${pad(nm,10)} 局${pad(pg,3)}/次${pad(pl,3)} 胜率${pad(wrate+"%",4)} 总伤${pad(dmg,4)} 场均${per}`);
     });
   }
