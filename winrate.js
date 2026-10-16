@@ -184,13 +184,13 @@ if(require.main===module){
     diag([dA]);
   }else{
     runAll(n);
-    // 矩阵（cmd 友好：中文双宽对齐）
-    const colW=6,valW=5;
+    // 矩阵（cmd 友好：中文双宽对齐；表头与数值共用同一列宽，保证行列对齐）
+    const colW=7;
     console.log("=== 胜率矩阵（行 vs 列）===");
-    console.log(pad("",colW)+" "+heroes.map(h=>pad(h,colW)+" ").join("")+pad("综合",colW));
+    console.log(pad("",colW)+heroes.map(h=>pad(h,colW)).join("")+pad("综合",colW));
     for(const a of heroes){
-      const line=heroes.map(b=>a===b?pad("—",valW)+" ":pad((MATRIX[a][b]||0)+"%",valW)+" ").join("");
-      console.log(pad(a,colW)+" "+line+pad(ovl(a,n)+"%",valW));
+      const line=heroes.map(b=>a===b?pad("—",colW):pad((MATRIX[a][b]||0)+"%",colW)).join("");
+      console.log(pad(a,colW)+line+pad(ovl(a,n)+"%",colW));
     }
     console.log("\n=== 综合胜率 ===");
     [...heroes].sort((x,y)=>ovl(y,n)-ovl(x,n)).forEach(h=>console.log(`  ${pad(h,6)} ${pad(ovl(h,n)+"%",5)}  (${agg[h].games} 局)`));
