@@ -7,7 +7,7 @@
   else root.DuelEngine=factory(root.DuelCards);
 })(typeof self!=="undefined"?self:this,function(C){
 "use strict";
-const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS}=C;
+const {MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,CAMPAIGN_CARDS,CAMPAIGN_UPGRADES}=C;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -62,6 +62,11 @@ function targetSpec(card,me,foe){
     case"pirateCommander":return eligible(me.board,1,1,"选择 1 个你的单位 +3/+3","me");
     case"sacAoe3":return eligible(me.board,1,1,"选择要献祭的己方单位","me");
     case"decreeUkr":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 2 点伤害","foe");
+    case"killTough":return eligible(foe.board.filter(u=>u.health>u.attack&&u.health>0),1,1,"选择 1 个生命值高于攻击力的敌方单位","foe");
+    case"stripTaunt":case"stripTauntDraw":return eligible(foe.board.filter(u=>u.taunt&&u.health>0),1,1,"选择 1 个敌方嘲讽单位","foe");
+    case"stunOrKill":return eligible(foe.board,1,1,"选择 1 个敌方单位（眩晕或消灭）","foe");
+    case"stunOneDraw":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
+    case"cpNet":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 1 点伤害","foe");
   }
   return null;
 }
@@ -86,6 +91,11 @@ function playError(card,me,foe){
   if(card.kind==="unit"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
   const e=card.effect;
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
+  if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
+  if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
+  if(e==="stunOneDraw"&&!foe.board.length)return"敌方没有单位可以眩晕";
+  if(e==="cometStrike"&&me.hp<=40)return`彗星陨击需要你的英雄血量高于 40（不含护甲，当前 ${me.hp}）`;
+  if(e==="reshuffleDraw"&&!me.hand.length)return"调节：你手牌为空";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
@@ -124,6 +134,9 @@ function autoTargets(card,me,foe){
   else if(e==="rebel")sorted=pool.slice().sort((a,b)=>unitValue(b)-unitValue(a));
   else if(e==="sacAoe3")sorted=pool.slice().sort((a,b)=>unitValue(a)-unitValue(b));
   else if(e==="pirateCommander")sorted=pool.slice().sort((a,b)=>((a.id==="pirateScout"?1e6:b.attack))-((b.id==="pirateScout"?1e6:a.attack)));
+  else if(e==="killTough")sorted=pool.slice().sort((a,b)=>((b.taunt?10:0)+b.health)-((a.taunt?10:0)+a.health));
+  else if(e==="stripTaunt"||e==="stripTauntDraw")sorted=pool.slice().sort((a,b)=>b.health-a.health);
+  else if(e==="stunOrKill")sorted=pool.slice().sort((a,b)=>((a.stun>0?10:0)+unitValue(a))-((b.stun>0?10:0)+unitValue(b)));
   else sorted=pool.slice().sort((a,b)=>b.attack-a.attack);
   return sorted.slice(0,spec.max).map(u=>u.uid);
 }
@@ -136,13 +149,16 @@ function autoOption(card,me,foe){
    对局
    ============================================================ */
 class Game{
-  /* opts.players = [{name, hero, deck:[id×40]}, …]，opts.first 可选 */
+  /* opts.players = [{name, hero, deck:[id×40]}, …]，opts.first 可选
+     opts.campaign = 剧情模式配置 {player:0, survive:[6,9,12], events:{...}, boss:"bd_boss", hero:"八幡", ch:"ch1"} */
   constructor(opts){
     this.uid=0;this.events=[];this.logs=[];
+    this.campaign=opts.campaign||null;   // 剧情模式（须在 _makePlayer 前设置）
     this.players=opts.players.map((p,i)=>this._makePlayer(i,p));
     this.first=(opts.first===0||opts.first===1)?opts.first:(Math.random()<.5?0:1);
     this.current=this.first;this.turn=0;this.phase="mulligan";
     this.lock=null;this.winner=null;this.reason="";this.pending=null;
+    if(this.campaign){this.campaign.seen={};this.campaign.reachedStar=0;this.campaign.canFinish=false;}
     const f=this.players[this.first],s=this.players[1-this.first];
     this._drawRaw(f,4);this._drawRaw(s,5);
     this.note(`对局开始：${f.name}（${f.hero}）先手，${s.name}（${s.hero}）后手`);
@@ -150,8 +166,13 @@ class Game{
   }
   _makePlayer(i,p){
     const prof=PROFILES[p.hero];
-    const deckIds=(p.deck&&!C.deckError(p.hero,p.deck))?p.deck:C.defaultDeck(p.hero);
-    const deck=shuffle(deckIds.map(id=>this.clone(prof.cards.find(c=>c.id===id),p.hero)));
+    /* 剧情模式跳过 deckError 校验（剧情卡组 30 张、敌方无档案）；普通对局仍严格校验 */
+    const deckIds=(p.deck&&(!prof||this.campaign||!C.deckError(p.hero,p.deck)))?p.deck:C.defaultDeck(p.hero);
+    const upgrades=p.upgrades||{};
+    const deck=shuffle(deckIds.map(id=>{
+      const def=(prof&&prof.cards.find(c=>c.id===id))||C.cardDef(p.hero,id);
+      return this.clone(def,p.hero,upgrades[id]||0);
+    }));
     /* 带有【awa】的卡组：开局时它变成 awa 的一张随机卡牌并洗入牌库 */
     const pool=Object.values(AWA_CARDS);
     this.intro=this.intro||[];
@@ -162,18 +183,20 @@ class Game{
       deck[k]=this.clone(def,p.hero);
     }
     if(this.intro.some(x=>x.pi===i))shuffle(deck);
-    return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp:prof.hp,maxHp:prof.hp,armor:0,energy:0,maxEnergy:0,
+    const hp=prof?prof.hp:(p.hp||30);
+    return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp,maxHp:hp,armor:0,energy:0,maxEnergy:0,
       fatigue:0,deck,hand:[],board:[],money:0,heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
       decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,
       stats:{dmg:0,played:0,kills:0}};
   }
-  clone(c,hero){
-    const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
-      effect:c.effect||"",charge:!!c.charge,taunt:!!c.taunt,ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
+  clone(c,hero,upLvl){
+    const up=(upLvl&&CAMPAIGN_UPGRADES[c.id]&&CAMPAIGN_UPGRADES[c.id][upLvl])||null;
+    const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:up&&up.name?up.name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
+      effect:c.effect||"",charge:!!(c.charge||(up&&up.charge)),taunt:!!(c.taunt||(up&&up.taunt)),ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
       untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,
-      scrap:!!c.scrap,recycle:c.recycle||"",recycleN:c.recycleN||1};
-    if(c.kind==="unit"){x.attack=c.atk;x.health=c.hp;x.maxHealth=c.hp;x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
+      scrap:!!c.scrap,recycle:c.recycle||"",recycleN:c.recycleN||1,upLvl:upLvl||0,upDeployDraw:up&&up.deployDraw||0};
+    if(c.kind==="unit"){x.attack=c.atk+(up&&up.atk||0);x.health=c.hp+(up&&up.hp||0);x.maxHealth=c.hp+(up&&up.hp||0);x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
   }
   opp(p){return this.players[1-p.idx];}
@@ -196,6 +219,10 @@ class Game{
   }
   addToHand(p,card){
     if(p.hand.length>=MAX_HAND)return false;
+    // 发现海盗（新）：己方加入手牌的海盗 +1/+1
+    if(p.pirateBuff&&card.kind==="unit"&&(card.hero==="八幡"||card.id==="pirateScout")){
+      card.attack=(card.attack||0)+1;card.health=(card.health||0)+1;card.maxHealth=(card.maxHealth||0)+1;
+    }
     p.hand.push(card);this._drawHeal(p);return true;
   }
   burn(p,card){this.emit({t:"burn",pi:p.idx,card:pubCard(card)});this.note(`手牌已满，【${card.name}】被弃置`,p);}
@@ -263,6 +290,14 @@ class Game{
       if(!dead.length)continue;
       p.board=p.board.filter(u=>u.health>0);
       this.opp(p).stats.kills+=dead.length;
+      /* 剧情模式：玩家击杀敌方首领 → 对话 */
+      if(this.campaign&&p.idx!==this.campaign.player&&!this.campaign.seen.killBoss){
+        const bossId=this.campaign.boss;
+        if(bossId&&dead.some(u=>u.id===bossId)){
+          this.campaign.seen.killBoss=true;
+          this.emit({t:"ce",id:"killBoss",text:(this.campaign.events&&this.campaign.events.killBoss)||"敌方首领被击杀了！"});
+        }
+      }
       dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);});
     }
     souls.forEach(([p,u])=>{
@@ -286,6 +321,7 @@ class Game{
   summon(p,id,n=1){
     let def=TOKENS[id]||PROFILES[p.hero].cards.find(x=>x.id===id);
     if(!def)for(const h in PROFILES){def=PROFILES[h].cards.find(x=>x.id===id);if(def)break;}
+    if(!def&&CAMPAIGN_CARDS[id])def=CAMPAIGN_CARDS[id];
     if(!def)return 0;let k=0;
     for(let i=0;i<n&&p.board.length<MAX_BOARD;i++){const u=this.clone(def,p.hero);p.board.push(u);this._enter(p,u);k++;}
     return k;
@@ -312,9 +348,23 @@ class Game{
     if(this.phase==="over")return;
     this.phase="over";this.winner=winner;this.reason=reason;this.pending=null;
     this.note(winner==="draw"?"平局！":`${this.players[winner].name} 获胜：${reason}`);
+    /* 剧情模式胜利：发出 win 对话事件 */
+    if(this.campaign&&this.campaign.player===winner){
+      const p=this.players[winner];
+      this.emit({t:"ce",id:"win",turns:p.turnsStarted,star:this.campaign.reachedStar||1,text:(this.campaign.events&&this.campaign.events.win)||"胜利！"});
+    }
     this.emit({t:"over",winner,reason});
   }
   specialWin(p,reason){this._finish(p.idx,reason);}
+  /* 剧情模式：玩家主动结算（撑过目标回合） */
+  settleCampaign(pi){
+    if(!this.campaign||this.phase==="over")return{ok:false};
+    const player=this.campaign.player;
+    if(pi!==player)return{ok:false,msg:"只有幸存者可以结算"};
+    if(!this.campaign.canFinish)return{ok:false,msg:"还没有撑到最低目标回合"};
+    this._finish(player,(this.campaign.events&&this.campaign.events.win)||"守住了！");
+    return{ok:true};
+  }
   concede(pi){
     if(this.phase==="over")return{ok:false};
     this.note(`${this.players[pi].name} 认输`,this.players[pi]);
@@ -344,6 +394,18 @@ class Game{
     if(this.phase==="over")return;
     const p=this.players[pi];
     this.current=pi;this.turn++;p.turnsStarted++;
+    /* 剧情模式：玩家回合开始判定星级达标 / 低血对话 */
+    if(this.campaign&&pi===this.campaign.player){
+      const cm=this.campaign;
+      const stars=cm.survive||[];
+      for(let i=stars.length-1;i>=0;i--){
+        if(p.turnsStarted>=stars[i]&&!(cm.seen["star"+(i+1)])){
+          cm.seen["star"+(i+1)]=true;cm.reachedStar=Math.max(cm.reachedStar,i+1);cm.canFinish=true;
+          this.emit({t:"ce",id:"star"+(i+1),star:i+1,turns:p.turnsStarted,text:(cm.events&&cm.events["star"+(i+1)])||`撑过了 ${stars[i]} 个回合！`});
+        }
+      }
+      if(p.hp<=10&&!cm.seen.lowHp){cm.seen.lowHp=true;this.emit({t:"ce",id:"lowHp",text:(cm.events&&cm.events.lowHp)||"你已岌岌可危！"});}
+    }
     if(this.lock===pi){this.lock=null;this.note("停摆结束",p);}
     p.heroImmune=false;
     if(p.armor>0){this.note(`护甲 ${p.armor} 点消散`,p);p.armor=0;}
@@ -397,6 +459,11 @@ class Game{
       while(got<2&&p.hand.length<MAX_HAND&&this.addToHand(p,this.clone(TOKENS.scrap,p.hero)))got++;
       this.note(got?`皇冠产出：获得 ${got} 张【碎纸】`:"皇冠产出：手牌已满，没有产出",p);
     }
+    /* 八幡：海盗的幸运币开局自动抽取（0费，给1费） */
+    if(p.hero==="八幡"&&p.turnsStarted===1&&!p.hand.some(x=>x.id==="luckycoin")){
+      if(this.addToHand(p,this.clone(PROFILES["八幡"].cards.find(x=>x.id==="luckycoin"),p.hero)))
+        this.note("海盗的幸运币：对局开始自动抽取",p);
+    }
   }
   _guard(pi){
     if(this.phase==="mulligan")return"请先完成调度";
@@ -443,6 +510,11 @@ class Game{
     }else{
       this.note(`施放【${c.name}】`,s);
       this.cast(s,c,o,picked,option);
+    }
+    /* 剧情模式：敌人打出【洗劫村庄】→ 着火对话 */
+    if(this.campaign&&pi!==this.campaign.player&&c.id==="bd_burn"&&!this.campaign.seen.enemyBurn){
+      this.campaign.seen.enemyBurn=true;
+      this.emit({t:"ce",id:"enemyBurn",text:(this.campaign.events&&this.campaign.events.enemyBurn)||"村子着火了！"});
     }
     if(c.scrap)this._onScrapPlayed(s);
     this.cleanup();this._checkEnd();
@@ -532,8 +604,12 @@ class Game{
 
   /* ---------- 部署效果 ---------- */
   deploy(s,c,o,targets,option){
+    // 剧情卡升级：部署抽 1
+    if(c.upDeployDraw>0)this.draw(s,c.upDeployDraw);
     // 发现海盗：己方海盗此后部署时各抽 1 张牌
     if(s.pirateDeployDraw&&c.kind==="unit"&&(c.hero==="八幡"||c.id==="pirateScout"))this.draw(s,1);
+    // 发现海盗（新）：己方此后部署或加入的海盗 +1/+1
+    if(s.pirateBuff&&c.kind==="unit"&&(c.hero==="八幡"||c.id==="pirateScout")){c.attack+=1;c.health+=1;c.maxHealth+=1;}
     const T=()=>targets&&targets.length?targets:autoTargets(c,s,o);
     switch(c.effect){
       case"heal2":this.heal(s,2);break;
@@ -543,11 +619,19 @@ class Game{
       case"drawArmor":this.draw(s,1);this.armor(s,1);break;
       case"armor1":this.armor(s,1);break;
       case"armor2":this.armor(s,2);break;
+      case"armor3":this.armor(s,3);this.note("海岸防线：获得 3 点护甲",s);break;
       case"hero1":this.damageHero(o,1);break;
       case"hero2":this.damageHero(o,2);break;
       case"hero3":this.damageHero(o,3);break;
+      case"hero5":this.damageHero(o,5);this.note("洗劫村庄：对敌方英雄造成 5 点伤害",s);break;
       case"hero99":this.damageHero(o,99);this.note("awa：对敌方英雄造成 99 点伤害",s);break;
       case"draw2":this.draw(s,2);break;
+      case"cpNet":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){this.damageUnit(o,t,1,s);this.note(`渔网陷阱：对 ${t.name} 造成 1 点伤害`,s);}
+        break;}
+      case"cpUprising":if(this.summon(s,"cp_uprising",2))this.note("渔村号角：召唤 2 个起义村民",s);break;
       case"summonPirate":this.summon(s,"pirate",1);break;
       case"summonRandomPirate":{
         const pool=["deckhand","pirate","stalker","raider","mate"];
@@ -580,6 +664,13 @@ class Game{
       case"summonRed2":this.summon(s,"red",2);break;
       case"alweiDeploy":this.draw(s,2);this.buffAll(s,1,1);this.note("阿伟：抽两张牌，全军 +1/+1",s);break;
       case"qixingDeploy":this.loseMax(o,1);this.note("七星：敌方费用上限 -1",s);break;
+      case"starCoreZero":{
+        // 星核卫士：选择手牌中 1 张牌，其费用变为 0（本局有效）
+        if(!s.hand.length){this.note("星核卫士：你没有手牌",s);break;}
+        this._pick(s,"星核卫士","选择 1 张手牌，其费用变为 0（本局有效）",s.hand.slice(),0,sel=>{
+          sel.cost=0;this.note(`星核卫士：【${sel.name}】的费用变为 0`,s);
+        });
+        break;}
       case"susuDeploy":{
         const def=PROFILES["苏苏"].cards.find(x=>x.id==="red");
         if(s.board.length<MAX_BOARD){const u=this.clone(def,"苏苏");this._ready(u);s.board.push(u);this.note("苏苏：召唤一个俄布",s);}
@@ -645,6 +736,19 @@ class Game{
         s.fedTurn=true;
         this.note("苏三世：本回合三种政体的加成同时生效",s);
         this.emit({t:"fx",name:"regime",pi:s.idx,regime:"all"});
+        break;
+      case"killTough":{
+        // 破阵者：消灭 1 个生命值高于攻击力的敌方单位
+        const ids=T();
+        if(ids.length){const t=o.board.find(u=>u.uid===ids[0]);if(t){t.health=0;this.note(`破阵者：消灭了【${t.name}】`,s);}}
+        break;}
+      case"stripTaunt":{
+        // 潜行海盗：使 1 个敌方单位失去嘲讽
+        const ids=T();
+        if(ids.length){const t=o.board.find(u=>u.uid===ids[0]);if(t&&t.taunt){t.taunt=false;this.note(`潜行海盗：${t.name} 失去了嘲讽`,s);}}
+        break;}
+      case"clubberDeploy":
+        if(this.addToHand(s,this.clone(TOKENS.stunClub,s.hero)))this.note("持棍海盗：获得 1 张【闷棍】",s);
         break;
     }
   }
@@ -727,9 +831,11 @@ class Game{
         break;}
       case"scrapBlast":{
         const k=this._discardScrap(s,0,true);
-        this.note(`废物利用：弃掉 ${k} 张废料，造成 ${k*2} 点伤害`,s);
-        if(k)this.damageHero(o,k*2);
+        const cap=Math.min(k,4);
+        this.note(`废物利用：弃掉 ${k} 张废料，造成 ${cap*2} 点伤害（至多 8 点）`,s);
+        if(cap)this.damageHero(o,cap*2);
         break;}
+      case"damage5draw":this.damageHero(o,5);this.draw(s,1);break;
       case"scrapSweep":{
         const k=this._discardScrap(s,0,true);
         const h=Math.min(12,k*3);
@@ -802,14 +908,80 @@ class Game{
         if(hit)this.note("海盗战嚎：目标单位 +3/+3",s);
         fx("buff",{n:hit});
         break;}
-      case"pirateDiscover":{
-        s.pirateDeployDraw=true;
-        this.note("发现海盗：己方海盗此后部署时各抽 1 张牌",s);
+      case"pirateDiscover2":{
+        s.pirateBuff=true;
+        this.note("发现海盗：己方此后部署或加入的海盗 +1/+1",s);
         const pool=PROFILES["八幡"].cards.filter(x=>x.kind==="unit");
-        const top=[...pool].sort(()=>Math.random()-.5).slice(0,3);
-        this._pick(s,c.name,"发现 3 张随机的海盗：选择 1 张加入手牌",top,0,card=>{
-          if(!this.addToHand(s,this.clone(card,s.hero)))this.burn(s,card);
-        });
+        let left=3;
+        const step=()=>{
+          if(left<=0)return;
+          const cur=left;
+          const top=[...pool].sort(()=>Math.random()-.5).slice(0,3);
+          this._pick(s,c.name,`发现海盗（还可选 ${cur} 次）：从 3 张海盗中选择 1 张加入手牌`,top,0,card=>{
+            if(!this.addToHand(s,this.clone(card,s.hero)))this.burn(s,card);
+            left--;
+            step();
+          });
+        };
+        step();
+        break;}
+      case"stripTauntDraw":{
+        // 恐吓：使 1 个敌方单位失去嘲讽；若有友方海盗则抽 1 张
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t&&t.taunt){t.taunt=false;this.note(`恐吓：${t.name} 失去了嘲讽`,s);}
+        const hasPirate=s.board.some(u=>u.health>0&&(u.hero==="八幡"||u.id==="pirateScout"));
+        if(hasPirate)this.draw(s,1);
+        break;}
+      case"stunOrKill":{
+        // 闷棍：眩晕 1 个敌方单位；若已被眩晕则消灭
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){
+          if(t.stun>0){t.health=0;this.note(`闷棍：${t.name} 已被眩晕，直接消灭`,s);}
+          else{t.stun=Math.max(t.stun||0,1);t.atkLeft=0;this.note(`闷棍：${t.name} 被眩晕`,s);}
+        }
+        break;}
+      case"luckyCoin":if(this.lock!==null)this.note("停摆：无法增加费用",s);else{s.energy+=1;this.note("海盗的幸运币：获得 1 点费用",s);}break;
+      case"cometStrike":{
+        // 彗星陨击：英雄血量（不含护甲）高于 40 时，对敌方英雄造成 40 点伤害
+        if(s.hp>40){this.damageHero(o,40);this.note("彗星陨击：紫色彗星划过，对敌方英雄造成 40 点伤害！",s);}
+        else this.note("彗星陨击：血量不足 40，未能召唤彗星",s);
+        break;}
+      case"draw2heal6":this.draw(s,2);this.heal(s,6);this.note("星光祝福：抽 2 张牌，恢复 6 点生命",s);break;
+      case"armor3Draw1":this.armor(s,3);this.draw(s,1);this.note("彗星尾迹：获得 3 点护甲，抽 1 张牌",s);break;
+      case"heal4Draw1":this.heal(s,4);this.draw(s,1);this.note("星辉回响：恢复 4 点生命，抽 1 张牌",s);break;
+      case"heal5Armor2":this.heal(s,5);this.armor(s,2);this.note("星尘信标：恢复 5 点生命，获得 2 点护甲",s);break;
+      case"stunOneDraw":{
+        // 星辉锁链：眩晕 1 个敌方单位（优先最高攻击），抽 1 张牌（联动观察者回血）
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){t.stun=Math.max(t.stun||0,1);t.atkLeft=0;this.note(`星辉锁链：${t.name} 被眩晕，下个回合无法攻击`,s);}
+        this.draw(s,1);
+        break;}
+      case"stunAllDraw":{
+        // 彗星枷锁：眩晕所有敌方单位，抽 1 张牌
+        const hit=o.board.filter(u=>u.health>0);
+        hit.forEach(u=>{u.stun=Math.max(u.stun||0,1);u.atkLeft=0;});
+        this.note(`彗星枷锁：${hit.length} 个敌方单位被眩晕，下个回合无法攻击`,s);
+        this.draw(s,1);
+        break;}
+      case"cometTutor":{
+        // 彗星预言：从牌库检索彗星陨击；没有则抽 2 张
+        const want="cometStrike";
+        const ti=s.deck.findIndex(x=>x.id===want);
+        if(ti>=0){const card=s.deck.splice(ti,1)[0];if(this.addToHand(s,card))this.note(`彗星预言：检索到【${card.name}】！`,s);else this.burn(s,card);}
+        else{this.draw(s,2);this.note("彗星预言：牌库中没有彗星陨击，改为抽 2 张牌",s);}
+        break;}
+      case"reshuffleDraw":{
+        // 调节：手牌全部洗回牌库并洗牌，抽（洗入数+1）张——配合彗星观察者疯狂回血
+        const hand=s.hand.slice();
+        if(!hand.length){this.note("调节：手牌为空",s);break;}
+        s.hand=[];
+        s.deck=s.deck.concat(hand);
+        shuffle(s.deck);
+        this.draw(s,hand.length+1);
+        this.note(`调节：将 ${hand.length} 张手牌洗回牌库，抽取 ${hand.length+1} 张牌`,s);
         break;}
       case"buffAll2":case"highcommand":this.buffAll(s,2,2);break;
       case"buffAll1":this.buffAll(s,1,1);break;
@@ -865,6 +1037,15 @@ class Game{
       case"draw2armor1":this.draw(s,2);this.armor(s,1);break;
       case"heal5draw":this.heal(s,5);this.draw(s,1);break;
       case"heal3draw":case"healDraw":this.heal(s,c.effect==="healDraw"?2:3);this.draw(s,1);break;
+      case"heal3":this.heal(s,3);this.note("篝火：恢复 3 点生命",s);break;
+      case"armor3":this.armor(s,3);this.note("海岸防线：获得 3 点护甲",s);break;
+      case"hero5":this.damageHero(o,5);this.note("洗劫村庄：对敌方英雄造成 5 点伤害",s);break;
+      case"cpNet":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){this.damageUnit(o,t,1,s);this.note(`渔网陷阱：对 ${t.name} 造成 1 点伤害`,s);}
+        break;}
+      case"cpUprising":if(this.summon(s,"cp_uprising",2))this.note("渔村号角：召唤 2 个起义村民",s);break;
       case"manaBurn":this.damageHero(o,2);this.loseMax(o,1);break;
       case"energyDownDraw":this.loseMax(o,1);this.draw(s,1);break;
       case"enemyAtkDown":o.board.forEach(u=>{u.attack=Math.max(0,u.attack-2);});break;
@@ -907,6 +1088,15 @@ class Game{
         const d=s.deck.pop();
         if(d.id==="superman"){d.cost=Math.max(0,d.cost-2);this.note("禁忌检索：抽到超人，费用 -2！",s);}
         if(!this.addToHand(s,d))this.burn(s,d);
+        break;}
+      case"filterSuperman2":{
+        if(this.lock!==null){this.note("停摆：无法抽牌",s);break;}
+        for(let k=0;k<2;k++){
+          if(!s.deck.length){this.draw(s,1);break;}
+          const d=s.deck.pop();
+          if(d.id==="superman"){d.cost=Math.max(0,d.cost-2);this.note("禁忌检索：抽到超人，费用 -2！",s);}
+          if(!this.addToHand(s,d))this.burn(s,d);
+        }
         break;}
       case"tutorSuperman":{
         const want="superman";

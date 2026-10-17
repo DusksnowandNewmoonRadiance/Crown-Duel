@@ -46,12 +46,134 @@ const app=express();
 app.disable("x-powered-by");
 app.set("trust proxy","loopback");
 const noCache={etag:true,lastModified:true,setHeaders:res=>res.setHeader("Cache-Control","no-cache")};
+app.use(express.json({limit:"256kb"}));
 app.use(express.static(path.join(__dirname,"..","public"),noCache));
 app.use("/shared",express.static(path.join(__dirname,"..","shared"),noCache));
 app.get("/healthz",(req,res)=>res.json({ok:true,build:BUILD,online:onlineCount(),rooms:rooms.size,uptime:process.uptime()|0}));
 app.get("/api/announcements",(req,res)=>{res.setHeader("Cache-Control","no-cache");res.json(Store.announcements().slice(0,30));});
 app.get("/api/content",(req,res)=>{res.setHeader("Cache-Control","no-cache");const b=Store.balance();res.json({build:BUILD,version:VERSION,rev:b.rev,overrides:b.overrides||{},maintenance:maintView()});});
 app.get("/api/stats",(req,res)=>{res.setHeader("Cache-Control","no-cache");res.json(Store.stats());});
+
+/* ============================================================
+   账号 / 金币 / 商店 / 仓库 / 剧情模式 API
+   ============================================================ */
+const SHOP=[
+  {id:"villageHorn",name:"渔村号角",desc:"剧情卡：3费法术，召唤 2 个 2/1 冲锋起义者（剧情专属，加入剧情牌库）",price:600,kind:"card",card:"villageHorn"},
+  {id:"militiaCaptain",name:"民兵队长",desc:"剧情卡：4费 3/3 嘲讽，部署：你的单位 +1 攻击力（剧情专属，加入剧情牌库）",price:700,kind:"card",card:"militiaCaptain"},
+  {id:"campaignPack",name:"剧情卡包",desc:"随机获得 1 张剧情专属卡（加入剧情牌库）",price:500,kind:"pack"},
+  {id:"upgradeToken",name:"升级券",desc:"将剧情牌库中的一张卡升级一阶（+1/+1→冲锋→嘲讽→部署抽牌）",price:350,kind:"token"}
+];
+function tok(req){return(req.body&&req.body.token)||req.query.token;}
+function needUser(req,res){
+  const u=Store.byToken(tok(req));
+  if(!u){res.json({ok:false,msg:"未登录或登录已过期"});return null;}
+  return u;
+}
+/* 普通模式获胜：+金币 并 解锁该角色剧情 */
+app.post("/api/reward/match",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const won=!!req.body.won,hero=String(req.body.hero||"");
+  if(won)Store.addGold(u.uid,20);
+  if(won&&hero&&C.PROFILES[hero])Store.unlockCampaign(u.uid,hero);
+  res.json({ok:true,gold:u.gold,campaign:u.campaign});
+});
+app.post("/api/auth/register",(req,res)=>{
+  try{const r=Store.register(req.body.user,req.body.pass,req.body.nick,req.body.email);res.json({ok:true,...r});}
+  catch(e){res.json({ok:false,msg:e.message});}
+});
+app.post("/api/auth/login",(req,res)=>{
+  try{const r=Store.login(req.body.user,req.body.pass);res.json({ok:true,...r});}
+  catch(e){res.json({ok:false,msg:e.message});}
+});
+app.post("/api/auth/logout",(req,res)=>{res.json({ok:Store.logout(tok(req))});});
+app.post("/api/auth/bindEmail",(req,res)=>{
+  try{
+    const u=Store.byToken(tok(req));
+    if(!u){res.json({ok:false,msg:"未登录"});return;}
+    const r=Store.bindEmail(u.uid,req.body.email);res.json({ok:true,...r});
+  }catch(e){res.json({ok:false,msg:e.message});}
+});
+app.post("/api/auth/forgot",(req,res)=>{
+  try{const r=Store.forgot(req.body.email);res.json({ok:true,...r});}
+  catch(e){res.json({ok:false,msg:e.message});}
+});
+app.post("/api/auth/reset",(req,res)=>{
+  try{const r=Store.reset(req.body.email,req.body.code,req.body.pass);res.json({ok:true,...r});}
+  catch(e){res.json({ok:false,msg:e.message});}
+});
+app.get("/api/me",(req,res)=>{
+  const u=Store.byToken(tok(req));
+  res.json(u?{ok:true,me:Store.pubUser(u)}:{ok:false,msg:"未登录"});
+});
+app.get("/api/shop",(req,res)=>res.json({ok:true,items:SHOP}));
+app.post("/api/shop/buy",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const item=SHOP.find(x=>x.id===req.body.id);
+  if(!item){res.json({ok:false,msg:"没有这件商品"});return;}
+  const r=Store.buy(u.uid,item);
+  res.json({ok:r.ok,msg:r.msg,gold:u.gold,inv:u.inv});
+});
+/* 使用仓库物品：card → 加入指定剧情存档牌库；pack → 随机剧情卡加入；token → 备用（升级走 upgrade API） */
+app.post("/api/inventory/use",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const hero=String(req.body.hero||""),slot=+req.body.slot||0;
+  const item=SHOP.find(x=>x.id===req.body.id);
+  if(!item){res.json({ok:false,msg:"未知物品"});return;}
+  const inv=u.inv.find(x=>x.id===req.body.id);
+  if(!inv||inv.qty<=0){res.json({ok:false,msg:"仓库里没有这件物品"});return;}
+  const camp=C.campaignOf(hero);
+  if(!camp){res.json({ok:false,msg:"该角色暂无剧情"});return;}
+  let card=null;
+  if(item.kind==="card")card=item.card;
+  else if(item.kind==="pack"){
+    const pool=camp.chapters.ch1.rewardPool||[];
+    if(!pool.length){res.json({ok:false,msg:"该关暂无可用剧情卡"});return;}
+    card=pool[Math.floor(Math.random()*pool.length)];
+  }else{res.json({ok:false,msg:"该物品暂不能在此使用"});return;}
+  const c=Store.camp(u.uid,hero);const s=c.slots[slot]||(c.slots[slot]={deck:[],ch1:{best:0,first:false},upgrades:{}});
+  const limit=C.rarityLimit(C.cardDef(hero,card));
+  const now=(s.deck||[]).filter(x=>x===card).length;
+  if(now>=limit){res.json({ok:false,msg:"剧情牌库中该卡已达携带上限"});return;}
+  s.deck=s.deck||[];s.deck.push(card);
+  Store.useInv(u.uid,req.body.id);
+  res.json({ok:true,inv:u.inv,campaign:u.campaign});
+});
+/* 剧情结算：stars=1|2|3 达成的星级；奖励金币 + 首通随机剧情卡 */
+app.post("/api/campaign/finish",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const hero=String(req.body.hero||""),slot=+req.body.slot||0,stars=+req.body.stars||0;
+  const camp=C.campaignOf(hero);
+  if(!camp||!camp.chapters.ch1){res.json({ok:false,msg:"该角色暂无剧情"});return;}
+  const rewards=camp.chapters.ch1.rewards||{1:100,2:150,3:250};
+  const gold=rewards[stars]||0;
+  const r=Store.finishCampaign(u.uid,hero,slot,req.body.turns||0,stars);
+  Store.addGold(u.uid,gold);
+  let rewardCard=null;
+  if(r.first){
+    const pool=camp.chapters.ch1.rewardPool||[];
+    if(pool.length){
+      const c=Store.camp(u.uid,hero),s=c.slots[slot];
+      const avail=pool.filter(id=>(s.deck||[]).filter(x=>x===id).length<C.rarityLimit(C.cardDef(hero,id)));
+      if(avail.length){rewardCard=avail[Math.floor(Math.random()*avail.length)];s.deck=s.deck||[];s.deck.push(rewardCard);}
+    }
+  }
+  res.json({ok:true,gold:u.gold,stars:r.best,first:r.first,rewardCard,campaign:u.campaign});
+});
+/* 升级剧情卡：消耗金币，阶梯 +1/+1→冲锋→嘲讽→部署抽牌 */
+app.post("/api/campaign/upgrade",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const hero=String(req.body.hero||""),slot=+req.body.slot||0,cardId=String(req.body.cardId||"");
+  const path=C.campaignUpgradePath(hero,cardId);
+  if(!path||!path.length){res.json({ok:false,msg:"这张卡不能升级"});return;}
+  const c=Store.camp(u.uid,hero),s=c.slots[slot];
+  const lvl=((s.upgrades||{})[cardId])||0;
+  if(lvl>=path.length-1){res.json({ok:false,msg:"已升满"});return;}
+  const cost=path[lvl+1].cost||0;
+  if(u.gold<cost){res.json({ok:false,msg:"金币不足"});return;}
+  u.gold-=cost;
+  s.upgrades=s.upgrades||{};s.upgrades[cardId]=lvl+1;
+  res.json({ok:true,gold:u.gold,campaign:u.campaign,upgrades:s.upgrades});
+});
 app.use("/admin",adminRouter({
   status:()=>({build:BUILD,version:VERSION,uptime:process.uptime()|0,online:onlineCount(),queue:queue.length,rooms:rooms.size,
     matches:activeMatches(),maintenance:maintView(),dataDir:Store.DATA_DIR}),

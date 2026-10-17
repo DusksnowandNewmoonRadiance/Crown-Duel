@@ -94,9 +94,19 @@ const PROFILES={
     {id:"withering",name:"凋零彗尾",cost:4,kind:"spell",art:"☄",text:"敌方英雄获得 2 层【衰减】，抽 1 张牌。",effect:"decay2draw",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"doomsday",name:"终焉倒计时",cost:5,kind:"spell",art:"⌛",text:"使敌方英雄的【衰减】层数翻倍（至少 +1 层）。",effect:"decayDouble",n:1,limit:1,rarity:"elite"},
     {id:"stasisfield",name:"凝滞时空",cost:6,kind:"spell",art:"❖",text:"敌方在下个回合最多只能打出 1 张牌，敌方的费用上限 -1。",effect:"lockCap1",n:1,limit:1,rarity:"elite"},
-    {id:"cometfall",name:"彗星陨落",cost:6,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:1,rarity:"elite"}
+    {id:"cometfall",name:"彗星陨落",cost:6,kind:"spell",art:"☄",text:"对敌方英雄造成 6 点伤害。",effect:"damage6",n:1,limit:1,rarity:"elite"},
+    {id:"starlightPray",name:"星光祝福",cost:3,kind:"spell",art:"✶",text:"抽 2 张牌，恢复 6 点生命。",effect:"draw2heal6",n:0,limit:1,rarity:"elite"},
+    {id:"cometTrail",name:"彗星尾迹",cost:2,kind:"spell",art:"✦",text:"获得 3 点护甲，抽 1 张牌。",effect:"armor3Draw1",n:0,limit:3,rarity:"rare"},
+    {id:"starlightEcho",name:"星辉回响",cost:2,kind:"spell",art:"✧",text:"恢复 4 点生命，抽 1 张牌。",effect:"heal4Draw1",n:0,limit:3,rarity:"rare"},
+    {id:"stardustBeacon",name:"星尘信标",cost:3,kind:"spell",art:"✦",text:"恢复 5 点生命，获得 2 点护甲。",effect:"heal5Armor2",n:0,limit:3,rarity:"rare"},
+    {id:"starlock",name:"星辉锁链",cost:2,kind:"spell",art:"🔗",text:"眩晕 1 个敌方单位，使其下个回合无法攻击，抽 1 张牌。",effect:"stunOneDraw",n:0,limit:3,rarity:"rare"},
+    {id:"cometShackle",name:"彗星枷锁",cost:4,kind:"spell",art:"⛓",text:"眩晕所有敌方单位，使它们下个回合无法攻击，抽 1 张牌。",effect:"stunAllDraw",n:0,limit:2,rarity:"special"},
+    {id:"cometTutor",name:"彗星预言",cost:3,kind:"spell",art:"☄",text:"从牌库中将【彗星陨击】加入手牌。如果没有，改为抽 2 张牌。",effect:"cometTutor",n:0,limit:2,rarity:"special",fx:"sp_insight"},
+    {id:"starcore",name:"星核卫士",cost:5,kind:"unit",art:"▥",atk:3,hp:12,text:"嘲讽。部署：选择你手牌中的 1 张牌，其费用变为 0。",taunt:true,effect:"starCoreZero",n:0,limit:1,rarity:"elite"},
+    {id:"tune",name:"调节",cost:2,kind:"spell",art:"⇄",text:"将你的手牌全部洗入牌库并洗牌，然后抽取等同于洗入数量 +1 的牌。",effect:"reshuffleDraw",n:0,limit:4,rarity:"common"},
+    {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 40，对敌方英雄造成 40 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
   ]},
-  "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:28,cards:[
+  "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:30,cards:[
     {id:"refugee",name:"旧大陆难民",cost:1,kind:"unit",art:"◇",atk:1,hp:3,text:"嘲讽。",taunt:true,n:3,limit:3,rarity:"rare"},
     {id:"teaboy",name:"红茶侍者",cost:2,kind:"unit",art:"◒",atk:2,hp:3,text:"部署：获得 2 点护甲。",effect:"armor2",n:2,limit:2,rarity:"special"},
     {id:"stealth",name:"隐秘行踪",cost:2,kind:"unit",art:"◇",atk:2,hp:5,text:"",flavor:"行踪隐秘迅速。",n:2,limit:3,rarity:"rare"},
@@ -112,7 +122,8 @@ const PROFILES={
     {id:"tea",name:"红茶时间",cost:2,kind:"spell",art:"◒",text:"获得 3 点护甲，抽 1 张牌。",effect:"armor3draw",n:2,limit:2,rarity:"special"},
     {id:"escape",name:"逃亡路线",cost:2,kind:"spell",art:"↗",text:"抽 2 张牌，恢复 2 点生命。",effect:"draw2heal2",n:2,limit:2,rarity:"special"},
     {id:"vanish",name:"销声匿迹",cost:2,kind:"spell",art:"◌",text:"直到你的下个回合开始，敌方单位无法攻击你的英雄。",effect:"evasion",n:2,limit:3,rarity:"rare"},
-    {id:"filter",name:"禁忌检索",cost:2,kind:"spell",art:"⌕",text:"抽 1 张牌。如果抽到【超人】，其费用 -2。",effect:"filterSuperman",n:2,limit:2,rarity:"special"},
+    {id:"filter",name:"禁忌检索",cost:2,kind:"spell",art:"⌕",text:"抽 2 张牌。如果抽到【超人】，其费用 -2。",effect:"filterSuperman2",n:2,limit:2,rarity:"special"},
+    {id:"airstrike",name:"凹槽突袭",cost:4,kind:"spell",art:"☄",text:"对敌方英雄造成 5 点伤害，抽 1 张牌。",effect:"damage5draw",n:2,limit:2,rarity:"special"},
     {id:"gaze",name:"皇冠凝视",cost:2,kind:"spell",art:"♛",text:"查看牌库顶的 3 张牌，将其中 1 张加入手牌，其余置于牌库底。",effect:"scry",n:2,limit:2,rarity:"special"},
     {id:"ritual",name:"皇冠仪式",cost:2,kind:"spell",art:"♛",text:"从牌库中召唤【超人】。",effect:"summonSuperman",n:1,limit:1,rarity:"elite"},
     {id:"revenge",name:"例行复仇",cost:3,kind:"spell",art:"☄",text:"对敌方英雄造成 7 点伤害。",effect:"damage7",n:2,limit:2,rarity:"special",fx:"sp_strike"},
@@ -126,6 +137,7 @@ const PROFILES={
     {id:"collector",name:"收米专员",cost:2,kind:"unit",art:"$",atk:2,hp:3,text:"部署：偷取 30 元，对敌方英雄造成 1 点伤害。",effect:"steal3hero1",n:1,limit:3,rarity:"rare"},
     {id:"auditor",name:"审计员",cost:2,kind:"unit",art:"▤",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
     {id:"broker",name:"账房先生",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"部署：偷取 20 元。",effect:"steal2",n:1,limit:2,rarity:"special",fx:"sp_coin"},
+    {id:"vaultguard",name:"金库护卫",cost:2,kind:"unit",art:"▥",atk:1,hp:4,text:"嘲讽。部署：偷取 20 元。",taunt:true,effect:"steal2",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"taxman",name:"税官",cost:3,kind:"unit",art:"$",atk:3,hp:5,text:"部署：偷取 40 元。",effect:"steal4",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"accountant",name:"精算主管",cost:4,kind:"unit",art:"#",atk:4,hp:5,text:"部署：获得 1 点护甲。",effect:"armor1",n:2,limit:2,rarity:"special",fx:"sp_guard"},
     {id:"vault",name:"金库守卫",cost:4,kind:"unit",art:"▦",atk:3,hp:7,text:"嘲讽。部署：获得 2 点护甲。",taunt:true,effect:"armor2",n:2,limit:2,rarity:"special",fx:"sp_guard"},
@@ -133,7 +145,7 @@ const PROFILES={
     {id:"vaultgate",name:"金库大门",cost:6,kind:"unit",art:"▣",atk:6,hp:9,text:"嘲讽。",taunt:true,n:1,limit:1,rarity:"elite"},
     {id:"launderer",name:"洗钱专家",cost:3,kind:"unit",art:"$",atk:3,hp:5,text:"部署：偷取 30 元，抽 1 张牌。",effect:"steal3draw",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"bribelord",name:"收买要员",cost:4,kind:"unit",art:"▤",atk:4,hp:5,text:"部署：偷取 20 元，获得 2 点护甲。",effect:"steal2armor2",n:1,limit:2,rarity:"special",fx:"sp_coin"},
-    {id:"greyincome",name:"灰色收入",cost:1,kind:"spell",art:"$",text:"偷取 30 元。",effect:"steal3",n:2,limit:3,rarity:"rare"},
+    {id:"greyincome",name:"灰色收入",cost:1,kind:"spell",art:"$",text:"偷取 40 元。",effect:"steal4",n:2,limit:3,rarity:"rare"},
     {id:"bribe",name:"账外交易",cost:1,kind:"spell",art:"◇",text:"抽 2 张牌，你的英雄受到 1 点伤害，偷取 20 元。",effect:"bribeDraw",n:2,limit:3,rarity:"rare"},
     {id:"steal",name:"人民收米术",cost:2,kind:"spell",art:"$",text:"对敌方英雄造成 3 点伤害，抽 1 张牌，偷取 100 元。",effect:"steal5draw",n:2,limit:2,rarity:"special"},
     {id:"count",name:"清点现金",cost:2,kind:"spell",art:"+",text:"恢复 3 点生命，抽 1 张牌，偷取 30 元。",effect:"healDrawSteal",n:2,limit:2,rarity:"special"},
@@ -149,27 +161,29 @@ const PROFILES={
   "八幡":{faction:"旧大陆卡兹帝国",style:"海盗体系 · 极速铺场",hp:30,cards:[
     {id:"deckhand",name:"甲板水手",cost:0,kind:"unit",art:"⚓",atk:1,hp:2,text:"冲锋。",charge:true,n:2,limit:3,rarity:"rare"},
     {id:"pirate",name:"小海盗",cost:1,kind:"unit",art:"⚓",atk:2,hp:2,text:"冲锋。",charge:true,n:4,limit:4,rarity:"common"},
-    {id:"stalker",name:"潜行海盗",cost:1,kind:"unit",art:"◉",atk:2,hp:2,text:"无视嘲讽。",ignoreTaunt:true,n:2,limit:3,rarity:"rare"},
+    {id:"stalker",name:"潜行海盗",cost:1,kind:"unit",art:"◉",atk:2,hp:2,text:"部署：使 1 个敌方单位失去嘲讽。",effect:"stripTaunt",n:2,limit:3,rarity:"rare"},
     {id:"raider",name:"劫掠者",cost:2,kind:"unit",art:"⚑",atk:3,hp:3,text:"冲锋。",charge:true,n:3,limit:3,rarity:"rare"},
     {id:"ship",name:"海盗船",cost:2,kind:"unit",art:"⌁",atk:2,hp:2,text:"部署：随机召唤 1 个海盗。",effect:"summonRandomPirate",n:3,limit:3,rarity:"rare"},
-    {id:"captain",name:"年轻船长",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"无视嘲讽。攻击敌方英雄时，额外造成 1 点伤害。",ignoreTaunt:true,n:2,limit:2,rarity:"special"},
+    {id:"captain",name:"年轻船长",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"攻击敌方英雄时，额外造成 1 点伤害。",n:2,limit:2,rarity:"special"},
     {id:"pirateWarlord",name:"海盗统领",cost:4,kind:"unit",art:"♜",atk:3,hp:4,text:"冲锋。部署：召唤 1 个【先锋海盗】，并将 1 张【海盗战嚎】加入你的手牌。",charge:true,effect:"pirateCommander",n:2,limit:2,rarity:"special",fx:"sp_guard"},
+    {id:"wallbreaker",name:"破阵者",cost:3,kind:"unit",art:"⛨",atk:2,hp:2,text:"冲锋。部署：消灭 1 个生命值高于攻击力的敌方单位。",charge:true,effect:"killTough",n:1,limit:1,rarity:"elite"},
+    {id:"clubber",name:"持棍海盗",cost:1,kind:"unit",art:"⚒",atk:1,hp:1,text:"冲锋。部署：将 1 张【闷棍】加入你的手牌。",charge:true,effect:"clubberDeploy",n:2,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"king",name:"海盗王",cost:4,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：使你的所有单位获得 +2/+2。",effect:"buffAll2",n:1,limit:1,rarity:"elite"},
     {id:"helmsman",name:"舵手",cost:1,kind:"unit",art:"◉",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
-    {id:"gunner",name:"火炮手",cost:2,kind:"unit",art:"✣",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 1 点伤害。",ignoreTaunt:true,effect:"hero1",n:1,limit:2,rarity:"special"},
-    {id:"submarine",name:"海盗潜艇",cost:7,kind:"unit",art:"⛴",atk:8,hp:3,text:"冲锋。无视嘲讽。",charge:true,ignoreTaunt:true,n:1,limit:1,rarity:"elite"},
-    {id:"fullspeed",name:"全速前进",cost:0,kind:"spell",art:"→",text:"抽 1 张牌。",effect:"draw1",n:2,limit:3,rarity:"rare"},
+    {id:"gunner",name:"火炮手",cost:2,kind:"unit",art:"✣",atk:2,hp:2,text:"部署：对敌方英雄造成 1 点伤害。",effect:"hero1",n:1,limit:2,rarity:"special"},
     {id:"rum",name:"酒馆补给",cost:1,kind:"spell",art:"●",text:"恢复 2 点生命，抽 1 张牌。",effect:"healDraw",n:2,limit:3,rarity:"rare"},
+    {id:"intimidate",name:"恐吓",cost:1,kind:"spell",art:"⚑",text:"使 1 个敌方单位失去嘲讽。如果你有友方海盗，抽 1 张牌。",effect:"stripTauntDraw",n:2,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"raid",name:"劫掠",cost:2,kind:"spell",art:"⚑",text:"你每控制 1 个单位，抽 1 张牌（至少 1 张，至多 3 张）。",effect:"raid",n:2,limit:2,rarity:"special"},
-    {id:"revengepirate",name:"复仇主义",cost:2,kind:"spell",art:"✹",text:"使你的所有单位获得【亡语：对敌方英雄造成 1 点伤害】，抽 1 张牌。",effect:"revengeDeath",n:2,limit:2,rarity:"special"},
+    {id:"revengepirate",name:"复仇主义",cost:2,kind:"spell",art:"✹",text:"使你的所有单位获得【亡语：对敌方英雄造成 1 点伤害】，抽 1 张牌。",effect:"revengeDeath",n:1,limit:2,rarity:"special"},
     {id:"firebomb",name:"燃烧弹",cost:2,kind:"spell",art:"✹",text:"消灭 1 个你的单位，对所有敌方单位造成 3 点伤害。",effect:"sacAoe3",n:2,limit:2,rarity:"special"},
     {id:"fireship",name:"火船",cost:3,kind:"spell",art:"✹",text:"摧毁你的所有单位。每摧毁 1 个，对所有敌方单位造成 2 点伤害。",effect:"fireShip",n:1,limit:1,rarity:"elite"},
-    {id:"broadside",name:"侧舷炮击",cost:3,kind:"spell",art:"✣",text:"对敌方英雄造成等同于你的单位数量的伤害。",effect:"unitDamageHero",n:1,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"finish",name:"海盗大斩杀",cost:4,kind:"spell",art:"☠",text:"对敌方英雄造成等同于你的单位数量 ×2 的伤害。",effect:"finish",n:1,limit:1,rarity:"elite"},
     {id:"boarding",name:"登船战",cost:3,kind:"spell",art:"⚑",text:"使你的所有单位获得 +1/+1，并可在本回合攻击。",effect:"buffAllCharge",n:2,limit:2,rarity:"special",fx:"sp_bless"},
-    {id:"pirateDiscover",name:"发现海盗",cost:3,kind:"spell",art:"◎",text:"发现 3 张随机的海盗牌，选择 1 张加入手牌；并使你的所有海盗部署时抽 1 张牌。",effect:"pirateDiscover",n:2,limit:2,rarity:"special",fx:"sp_insight"}
+    {id:"pirateDiscover",name:"发现海盗",cost:3,kind:"spell",art:"◎",text:"发现 3 次：每次从 3 张随机的海盗牌中选择 1 张加入手牌；并使你的所有海盗在部署或加入手牌时获得 +1/+1。",effect:"pirateDiscover2",n:1,limit:1,rarity:"elite"},
+    {id:"luckycoin",name:"海盗的幸运币",cost:0,kind:"spell",art:"₿",text:"获得 1 点费用。对局开始时自动抽取。",effect:"luckyCoin",n:1,limit:1,core:true,rarity:"elite"}
   ]},
   "045":{faction:"普鲁士国 · 架子班",style:"高层名片 · 开发他人卡组",hp:31,cards:[
+    {id:"contact",name:"联络员",cost:1,kind:"unit",art:"◇",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
     {id:"intel",name:"情报官",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
     {id:"advisor",name:"高层顾问",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
@@ -186,7 +200,7 @@ const PROFILES={
     {id:"yuchun",name:"架子班·愚蠢",cost:3,kind:"unit",art:"☠",atk:3,hp:3,text:"部署：将敌方牌库顶的 3 张牌变成【鸭子】。",effect:"yuchunDeploy",n:1,limit:1,member:true,rarity:"elite"},
     {id:"taojin",name:"架子班·淘金",cost:3,kind:"unit",art:"✦",atk:3,hp:3,text:"部署：随机触发 1 种效果：对敌方英雄造成 6 点伤害 / 你的英雄受到 3 点伤害 / 抽 2 张牌 / 敌方英雄恢复 4 点生命。",effect:"taojinDeploy",n:1,limit:1,member:true,rarity:"elite"},
     {id:"namecard",name:"高层名片",cost:2,kind:"spell",art:"▧",text:"使你的所有单位获得 +1/+1。",effect:"buffAll1",n:2,limit:3,rarity:"rare"},
-    {id:"develop",name:"开发他人卡组",cost:3,kind:"spell",art:"⌘",text:"查看敌方牌库顶的 3 张牌，选择 1 张的复制加入你的手牌。",effect:"developEnemy",n:2,limit:2,rarity:"special",fx:"sp_insight"},
+    {id:"develop",name:"开发他人卡组",cost:2,kind:"spell",art:"⌘",text:"查看敌方牌库顶的 3 张牌，选择 1 张的复制加入你的手牌。",effect:"developEnemy",n:2,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"adapt",name:"适应性方案",cost:4,kind:"spell",art:"↻",text:"摧毁攻击力最高的敌方单位，恢复 3 点生命。",effect:"adapt",n:2,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"handoff",name:"关系网调度",cost:1,kind:"spell",art:"⇄",text:"抽 1 张牌，获得 1 点护甲。",effect:"handoff",n:2,limit:3,rarity:"rare"},
     {id:"copycrown",name:"复制的皇冠",cost:5,kind:"spell",art:"♛",text:"抽 3 张牌，获得 3 点护甲。",effect:"crown",n:1,limit:1,rarity:"elite"},
@@ -203,9 +217,9 @@ const PROFILES={
     {id:"gunner",name:"炮兵班",cost:2,kind:"unit",art:"◆",atk:2,hp:2,text:"无视嘲讽。部署：如果你控制其他火炮，获得 +1/+1。",ignoreTaunt:true,effect:"gunnerBoost",n:3,limit:3,gun:true,rarity:"rare"},
     {id:"cannon",name:"远程火炮",cost:2,kind:"unit",art:"✚",atk:2,hp:2,text:"无视嘲讽。部署：对敌方英雄造成 1 点伤害。",ignoreTaunt:true,effect:"hero1",n:2,limit:3,gun:true,rarity:"rare"},
     {id:"battery",name:"重炮连",cost:3,kind:"unit",art:"▥",atk:2,hp:3,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +1 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns1",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
-    {id:"commander",name:"火力指挥官",cost:4,kind:"unit",art:"★",atk:3,hp:5,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +1 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns1",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
+    {id:"commander",name:"火力指挥官",cost:4,kind:"unit",art:"★",atk:3,hp:3,text:"嘲讽。无视嘲讽。部署：使你的所有火炮获得 +1 攻击力。",taunt:true,ignoreTaunt:true,effect:"buffGuns1",n:2,limit:2,gun:true,rarity:"special",fx:"sp_bless"},
     {id:"ammo",name:"弹药车",cost:2,kind:"unit",art:"▣",atk:2,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:1,limit:2,rarity:"special"},
-    {id:"spotter",name:"前沿观察员",cost:1,kind:"unit",art:"◇",atk:2,hp:1,text:"冲锋。",charge:true,n:1,limit:2,rarity:"special"},
+    {id:"spotter",name:"前沿观察员",cost:2,kind:"unit",art:"◇",atk:2,hp:1,text:"冲锋。",charge:true,n:1,limit:2,rarity:"special"},
     {id:"howitzer",name:"榴弹炮",cost:4,kind:"unit",art:"✣",atk:3,hp:4,text:"无视嘲讽。",ignoreTaunt:true,n:2,limit:2,gun:true,rarity:"special"},
     {id:"emplacement",name:"炮兵阵地",cost:5,kind:"unit",art:"▥",atk:4,hp:7,text:"嘲讽。",taunt:true,n:2,limit:2,gun:true,rarity:"special"},
     {id:"magazine",name:"弹药库",cost:3,kind:"unit",art:"▣",atk:3,hp:5,text:"嘲讽。部署：抽 1 张牌。",taunt:true,effect:"draw",n:2,limit:2,rarity:"special"},
@@ -227,7 +241,7 @@ const PROFILES={
     {id:"fortress",name:"废料堡垒",cost:2,kind:"unit",art:"▤",atk:2,hp:5,text:"嘲讽。",taunt:true,n:4,limit:4,rarity:"common"},
     {id:"corner",name:"角落里的小怪兽",cost:2,kind:"unit",art:"☻",atk:3,hp:4,text:"每当你打出 1 张【废料】，获得 +1 攻击，持续到回合结束。",effect:"scrapRage",n:2,limit:3,rarity:"rare"},
     {id:"shredder",name:"碎纸机",cost:2,kind:"unit",art:"▥",atk:2,hp:4,text:"每当你打出 1 张【废料】，恢复 1 点生命。",effect:"scrapHeal",n:2,limit:3,rarity:"rare"},
-    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:5,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
+    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
     {id:"guard",name:"小怪兽卫队",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"部署：你手牌中每有 1 张【废料】，获得 +1/+1（至多 +3）。",effect:"scrapGuard",n:2,limit:2,rarity:"special"},
     {id:"eriyi",name:"绘梨衣",cost:3,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：转化 2。",flavor:"蜷缩在杂乱房间的角落里，用最差的牌打出最好的效果。",effect:"convert2",n:1,limit:1,rarity:"elite"},
     {id:"colossus",name:"废料巨像",cost:5,kind:"unit",art:"▦",atk:4,hp:4,text:"部署：弃掉手牌中所有【废料】，每张使其获得 +1/+1。",effect:"scrapColossus",n:1,limit:1,rarity:"elite"},
@@ -255,6 +269,7 @@ const TOKENS={
   redArtillery:{id:"redArtillery",name:"红军炮兵",cost:2,kind:"unit",art:"✣",atk:3,hp:2,ignoreTaunt:true,text:"无视嘲讽。"},
   pirateScout:{id:"pirateScout",name:"先锋海盗",cost:2,kind:"unit",art:"⚓",atk:2,hp:2,charge:true,text:"冲锋。"},
   pirateCry:{id:"pirateCry",name:"海盗战嚎",cost:1,kind:"spell",art:"♬",text:"选择一个你的单位，使其 +3/+3。",effect:"buffPirate3",fx:"sp_bless"},
+  stunClub:{id:"stunClub",name:"闷棍",cost:1,kind:"spell",art:"⚒",text:"眩晕 1 个敌方单位。如果它已经被眩晕，改为将其消灭。",effect:"stunOrKill",fx:"sp_bind"},
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"}
 };
 
@@ -320,6 +335,7 @@ function cardDef(hero,id){
   const c=p&&p.cards.find(x=>x.id===id);
   if(c)return c;
   for(const h in AWA_CARDS)if(AWA_CARDS[h].id===id)return AWA_CARDS[h];
+  if(CAMPAIGN_CARDS[id])return CAMPAIGN_CARDS[id];
   return null;
 }
 
@@ -337,6 +353,146 @@ function defaultDeck(hero){
   return list;
 }
 
+/* ---- 多套预设卡组：AI 随机选一套；单人模式可选敌方卡组 ---- */
+const DECK_PRESETS={
+  "七星":{
+    "衰减流":defaultDeck("七星"),
+    "星联邦流":[
+      "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger","messenger",
+      "bulwark","bulwark","scholar","orbitguard","orbitguard","gravityfield","starcore",
+      "foresee","forecast","mana","mana","mana","timeShield","timeShield",
+      "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
+      "stasisfield","cometStrike","starlightPray","starlock","cometShackle",
+      "cometTrail","starlightEcho","stardustBeacon",
+      "cometTutor","cometTutor","tune","tune"
+    ]
+  }
+};
+/* 该卡牌师的预设卡组列表（无多套时为 null） */
+function presets(hero){return DECK_PRESETS[hero]||null;}
+/* 按名称取预设卡组 */
+function presetDeck(hero,name){const ps=DECK_PRESETS[hero];return ps&&ps[name]?ps[name]:null;}
+/* AI 用卡组：有预设时随机选一套，否则默认卡组 */
+function aiDeck(hero){
+  const ps=DECK_PRESETS[hero];if(!ps)return defaultDeck(hero);
+  const keys=Object.keys(ps);return ps[keys[Math.floor(Math.random()*keys.length)]];
+}
+
+/* ============================================================
+   剧情模式（Campaign）：剧情专属卡 / 升级 / 初始卡组 / 关卡配置
+   - campaignOnly 的卡不进普通卡池、图鉴与卡组编辑器
+   ============================================================ */
+const CAMPAIGN_CARDS={
+  /* ---- 八幡 · 渔村弱卡（带 4/3 张） ---- */
+  cp_villager:{id:"cp_villager",name:"村民",cost:1,kind:"unit",art:"👤",atk:1,hp:1,text:"",campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_fisher:{id:"cp_fisher",name:"渔夫",cost:2,kind:"unit",art:"🎣",atk:2,hp:2,text:"",campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_fisherwoman:{id:"cp_fisherwoman",name:"渔妇",cost:2,kind:"unit",art:"🐟",atk:1,hp:2,text:"",campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_net:{id:"cp_net",name:"渔网陷阱",cost:1,kind:"spell",art:"🕸",text:"对 1 个敌方单位造成 1 点伤害。",effect:"cpNet",campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_guard:{id:"cp_guard",name:"渔民守卫",cost:2,kind:"unit",art:"🛡",atk:1,hp:3,text:"嘲讽。",taunt:true,campaignOnly:true,rarity:"rare",hero:"八幡"},
+  cp_watcher:{id:"cp_watcher",name:"灯塔守望员",cost:3,kind:"unit",art:"🗼",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",campaignOnly:true,rarity:"rare",hero:"八幡"},
+  cp_tinker:{id:"cp_tinker",name:"修补匠",cost:3,kind:"unit",art:"🔨",atk:2,hp:3,text:"嘲讽。",taunt:true,campaignOnly:true,rarity:"rare",hero:"八幡"},
+  cp_drum:{id:"cp_drum",name:"战鼓",cost:1,kind:"spell",art:"🥁",text:"抽 1 张牌。",effect:"draw",campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_campfire:{id:"cp_campfire",name:"篝火",cost:2,kind:"spell",art:"🔥",text:"恢复 3 点生命。",effect:"heal3",campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_coast:{id:"cp_coast",name:"海岸防线",cost:3,kind:"spell",art:"🌊",text:"获得 3 点护甲。",effect:"armor3",campaignOnly:true,rarity:"rare",hero:"八幡"},
+  cp_wall:{id:"cp_wall",name:"沙袋墙",cost:2,kind:"unit",art:"🧱",atk:0,hp:5,text:"嘲讽。",taunt:true,campaignOnly:true,rarity:"common",hero:"八幡"},
+  cp_hut:{id:"cp_hut",name:"渔村小屋",cost:1,kind:"unit",art:"🏠",atk:0,hp:3,text:"嘲讽。",taunt:true,campaignOnly:true,rarity:"common",hero:"八幡"},
+  /* ---- 首通奖励池（special · 限 2 张） ---- */
+  cp_villageHorn:{id:"cp_villageHorn",name:"渔村号角",cost:3,kind:"spell",art:"📯",text:"召唤 2 个 2/1 冲锋【起义村民】。",effect:"cpUprising",campaignOnly:true,rarity:"special",hero:"八幡"},
+  cp_militiaCaptain:{id:"cp_militiaCaptain",name:"民兵队长",cost:4,kind:"unit",art:"⚔",atk:3,hp:3,text:"嘲讽。部署：你的所有单位获得 +1/+1。",taunt:true,effect:"buffAll1",campaignOnly:true,rarity:"special",hero:"八幡"},
+  /* ---- 衍生物 ---- */
+  cp_uprising:{id:"cp_uprising",name:"起义村民",cost:0,kind:"unit",art:"✊",atk:2,hp:1,text:"冲锋。",charge:true,campaignOnly:true,rarity:"common",hero:"八幡"},
+  /* ---- 第一关敌人：土匪（前期弱 · 后期提速） ---- */
+  bd_thug:{id:"bd_thug",name:"土匪喽啰",cost:1,kind:"unit",art:"🥷",atk:1,hp:1,text:"",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_mugger:{id:"bd_mugger",name:"拦路贼",cost:1,kind:"unit",art:"🗡",atk:1,hp:2,text:"",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_raider:{id:"bd_raider",name:"劫掠者",cost:2,kind:"unit",art:"⚔",atk:2,hp:1,text:"冲锋。",charge:true,campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_rogue:{id:"bd_rogue",name:"恶棍",cost:2,kind:"unit",art:"🔪",atk:2,hp:2,text:"",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_scout:{id:"bd_scout",name:"侦察兵",cost:2,kind:"unit",art:"👁",atk:1,hp:2,text:"",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_brute:{id:"bd_brute",name:"土匪打手",cost:3,kind:"unit",art:"💪",atk:3,hp:3,text:"",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_marauder:{id:"bd_marauder",name:"掠夺者",cost:3,kind:"unit",art:"🏹",atk:2,hp:4,text:"",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_arson:{id:"bd_arson",name:"放火犯",cost:4,kind:"unit",art:"🔥",atk:4,hp:3,text:"冲锋。",charge:true,campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_boss:{id:"bd_boss",name:"土匪头目",cost:5,kind:"unit",art:"👑",atk:5,hp:5,text:"嘲讽。",taunt:true,campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_torch:{id:"bd_torch",name:"火把",cost:1,kind:"spell",art:"🕯",text:"对敌方英雄造成 1 点伤害。",effect:"hero1",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_rob:{id:"bd_rob",name:"抢劫",cost:2,kind:"spell",art:"💰",text:"对敌方英雄造成 2 点伤害。",effect:"hero2",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_levy:{id:"bd_levy",name:"强征",cost:3,kind:"spell",art:"⚖",text:"对敌方英雄造成 3 点伤害。",effect:"hero3",campaignOnly:true,rarity:"common",hero:"土匪"},
+  bd_burn:{id:"bd_burn",name:"洗劫村庄",cost:5,kind:"spell",art:"🏚",text:"对敌方英雄造成 5 点伤害。",effect:"hero5",campaignOnly:true,rarity:"common",hero:"土匪"}
+};
+/* 剧情专属卡升级阶梯：+1/+1 → 冲锋 → 嘲讽 → 部署抽 1 */
+const CAMPAIGN_UPGRADES={
+  cp_villager:[
+    {cost:0,name:"村民",desc:"1费 1/1"},
+    {cost:60,name:"武装村民",atk:1,hp:1,desc:"1费 2/2"},
+    {cost:90,name:"冲锋村民",charge:true,desc:"1费 2/2 冲锋"},
+    {cost:120,name:"捍卫村民",taunt:true,desc:"1费 2/2 冲锋 嘲讽"},
+    {cost:150,name:"老兵村民",deployDraw:1,desc:"1费 2/2 冲锋 嘲讽 部署抽1"}
+  ],
+  cp_fisher:[
+    {cost:0,name:"渔夫",desc:"2费 2/2"},
+    {cost:80,name:"勇武渔夫",atk:1,hp:1,desc:"2费 3/3"},
+    {cost:120,name:"冲锋渔夫",charge:true,desc:"2费 3/3 冲锋"},
+    {cost:160,name:"捍卫渔夫",taunt:true,desc:"2费 3/3 冲锋 嘲讽"},
+    {cost:200,name:"老兵渔夫",deployDraw:1,desc:"2费 3/3 冲锋 嘲讽 部署抽1"}
+  ]
+};
+/* 三个存档位各自的初始弱卡组（30 张，全部剧情专属） */
+const CAMPAIGN_INITIAL_DECKS={
+  "八幡":[
+    ["cp_villager","cp_villager","cp_villager","cp_villager","cp_fisher","cp_fisher","cp_fisher","cp_fisher",
+     "cp_fisherwoman","cp_fisherwoman","cp_fisherwoman","cp_fisherwoman","cp_net","cp_net","cp_net","cp_net",
+     "cp_guard","cp_guard","cp_guard","cp_watcher","cp_watcher","cp_watcher","cp_tinker","cp_tinker","cp_tinker",
+     "cp_campfire","cp_campfire","cp_campfire","cp_coast","cp_coast"],
+    ["cp_villager","cp_villager","cp_villager","cp_villager","cp_fisher","cp_fisher","cp_fisher","cp_fisher",
+     "cp_fisherwoman","cp_fisherwoman","cp_fisherwoman","cp_fisherwoman","cp_hut","cp_guard","cp_guard","cp_guard",
+     "cp_tinker","cp_tinker","cp_tinker","cp_wall","cp_wall","cp_net","cp_net","cp_net","cp_net",
+     "cp_coast","cp_coast","cp_campfire","cp_campfire","cp_campfire"],
+    ["cp_villager","cp_villager","cp_villager","cp_villager","cp_fisher","cp_fisher","cp_fisher","cp_fisher",
+     "cp_fisherwoman","cp_fisherwoman","cp_fisherwoman","cp_fisherwoman","cp_net","cp_net","cp_net","cp_net",
+     "cp_drum","cp_drum","cp_drum","cp_guard","cp_guard","cp_guard","cp_tinker","cp_tinker","cp_tinker",
+     "cp_campfire","cp_campfire","cp_campfire","cp_coast","cp_coast"]
+  ]
+};
+/* 敌人（土匪）40 张：前期小卒多、后期强卡提速 */
+const BANDIT_DECK=[
+  "bd_thug","bd_thug","bd_thug","bd_thug","bd_mugger","bd_mugger","bd_mugger","bd_mugger",
+  "bd_raider","bd_raider","bd_raider","bd_raider","bd_rogue","bd_rogue","bd_rogue","bd_rogue",
+  "bd_scout","bd_scout","bd_scout","bd_scout","bd_brute","bd_brute","bd_brute","bd_marauder","bd_marauder","bd_marauder",
+  "bd_arson","bd_arson","bd_arson","bd_boss","bd_boss","bd_torch","bd_torch","bd_torch","bd_torch",
+  "bd_rob","bd_rob","bd_rob","bd_rob","bd_levy","bd_levy","bd_levy","bd_burn","bd_burn"
+];
+/* 关卡配置：intro=AVG 开场；survive=星级所需玩家回合数；rewards=星级金币；rewardPool=首通随机卡 */
+const CAMPAIGNS={
+  "八幡":{
+    intro:[
+      "潮水拍打着渔村的栈桥，远处的地平线冒起了黑烟。",
+      "「村子……快跑啊！土匪来了！」",
+      "八幡从睡梦中惊醒，抓起船桨冲出家门。",
+      "村口的渔民们握紧了鱼叉——今晚，他们要为家园而战。",
+      "撑过土匪的攻势，守住渔村！"
+    ],
+    chapters:{
+      ch1:{
+        title:"渔村烽烟",
+        enemy:{hero:"土匪",deck:BANDIT_DECK,ai:"bandit1",hp:30},
+        survive:[6,9,12],
+        rewards:{1:100,2:150,3:250},
+        rewardPool:["cp_villageHorn","cp_militiaCaptain"],
+        events:{
+          star1:"「撑住！第一波攻势退了——」渔民们喘着粗气，互相搀扶。",
+          star2:"「居然撑了这么久……乡亲们，说不定咱们能赢！」",
+          star3:"「天快亮了。土匪们开始撤退——渔村，守住了！」",
+          killBoss:"「土匪头目倒下了！土匪们慌了神——」",
+          enemyBurn:"「村子着火了！快扑灭它——」",
+          lowHp:"「八幡，你还能站起来吗……？」",
+          win:"土匪们丢下火把，逃进了夜色。渔村的灯火，重新亮了起来。"
+        }
+      }
+    }
+  }
+};
+function campaignOf(hero){return CAMPAIGNS[hero]||null;}
+function campaignInitialDeck(hero,slot){const d=CAMPAIGN_INITIAL_DECKS[hero];return d&&d[slot]?d[slot]:null;}
+function campaignUpgradePath(hero,cardId){return CAMPAIGN_UPGRADES[cardId]||null;}
+function rarityLimit(card){return card&&RARITY[card.rarity]?RARITY[card.rarity].limit:card?card.limit||4:0;}
+
 /* 校验卡组：40 张、id 合法、不超上限。返回 null 表示合法，否则返回原因 */
 function deckError(hero,list){
   if(!PROFILES[hero])return "未知卡牌师";
@@ -346,6 +502,7 @@ function deckError(hero,list){
   for(const id of list){
     const c=PROFILES[hero].cards.find(x=>x.id===id);
     if(!c)return "卡组里有不存在的卡牌";
+    if(c.campaignOnly)return "剧情专属卡不能在普通卡组中使用";
     cnt[id]=(cnt[id]||0)+1;
     if(cnt[id]>c.limit)return `【${c.name}】最多携带 ${c.limit} 张`;
   }
@@ -405,5 +562,7 @@ function applyOverrides(map,rev){
 }
 
 return{REGIMES,RARITY,RARITY_ORDER,MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,defaultDeck,deckError,
+  DECK_PRESETS,presets,presetDeck,aiDeck,
+  CAMPAIGN_CARDS,CAMPAIGNS,CAMPAIGN_UPGRADES,campaignOf,campaignInitialDeck,campaignUpgradePath,rarityLimit,
   PATCHABLE,checkOverrides,applyOverrides,baseOf:key=>BASE[key],get overridesRev(){return overridesRev;}};
 });

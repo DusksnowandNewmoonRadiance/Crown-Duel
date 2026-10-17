@@ -125,9 +125,9 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const a=g.players[0];
   ready(g,0,[mk(g,"猪瘟鱼","greyincome"),mk(g,"猪瘟鱼","steal"),mk(g,"猪瘟鱼","escape")]);
   play(g,0,a.hand[0]);
-  check("灰色收入：偷取 30 元",a.money===30,"money "+a.money);
+  check("灰色收入：偷取 40 元",a.money===40,"money "+a.money);
   play(g,0,a.hand.find(c=>c.id==="steal"));
-  check("人民收米术：偷取 100 元",a.money===130,"money "+a.money);
+  check("人民收米术：偷取 100 元",a.money===140,"money "+a.money);
   check("目标金额为 300 元",C.ESCAPE_TARGET===300);
   a.money=300;
   play(g,0,a.hand.find(c=>c.id==="escape"));
