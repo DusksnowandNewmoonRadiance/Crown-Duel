@@ -23,6 +23,7 @@ function play(g,id){
   assert.equal(s.destroyedCards,2);
   assert.deepEqual(s.destroyedLog.map(x=>x.name),top.reverse());
   assert.equal(s.destroyedLog[0].zone,"牌库");
+  assert.equal(g.events.filter(e=>e.t==="burn"&&e.destroyed&&e.sourcePi===0&&e.pi===1).length,2,"销毁事件应带有双方视角和卡牌信息");
 }
 {
   const g=game(),o=g.players[1],s=g.players[0];
@@ -74,6 +75,7 @@ function play(g,id){
   assert.equal(o.hand[0].effect,"whiteJunk","涂改员应把敌方手牌变成垃圾");
   assert.equal(s.destroyedCards,0,"变形不应算作销毁");
   assert.ok(g.logs.some(x=>x.text.includes(old)&&x.text.includes("垃圾")));
+  assert.ok(g.events.some(e=>e.t==="transformCard"&&e.card.name===old&&e.into.name==="垃圾"&&e.zone==="手牌"),"污染事件应包含原牌和新牌");
   g.endTurn(0);o.energy=o.maxEnergy=10;
   const top=o.deck.at(-1).name,before=o.deck.length;
   const junk=o.hand.find(c=>c.effect==="whiteJunk");

@@ -230,7 +230,7 @@ class Game{
   }
   burn(p,card,credit=null,label="手牌上限"){
     if(credit){this.recordDestroyed(credit,card,"抽牌溢出",label);return;}
-    this.emit({t:"burn",pi:p.idx,card:pubCard(card),overdraw:true});
+    this.emit({t:"burn",pi:p.idx,sourcePi:p.idx,card:pubCard(card),overdraw:true,zone:"抽牌溢出"});
     this.note(`手牌已满，新抽到的【${card.name}】被销毁`,p);
   }
   destroyEnemyCards(s,o,zone,n,label){
@@ -251,7 +251,7 @@ class Game{
   recordDestroyed(s,card,zone,label){
     s.destroyedCards++;
     s.destroyedLog.push({name:card.name,zone,source:label});
-    this.emit({t:"burn",pi:this.opp(s).idx,card:pubCard(card),destroyed:true,zone,source:label});
+    this.emit({t:"burn",pi:this.opp(s).idx,sourcePi:s.idx,card:pubCard(card),destroyed:true,zone,source:label});
     this.note(`${label}：销毁敌方${zone}中的【${card.name}】`,s);
     for(const u of s.board.filter(x=>x.effect==="whiteSentinel"&&x.health>0)){
       u.attack++;u.health++;u.maxHealth++;
@@ -277,11 +277,11 @@ class Game{
       if(!candidates.length)break;
       const old=candidates[Math.floor(Math.random()*candidates.length)];
       const at=cards.indexOf(old);
-      cards[at]=this.clone(TOKENS.junk,o.hero);
+      const into=cards[at]=this.clone(TOKENS.junk,o.hero);
       changed++;
       const msg=`${label}：敌方${zone}中的【${old.name}】变成了【垃圾】`;
       this.note(msg,s);
-      this.emit({t:"toast",text:msg});
+      this.emit({t:"transformCard",pi:o.idx,sourcePi:s.idx,zone,card:pubCard(old),into:pubCard(into)});
     }
     return changed;
   }
@@ -292,10 +292,10 @@ class Game{
       const drawn=o.hand.find(c=>!before.has(c.uid));
       if(!drawn)continue;
       const at=o.hand.indexOf(drawn);
-      o.hand[at]=this.clone(TOKENS.junk,o.hero);
+      const into=o.hand[at]=this.clone(TOKENS.junk,o.hero);
       const msg=`${label}：敌方新抽到的【${drawn.name}】变成了【垃圾】`;
       this.note(msg,s);
-      this.emit({t:"toast",text:msg});
+      this.emit({t:"transformCard",pi:o.idx,sourcePi:s.idx,zone:"刚抽到的手牌",card:pubCard(drawn),into:pubCard(into)});
     }
   }
   _drawHeal(p){

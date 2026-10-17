@@ -112,7 +112,8 @@ const GameUI=(()=>{
       if(e.t==="play")await animPlay(e);
       else if(e.t==="attack")await animAttack(e);
       else if(e.t==="fx")await animFx(e);
-      else if(e.t==="burn")animBurn(e);
+      else if(e.t==="burn")await animCardChange(e,"burn");
+      else if(e.t==="transformCard")await animCardChange(e,"transform");
     }
     if(u.seq!==undefined&&S.viewSeq!==undefined&&u.seq<S.viewSeq)return;   // 看门狗已经渲染了更新的状态
     if(u.seq!==undefined)S.viewSeq=u.seq;
@@ -253,18 +254,40 @@ const GameUI=(()=>{
     else if(e.name==="comet")el=heroEl(mine?"foe":"me");
     await FX.play(e.name,e,el);
   }
-  function animBurn(e){
-    if(e.destroyed){
-      gtoast(`${e.source}销毁了${e.zone}中的【${e.card.name}】`,false,2800);
-      return;
-    }
-    if(e.overdraw)gtoast(`手牌已满，新抽到的【${e.card.name}】被销毁`,false,2800);
-    if(e.pi!==S.view.you)return;
-    const d=document.createElement("div");
-    d.style.cssText="position:absolute;left:574px;top:520px;z-index:75;pointer-events:none;transition:transform .8s cubic-bezier(.4,0,.7,0),opacity .8s";
-    d.innerHTML=V.card(e.card);$("#fx").appendChild(d);
-    requestAnimationFrame(()=>{d.style.transform=`translate(${Math.random()<.5?-260:260}px,260px) rotate(40deg) scale(.5)`;d.style.opacity="0";});
-    setTimeout(()=>d.remove(),850);
+  async function animCardChange(e,mode){
+    if(!e.card)return;
+    const mine=e.pi===S.view.you;
+    const zone=e.zone||"手牌";
+    const sel=zone==="战场"?unitEl(e.card.uid):zone.includes("牌库")?$(mine?"#mePile":"#foePile"):$(mine?"#hand":"#foeHand");
+    const p=sel?FX.pos(sel):{x:mine?690:590,y:mine?530:90};
+    const x=Math.max(95,Math.min(1185,p.x)),y=Math.max(98,Math.min((S.SH||720)-100,p.y));
+    const endY=(S.SH||720)/2;
+    const d=document.createElement("div");d.className="card-event";
+    d.style.left="640px";d.style.top=endY+"px";
+    const face=document.createElement("div");face.className="card-event-face";
+    d.appendChild(face);$("#fx").appendChild(d);
+    // 发动效果的一方直接看到受影响的牌；对方先看到牌背，再翻开。
+    const hidden=e.sourcePi!==undefined&&e.sourcePi!==S.view.you;
+    face.innerHTML=hidden?V.back():V.card(e.card);
+    const animate=(el,frames,ms)=>el.animate(frames,{duration:ms,easing:"ease-in-out",fill:"forwards"}).finished.catch(()=>{});
+    try{
+      await animate(d,[{transform:`translate(calc(-50% + ${x-640}px),calc(-50% + ${y-endY}px)) scale(.55)`,opacity:.6},{transform:"translate(-50%,-50%) scale(1)",opacity:1}],180);
+      if(hidden){
+        await animate(face,[{transform:"rotateY(0)"},{transform:"rotateY(90deg)"}],90);
+        face.innerHTML=V.card(e.card);
+        await animate(face,[{transform:"rotateY(-90deg)"},{transform:"rotateY(0)"}],90);
+      }
+      if(mode==="transform"){
+        await animate(face,[{transform:"rotateY(0) scale(1)"},{transform:"rotateY(90deg) scale(1.08)"}],140);
+        face.innerHTML=V.card(e.into);
+        face.classList.add("changed");
+        await animate(face,[{transform:"rotateY(-90deg) scale(1.08)"},{transform:"rotateY(0) scale(1)"}],170);
+        await animate(d,[{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:"translate(-50%,-50%) scale(.55)",opacity:0}],180);
+      }else{
+        d.classList.add("burning");Audio2.sfx("die");
+        await animate(d,[{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:"translate(-50%,-62%) rotate(-5deg) scale(.85)",opacity:.8},{transform:"translate(-50%,-92%) rotate(8deg) scale(.5)",opacity:0}],440);
+      }
+    }finally{d.remove();}
   }
   async function reveal(card,label,ms,foe){
     const r=$("#reveal");r.className=foe?"foe":"";r.innerHTML=`<div class="rl">${V.esc(label)}</div>${V.card(card)}`;r.hidden=false;
