@@ -831,9 +831,11 @@ class Game{
         break;}
       case"scrapBlast":{
         const k=this._discardScrap(s,0,true);
-        this.note(`废物利用：弃掉 ${k} 张废料，造成 ${k*2} 点伤害`,s);
-        if(k)this.damageHero(o,k*2);
+        const cap=Math.min(k,4);
+        this.note(`废物利用：弃掉 ${k} 张废料，造成 ${cap*2} 点伤害（至多 8 点）`,s);
+        if(cap)this.damageHero(o,cap*2);
         break;}
+      case"damage5draw":this.damageHero(o,5);this.draw(s,1);break;
       case"scrapSweep":{
         const k=this._discardScrap(s,0,true);
         const h=Math.min(12,k*3);
@@ -1086,6 +1088,15 @@ class Game{
         const d=s.deck.pop();
         if(d.id==="superman"){d.cost=Math.max(0,d.cost-2);this.note("禁忌检索：抽到超人，费用 -2！",s);}
         if(!this.addToHand(s,d))this.burn(s,d);
+        break;}
+      case"filterSuperman2":{
+        if(this.lock!==null){this.note("停摆：无法抽牌",s);break;}
+        for(let k=0;k<2;k++){
+          if(!s.deck.length){this.draw(s,1);break;}
+          const d=s.deck.pop();
+          if(d.id==="superman"){d.cost=Math.max(0,d.cost-2);this.note("禁忌检索：抽到超人，费用 -2！",s);}
+          if(!this.addToHand(s,d))this.burn(s,d);
+        }
         break;}
       case"tutorSuperman":{
         const want="superman";

@@ -106,7 +106,7 @@ const PROFILES={
     {id:"tune",name:"调节",cost:2,kind:"spell",art:"⇄",text:"将你的手牌全部洗入牌库并洗牌，然后抽取等同于洗入数量 +1 的牌。",effect:"reshuffleDraw",n:0,limit:4,rarity:"common"},
     {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 40，对敌方英雄造成 40 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
   ]},
-  "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:28,cards:[
+  "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:30,cards:[
     {id:"refugee",name:"旧大陆难民",cost:1,kind:"unit",art:"◇",atk:1,hp:3,text:"嘲讽。",taunt:true,n:3,limit:3,rarity:"rare"},
     {id:"teaboy",name:"红茶侍者",cost:2,kind:"unit",art:"◒",atk:2,hp:3,text:"部署：获得 2 点护甲。",effect:"armor2",n:2,limit:2,rarity:"special"},
     {id:"stealth",name:"隐秘行踪",cost:2,kind:"unit",art:"◇",atk:2,hp:5,text:"",flavor:"行踪隐秘迅速。",n:2,limit:3,rarity:"rare"},
@@ -122,7 +122,8 @@ const PROFILES={
     {id:"tea",name:"红茶时间",cost:2,kind:"spell",art:"◒",text:"获得 3 点护甲，抽 1 张牌。",effect:"armor3draw",n:2,limit:2,rarity:"special"},
     {id:"escape",name:"逃亡路线",cost:2,kind:"spell",art:"↗",text:"抽 2 张牌，恢复 2 点生命。",effect:"draw2heal2",n:2,limit:2,rarity:"special"},
     {id:"vanish",name:"销声匿迹",cost:2,kind:"spell",art:"◌",text:"直到你的下个回合开始，敌方单位无法攻击你的英雄。",effect:"evasion",n:2,limit:3,rarity:"rare"},
-    {id:"filter",name:"禁忌检索",cost:2,kind:"spell",art:"⌕",text:"抽 1 张牌。如果抽到【超人】，其费用 -2。",effect:"filterSuperman",n:2,limit:2,rarity:"special"},
+    {id:"filter",name:"禁忌检索",cost:2,kind:"spell",art:"⌕",text:"抽 2 张牌。如果抽到【超人】，其费用 -2。",effect:"filterSuperman2",n:2,limit:2,rarity:"special"},
+    {id:"airstrike",name:"凹槽突袭",cost:4,kind:"spell",art:"☄",text:"对敌方英雄造成 5 点伤害，抽 1 张牌。",effect:"damage5draw",n:2,limit:2,rarity:"special"},
     {id:"gaze",name:"皇冠凝视",cost:2,kind:"spell",art:"♛",text:"查看牌库顶的 3 张牌，将其中 1 张加入手牌，其余置于牌库底。",effect:"scry",n:2,limit:2,rarity:"special"},
     {id:"ritual",name:"皇冠仪式",cost:2,kind:"spell",art:"♛",text:"从牌库中召唤【超人】。",effect:"summonSuperman",n:1,limit:1,rarity:"elite"},
     {id:"revenge",name:"例行复仇",cost:3,kind:"spell",art:"☄",text:"对敌方英雄造成 7 点伤害。",effect:"damage7",n:2,limit:2,rarity:"special",fx:"sp_strike"},
@@ -136,6 +137,7 @@ const PROFILES={
     {id:"collector",name:"收米专员",cost:2,kind:"unit",art:"$",atk:2,hp:3,text:"部署：偷取 30 元，对敌方英雄造成 1 点伤害。",effect:"steal3hero1",n:1,limit:3,rarity:"rare"},
     {id:"auditor",name:"审计员",cost:2,kind:"unit",art:"▤",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
     {id:"broker",name:"账房先生",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"部署：偷取 20 元。",effect:"steal2",n:1,limit:2,rarity:"special",fx:"sp_coin"},
+    {id:"vaultguard",name:"金库护卫",cost:2,kind:"unit",art:"▥",atk:1,hp:4,text:"嘲讽。部署：偷取 20 元。",taunt:true,effect:"steal2",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"taxman",name:"税官",cost:3,kind:"unit",art:"$",atk:3,hp:5,text:"部署：偷取 40 元。",effect:"steal4",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"accountant",name:"精算主管",cost:4,kind:"unit",art:"#",atk:4,hp:5,text:"部署：获得 1 点护甲。",effect:"armor1",n:2,limit:2,rarity:"special",fx:"sp_guard"},
     {id:"vault",name:"金库守卫",cost:4,kind:"unit",art:"▦",atk:3,hp:7,text:"嘲讽。部署：获得 2 点护甲。",taunt:true,effect:"armor2",n:2,limit:2,rarity:"special",fx:"sp_guard"},
@@ -143,7 +145,7 @@ const PROFILES={
     {id:"vaultgate",name:"金库大门",cost:6,kind:"unit",art:"▣",atk:6,hp:9,text:"嘲讽。",taunt:true,n:1,limit:1,rarity:"elite"},
     {id:"launderer",name:"洗钱专家",cost:3,kind:"unit",art:"$",atk:3,hp:5,text:"部署：偷取 30 元，抽 1 张牌。",effect:"steal3draw",n:2,limit:2,rarity:"special",fx:"sp_coin"},
     {id:"bribelord",name:"收买要员",cost:4,kind:"unit",art:"▤",atk:4,hp:5,text:"部署：偷取 20 元，获得 2 点护甲。",effect:"steal2armor2",n:1,limit:2,rarity:"special",fx:"sp_coin"},
-    {id:"greyincome",name:"灰色收入",cost:1,kind:"spell",art:"$",text:"偷取 30 元。",effect:"steal3",n:2,limit:3,rarity:"rare"},
+    {id:"greyincome",name:"灰色收入",cost:1,kind:"spell",art:"$",text:"偷取 40 元。",effect:"steal4",n:2,limit:3,rarity:"rare"},
     {id:"bribe",name:"账外交易",cost:1,kind:"spell",art:"◇",text:"抽 2 张牌，你的英雄受到 1 点伤害，偷取 20 元。",effect:"bribeDraw",n:2,limit:3,rarity:"rare"},
     {id:"steal",name:"人民收米术",cost:2,kind:"spell",art:"$",text:"对敌方英雄造成 3 点伤害，抽 1 张牌，偷取 100 元。",effect:"steal5draw",n:2,limit:2,rarity:"special"},
     {id:"count",name:"清点现金",cost:2,kind:"spell",art:"+",text:"恢复 3 点生命，抽 1 张牌，偷取 30 元。",effect:"healDrawSteal",n:2,limit:2,rarity:"special"},
@@ -181,6 +183,7 @@ const PROFILES={
     {id:"luckycoin",name:"海盗的幸运币",cost:0,kind:"spell",art:"₿",text:"获得 1 点费用。对局开始时自动抽取。",effect:"luckyCoin",n:1,limit:1,core:true,rarity:"elite"}
   ]},
   "045":{faction:"普鲁士国 · 架子班",style:"高层名片 · 开发他人卡组",hp:31,cards:[
+    {id:"contact",name:"联络员",cost:1,kind:"unit",art:"◇",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
     {id:"intel",name:"情报官",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
     {id:"advisor",name:"高层顾问",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
@@ -197,7 +200,7 @@ const PROFILES={
     {id:"yuchun",name:"架子班·愚蠢",cost:3,kind:"unit",art:"☠",atk:3,hp:3,text:"部署：将敌方牌库顶的 3 张牌变成【鸭子】。",effect:"yuchunDeploy",n:1,limit:1,member:true,rarity:"elite"},
     {id:"taojin",name:"架子班·淘金",cost:3,kind:"unit",art:"✦",atk:3,hp:3,text:"部署：随机触发 1 种效果：对敌方英雄造成 6 点伤害 / 你的英雄受到 3 点伤害 / 抽 2 张牌 / 敌方英雄恢复 4 点生命。",effect:"taojinDeploy",n:1,limit:1,member:true,rarity:"elite"},
     {id:"namecard",name:"高层名片",cost:2,kind:"spell",art:"▧",text:"使你的所有单位获得 +1/+1。",effect:"buffAll1",n:2,limit:3,rarity:"rare"},
-    {id:"develop",name:"开发他人卡组",cost:3,kind:"spell",art:"⌘",text:"查看敌方牌库顶的 3 张牌，选择 1 张的复制加入你的手牌。",effect:"developEnemy",n:2,limit:2,rarity:"special",fx:"sp_insight"},
+    {id:"develop",name:"开发他人卡组",cost:2,kind:"spell",art:"⌘",text:"查看敌方牌库顶的 3 张牌，选择 1 张的复制加入你的手牌。",effect:"developEnemy",n:2,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"adapt",name:"适应性方案",cost:4,kind:"spell",art:"↻",text:"摧毁攻击力最高的敌方单位，恢复 3 点生命。",effect:"adapt",n:2,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"handoff",name:"关系网调度",cost:1,kind:"spell",art:"⇄",text:"抽 1 张牌，获得 1 点护甲。",effect:"handoff",n:2,limit:3,rarity:"rare"},
     {id:"copycrown",name:"复制的皇冠",cost:5,kind:"spell",art:"♛",text:"抽 3 张牌，获得 3 点护甲。",effect:"crown",n:1,limit:1,rarity:"elite"},
@@ -238,7 +241,7 @@ const PROFILES={
     {id:"fortress",name:"废料堡垒",cost:2,kind:"unit",art:"▤",atk:2,hp:5,text:"嘲讽。",taunt:true,n:4,limit:4,rarity:"common"},
     {id:"corner",name:"角落里的小怪兽",cost:2,kind:"unit",art:"☻",atk:3,hp:4,text:"每当你打出 1 张【废料】，获得 +1 攻击，持续到回合结束。",effect:"scrapRage",n:2,limit:3,rarity:"rare"},
     {id:"shredder",name:"碎纸机",cost:2,kind:"unit",art:"▥",atk:2,hp:4,text:"每当你打出 1 张【废料】，恢复 1 点生命。",effect:"scrapHeal",n:2,limit:3,rarity:"rare"},
-    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:5,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
+    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
     {id:"guard",name:"小怪兽卫队",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"部署：你手牌中每有 1 张【废料】，获得 +1/+1（至多 +3）。",effect:"scrapGuard",n:2,limit:2,rarity:"special"},
     {id:"eriyi",name:"绘梨衣",cost:3,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：转化 2。",flavor:"蜷缩在杂乱房间的角落里，用最差的牌打出最好的效果。",effect:"convert2",n:1,limit:1,rarity:"elite"},
     {id:"colossus",name:"废料巨像",cost:5,kind:"unit",art:"▦",atk:4,hp:4,text:"部署：弃掉手牌中所有【废料】，每张使其获得 +1/+1。",effect:"scrapColossus",n:1,limit:1,rarity:"elite"},

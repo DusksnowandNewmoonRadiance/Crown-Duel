@@ -78,7 +78,9 @@ function playOne(a,b,level,fix){
   const turnAtk=[new Set(),new Set()];
   const playedSet=[new Set(),new Set()];
   for(let i=0;i<2;i++)g.mulligan(i,ai[i].mulligan(g,i));
+  let lastTurn=null;
   while(g.phase!=="over"){
+    if(g.turn!==lastTurn){lastTurn=g.turn;turnAtk[0].clear();turnAtk[1].clear();}
     const pi=g.current;const p=g.players[pi],o=g.players[1-pi],me=st[pi];
     curActor=pi;
     me.maxBoard=Math.max(me.maxBoard,p.board.length);
@@ -95,13 +97,13 @@ function playOne(a,b,level,fix){
       }
       if(c&&eff==="sacAoe3"&&!o.board.some(u=>u.health<=3))me.firebombNoFin++;
       if(c&&eff==="buffAllCharge"&&p.board.length<3)me.boardingThin++;
-      if(c&&/^(aoe2|aoe4|choose3x2)$/.test(eff||"")&&turnAtk[pi].size>0)me.aoeLate++;
+      if(c&&/^(aoe2|aoe4|choose3x2|saturation)$/.test(eff||"")&&turnAtk[pi].size>0)me.aoeLate++;
       if(c){st[pi].cardPlays[c.id]=(st[pi].cardPlays[c.id]||0)+1;playedSet[pi].add(c.id);curPlayed.push({id:c.id,pi});}
       r=g.playCard(pi,act.uid,act.targets,act.option);
       if(curPlayed.length)curPlayed.pop();
       if(r.ok){
         if(eff==="saturation"){me.sat++;me.satGuns+=p.board.filter(u=>u.gun).length;}
-        if(/^(aoe2|aoe4|choose3x2)$/.test(eff||""))me.aoeCnt++;
+        if(/^(aoe2|aoe4|choose3x2|saturation)$/.test(eff||""))me.aoeCnt++;
         if(/^(convert2|convert3)$/.test(eff||""))me.conv++;
       }
       if(c&&/^(rebel|takeover|rebelLowest|rebelWeakest|over)$/.test(eff||"")&&!r.ok)me.rebelBlocked++;

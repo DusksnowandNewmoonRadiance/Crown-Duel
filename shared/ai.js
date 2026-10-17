@@ -36,7 +36,7 @@ const PRE_ATTACK=new Set([
   "consolidate","sacAoe3","fireShip"
 ]);
 
-const BURN={hero99:99,damage5:5,damage6:6,damage7:7,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
+const BURN={hero99:99,damage5:5,damage6:6,damage7:7,damage5draw:5,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
 function burnOf(s,c){
   if(c.effect==="runaway")return s.money>=ESCAPE_TARGET?9999:2;
   if(c.effect==="unitDamageHero")return s.board.length;
@@ -324,7 +324,7 @@ class AIPlayer{
         let best=null,bs=-1e9;
         /* AOE 优先：敌方单位多且非斩杀时，先清场再让己方单位打脸（避免先攻击后清场的浪费） */
         if(!lethal){
-          const aoe=opts.find(c=>/^(aoe2|aoe4|aoe5|redDawn|choose3x2)/.test(c.effect)&&o.board.length>=2);
+          const aoe=opts.find(c=>/^(aoe2|aoe4|aoe5|redDawn|choose3x2|saturation)/.test(c.effect)&&o.board.length>=2);
           if(aoe){this.plays++;return{type:"play",uid:aoe.uid,targets:this.aiTargets(aoe,s,o),option:autoOption(aoe,s,o)};}
         }
         for(const c of opts){
