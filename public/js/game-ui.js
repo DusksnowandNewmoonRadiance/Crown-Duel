@@ -66,7 +66,7 @@ const GameUI=(()=>{
         const u=S.queue.shift();
         // 连续销毁或变牌需要逐张展示，按张数延长保护时间，避免读牌时触发看门狗。
         const cardChanges=(u.events||[]).filter(e=>e.t==="burn"||e.t==="transformCard").length;
-        const animationLimit=9000+cardChanges*4500;
+        const animationLimit=9000+cardChanges*2500;
         let wd;
         const guard=new Promise((_,rej)=>{wd=setTimeout(()=>rej(new Error("animation watchdog")),animationLimit);});
         try{
@@ -280,15 +280,15 @@ const GameUI=(()=>{
         await animate(face,[{transform:"rotateY(-90deg)"},{transform:"rotateY(0)"}],180);
       }
       if(mode==="transform"){
-        await sleep(1600);
+        await sleep(750);
         await animate(face,[{transform:"rotateY(0) scale(1)"},{transform:"rotateY(90deg) scale(1.08)"}],220);
         face.innerHTML=V.card(e.into);
         face.classList.add("changed");
         await animate(face,[{transform:"rotateY(-90deg) scale(1.08)"},{transform:"rotateY(0) scale(1)"}],240);
-        await sleep(1500);
+        await sleep(750);
         await animate(d,[{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:"translate(-50%,-50%) scale(.55)",opacity:0}],320);
       }else{
-        await sleep(2000);
+        await sleep(750);
         d.classList.add("burning");Audio2.sfx("die");
         await animate(d,[{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:"translate(-50%,-62%) rotate(-5deg) scale(.85)",opacity:.8},{transform:"translate(-50%,-92%) rotate(8deg) scale(.5)",opacity:0}],780);
       }
