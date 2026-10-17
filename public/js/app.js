@@ -246,6 +246,8 @@ function askNick(){
    单人练习
    ============================================================ */
 const Solo={opp:store.get("soloOpp",""),level:store.get("soloLevel","normal"),oppDeck:store.get("soloOppDeck","random")};
+if(Solo.oppDeck==="decay")Solo.oppDeck="衰减流";
+if(Solo.oppDeck==="federation")Solo.oppDeck="星联邦流";
 function openSolo(){
   const me=Me.hero;
   $("#soloMe").innerHTML=`${crest(me)}<span style="--hcr:${V.heroRgb(me)}">${V.esc(me)}<small class="muted" style="display:block;font:500 12px var(--sans)">卡组：${V.esc(Me.deckName(me))}</small></span><button class="btn" id="soloChange">更换</button>`;
@@ -253,14 +255,17 @@ function openSolo(){
   $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();});
   if(Solo.opp===me)Solo.opp="";
   $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+HEROES.filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}</button>`).join("");
-  /* 七星作为对手时才显示七星的两套敌方卡组 */
-  const df=$("#soloOppDeckField");
-  df.hidden=Solo.opp!=="七星";
-  $$("#soloOppDeck button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.oppDeck));
+  /* 始终显示敌方卡组；有多套预设的对手可指定具体卡组。 */
+  const presets=Solo.opp?C.presets(Solo.opp):null;
+  const deckChoices=presets?Object.keys(presets):[];
+  const chosen=deckChoices.includes(Solo.oppDeck)?Solo.oppDeck:"random";
+  const randomLabel=!Solo.opp?"随对手随机":deckChoices.length?"随机":"默认卡组";
+  $("#soloOppDeck").innerHTML=`<button data-v="random" class="${chosen==="random"?"on":""}">${randomLabel}</button>`+
+    deckChoices.map(name=>`<button data-v="${V.esc(name)}" class="${chosen===name?"on":""}">${V.esc(name)}</button>`).join("");
   $$("#soloLevel button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.level));
   openModal("#mSolo");
 }
-$("#soloOpp").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.opp=b.dataset.v;store.set("soloOpp",Solo.opp);openSolo();});
+$("#soloOpp").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.opp=b.dataset.v;Solo.oppDeck="random";store.set("soloOpp",Solo.opp);store.set("soloOppDeck",Solo.oppDeck);openSolo();});
 $("#soloOppDeck").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.oppDeck=b.dataset.v;store.set("soloOppDeck",Solo.oppDeck);openSolo();});
 $("#soloLevel").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;Solo.level=b.dataset.v;store.set("soloLevel",Solo.level);$$("#soloLevel button").forEach(x=>x.classList.toggle("on",x===b));});
 $("#soloGo").addEventListener("click",()=>{closeModal("#mSolo");startSolo();});
@@ -270,10 +275,10 @@ class LocalController{
     const me=Me.hero;
     const others=HEROES.filter(h=>h!==me);
     const foe=Solo.opp&&Solo.opp!==me?Solo.opp:others[Math.floor(Math.random()*others.length)];
-    /* 敌方卡组：七星 AI 可用衰减流/星联邦流——选了七星作战时可指定，否则随机 */
+    /* 选择的敌方预设卡组优先；随机时由 AI 自行挑选。 */
     let foeDeck=C.aiDeck(foe);
-    if(Solo.opp==="七星"&&foe==="七星"&&Solo.oppDeck&&Solo.oppDeck!=="random"){
-      const pd=C.presetDeck("七星",Solo.oppDeck);
+    if(Solo.opp===foe&&Solo.oppDeck&&Solo.oppDeck!=="random"){
+      const pd=C.presetDeck(foe,Solo.oppDeck);
       if(pd)foeDeck=pd;
     }
     this.game=new E.Game({players:[{name:Me.nick||"你",hero:me,deck:Me.deck(me)},{name:"电脑 · "+foe,hero:foe,deck:foeDeck}]});
