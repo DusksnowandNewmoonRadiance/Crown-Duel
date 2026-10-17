@@ -11,7 +11,7 @@ const CardView=(()=>{
   const heroRgb=hero=>rgb(C.COLORS[hero]||"#e2b467");
   const glyph=n=>n==="045"?"045":String(n||"?")[0];
   /* 卡牌说明里的关键字加粗 */
-  const KW_RE=/(冲锋|无视嘲讽|嘲讽|部署|策反|亡语|限时|【衰减】)/g;
+  const KW_RE=/(无视嘲讽|【衰减】|【垃圾】|手牌上限|冲锋|嘲讽|部署|策反|亡语|限时|销毁|毁坏|污染|疲劳)/g;
   const richText=t=>esc(t).replace(KW_RE,"<b>$1</b>");
 
   function kwChips(c){
@@ -70,6 +70,11 @@ const CardView=(()=>{
     if(c.untargetable)out.push(K.untargetable);
     if(c.strikes>1)out.push(K.strikes);
     if(/护甲/.test(c.text||""))out.push(K.armor);
+    if(/销毁|毁坏|消灭.*计入已销毁/.test(c.text||""))out.push(K.destroyCard);
+    if(/污染|变成【垃圾】/.test(c.text||"")||/whiteCorruptHand|whiteCorruptDeck|whiteDrawJunk5/.test(c.effect||""))out.push(K.pollute);
+    if(/【垃圾】/.test(c.text||"")||c.id==="junk")out.push(K.junk);
+    if(/疲劳/.test(c.text||""))out.push(K.fatigue);
+    if(/手牌已满|手牌上限|满手牌/.test(c.text||""))out.push(K.overdraw);
     if(/【衰减】/.test(c.text||""))out.push(K.decay);
     if(/亡语/.test(c.text||"")||c.deathDmg>0)out.push(K.deathrattle);
     if(c.lifespan>0)out.push(K.fleeting);

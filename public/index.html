@@ -2,13 +2,13 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0b1014">
-<meta name="description" content="皇冠对决：8 位卡牌师、快节奏的网页卡牌对战，支持单人练习与联机大厅。">
+<meta name="description" content="皇冠对决：10 位卡牌师、快节奏的网页卡牌对战，支持单人练习与联机大厅。">
 <title>皇冠对决</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1014'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23e2b467'%3E♛%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
@@ -33,7 +33,7 @@
       <div class="brand">
         <div class="eyebrow">TACTICAL CARD DUEL</div>
         <h1>皇冠对决</h1>
-        <p class="tagline">8 位风格迥异的卡牌师 · 一局 10 分钟的快节奏对决</p>
+        <p class="tagline">10 位风格迥异的卡牌师 · 一局 10 分钟的快节奏对决</p>
       </div>
       <div class="home-actions">
         <button class="btn btn-gold btn-xl" id="btnOnline"><span class="bi">⚔</span><span><b>联机对战</b><small>进入大厅，与真人对决</small></span></button>
@@ -80,7 +80,7 @@
       <div class="room-list" id="roomList"></div>
     </div>
     <aside class="chat-box">
-      <div class="chat-head">大厅聊天</div>
+      <div class="chat-head">大厅聊天 <small>点击玩家昵称可举报</small></div>
       <div class="chat-log" id="lobbyChatLog"></div>
       <form class="chat-form" id="lobbyChatForm"><input id="lobbyChatIn" maxlength="120" placeholder="说点什么…" autocomplete="off"><button class="btn" type="submit">发送</button></form>
     </aside>
@@ -288,13 +288,14 @@
       <div class="turn-box">
         <div class="turn-no" id="turnNo">第 1 回合</div>
         <button id="endBtn">结束回合</button>
+        <button id="playBtn" type="button" hidden>打出选中卡牌</button>
         <div class="timer" id="timerBar" hidden><i></i></div>
       </div>
       <div class="pile me" id="mePile"></div>
     </div>
 
     <div id="chatPanel" hidden>
-      <header><b>聊天</b><label class="mute"><input type="checkbox" id="chatMute">屏蔽对手</label><button class="x" id="chatClose" title="关闭">✕</button></header>
+      <header title="拖动标题栏移动聊天窗口"><b>聊天</b><button class="btn btn-ghost" id="chatReport" type="button" title="举报对手">⚑ 举报</button><label class="mute"><input type="checkbox" id="chatMute">屏蔽对手</label><button class="x" id="chatClose" title="关闭">✕</button></header>
       <div id="chatLog"></div>
       <div id="chatQuick"></div>
       <form id="chatForm"><input id="chatIn" maxlength="60" placeholder="输入消息，回车发送" autocomplete="off" enterkeyhint="send"><button class="btn btn-gold" type="submit">发送</button></form>
@@ -347,7 +348,7 @@
     <!-- 新手引导 -->
     <div id="coach" hidden><div class="coach-hole" id="coachHole"></div><div class="coach-tip" id="coachTip"><p id="coachText"></p><div class="coach-acts"><span class="muted" id="coachStep"></span><button class="btn btn-ghost" id="coachSkip">跳过</button><button class="btn btn-gold" id="coachNext">下一步</button></div></div></div>
     <!-- 战斗记录 -->
-    <div id="logPanel" class="closed"><header><b>战斗记录</b><button class="btn btn-ghost" id="logClose">✕</button></header><div id="logList"></div></div>
+    <div id="logPanel" class="closed"><header><b>战斗记录</b><button class="btn btn-ghost" id="logClose">✕</button></header><div id="destroyList"></div><div id="logList"></div></div>
   </div></div>
 </section>
 
@@ -356,7 +357,7 @@
   <h2>单人练习</h2>
   <div class="field"><label>你的卡牌师</label><div class="solo-me" id="soloMe"></div></div>
   <div class="field"><label>对手</label><div class="opp-grid" id="soloOpp"></div></div>
-  <div class="field" id="soloOppDeckField" hidden><label>敌方卡组</label><div class="seg" id="soloOppDeck">
+  <div class="field" id="soloOppDeckField" hidden><label>敌方卡组（七星）</label><div class="seg" id="soloOppDeck">
     <button data-v="random" class="on">随机</button><button data-v="decay">衰减流</button><button data-v="federation">星联邦流</button>
   </div></div>
   <div class="field"><label>电脑难度</label><div class="seg" id="soloLevel">
@@ -444,6 +445,15 @@
   <div class="field"><label>邮箱</label><input id="bindEmail" maxlength="64" placeholder="you@example.com" autocomplete="email"></div>
   <p class="muted" id="bindMsg"></p>
   <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold" id="bindGo">绑定</button></div>
+</div></div>
+
+<div class="modal" id="mReport" hidden><div class="panel">
+  <h2>举报玩家</h2>
+  <p class="muted" id="reportTarget"></p>
+  <div class="field"><label for="reportReason">举报理由</label><select id="reportReason"><option value="abuse">聊天骂人</option><option value="afk">故意不结束回合</option><option value="name">名字违规</option><option value="cheat">外挂</option></select></div>
+  <div class="field"><label for="reportDetails">补充说明（可选）</label><textarea id="reportDetails" maxlength="500" rows="4" placeholder="请描述发生的情况"></textarea></div>
+  <p class="muted small">提交后，后台会收到双方昵称、玩家 ID 和近期相关聊天记录，供管理员核实。</p>
+  <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-danger" id="reportSend">提交举报</button></div>
 </div></div>
 
 <div class="modal" id="mReward" hidden><div class="panel wide reward">

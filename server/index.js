@@ -176,12 +176,16 @@ app.post("/api/campaign/upgrade",(req,res)=>{
 });
 app.use("/admin",adminRouter({
   status:()=>({build:BUILD,version:VERSION,uptime:process.uptime()|0,online:onlineCount(),queue:queue.length,rooms:rooms.size,
-    matches:activeMatches(),maintenance:maintView(),dataDir:Store.DATA_DIR}),
+    matches:activeMatches(),maintenance:maintView(),dataDir:Store.DATA_DIR,reportsPending:Store.reports().filter(x=>x.status==="pending").length}),
   announcementsChanged:a=>io.emit("announce",{latest:a?{id:a.id,type:a.type,title:a.title,popup:a.popup}:null}),
   broadcast:text=>io.emit("broadcast",{text,ts:Date.now()}),
   setMaintenance:(on,msg)=>setMaintenance(on,msg),
   drain:(min,msg)=>startDrain(min,msg),
-  contentChanged:()=>io.emit("content",{rev:Store.balance().rev})
+  contentChanged:()=>io.emit("content",{rev:Store.balance().rev}),
+  reports:()=>Store.reports(),moderation:()=>Store.moderationLists(),
+  sanctionPlayer:(id,type,reason)=>sanctionPlayer(id,type,reason),
+  resolveReport:(id,action)=>resolveReport(id,action),
+  removeSanction:(id,type)=>removeSanction(id,type)
 }));
 
 const server=http.createServer(app);
@@ -232,6 +236,64 @@ const users=new Map();   // clientId -> user
 const rooms=new Map();   // roomId -> room
 let queue=[];            // 快速匹配队列（clientId）
 const lobbyChat=[];
+const chatArchive=[]; // recent direct conversations retained so a report can include evidence
+
+function archiveChat(m,channel,roomId){
+  if(!m||!m.id)return;
+  chatArchive.push({id:m.id,nick:m.nick,text:m.text,ts:m.ts,channel,roomId:roomId||null});
+  while(chatArchive.length>3000)chatArchive.shift();
+}
+function reportTranscript(a,b,roomId){
+  const since=now()-7*24*60*60*1000;
+  return chatArchive.filter(m=>m.ts>=since&&(m.id===a||m.id===b)&&(!roomId||m.roomId===roomId))
+    .slice(-100).map(m=>({id:m.id,nick:m.nick,text:m.text,ts:m.ts,channel:m.channel}));
+}
+function publicModerationNotice(text){
+  const m={sys:true,text,ts:now()};lobbyChat.push(m);if(lobbyChat.length>40)lobbyChat.shift();
+  io.to("lobby").emit("lobby:chat",m);io.emit("broadcast",{text,ts:m.ts});
+}
+function removeSanction(id,type){
+  const ok=Store.removeSanction(id,type);if(!ok)return{ok:false,error:"处罚记录不存在"};
+  const u=users.get(id);if(u)send(u,"toast",{text:type==="ban"?"管理员已解除封号":"管理员已解除禁言"});
+  return{ok:true};
+}
+function sanctionPlayer(id,type,reason){
+  id=String(id||"");
+  if(!/^[A-Za-z0-9_-]{8,64}$/.test(id))return{ok:false,error:"玩家 ID 格式无效"};
+  if(!["ban","mute"].includes(type))return{ok:false,error:"未知处罚类型"};
+  const out=Store.setSanction(id,type,reason);if(!out.ok)return out;
+  const u=users.get(id),name=Store.moderationState(id).forcedName||(u&&u.nick)||id;
+  if(u){
+    if(type==="ban"){
+      dequeue(u);leaveRoom(u);send(u,"kicked",{reason:"你的账号已被管理员封禁，暂时不能进行联机"});
+      if(u.socket)u.socket.disconnect(true);
+    }else send(u,"toast",{text:"你已被管理员禁言，暂时不能发送聊天消息"});
+  }
+  publicModerationNotice(type==="ban"?`玩家「${name}」已被管理员封号，无法进行联机。`:`玩家「${name}」已被管理员禁言。`);
+  return{ok:true,state:out.state};
+}
+function resolveReport(id,action){
+  const out=Store.resolveReport(id,action);if(!out.ok)return out;
+  const r=out.report,u=users.get(r.targetId),before=u&&u.nick;
+  if(u){
+    const state=Store.moderationState(r.targetId);
+    if(state.forcedName){u.nick=state.forcedName;send(u,"profile:corrected",{nick:u.nick});}
+    const room=u.roomId&&rooms.get(u.roomId);
+    if(room)roomChanged(room);else lobbyChanged();
+    if(action==="ban"){
+      dequeue(u);leaveRoom(u);send(u,"kicked",{reason:"你的账号已被管理员封禁，暂时不能进行联机"});
+      if(u.socket)u.socket.disconnect(true);
+    }else if(action==="mute")send(u,"toast",{text:"你已被管理员禁言，暂时不能发送聊天消息"});
+    else if(action==="rename")send(u,"toast",{text:"管理员已将违规昵称改为「名字违规」"});
+  }
+  if(action!=="dismiss"){
+    const shownName=action==="rename"||r.reason==="name"?"名字违规":(u?u.nick:r.targetName);
+    const message=action==="ban"?`玩家「${shownName}」已被封号，无法进行联机。`:
+      action==="mute"?`玩家「${shownName}」已被禁言。`:`玩家「${shownName}」因名字违规，昵称已改为「名字违规」。`;
+    publicModerationNotice(message);
+  }
+  return{ok:true,report:r,previousName:before};
+}
 
 function onlineCount(){let n=0;for(const u of users.values())if(u.connected)n++;return n;}
 function userOf(socket){return socket.data.uid?users.get(socket.data.uid):null;}
@@ -247,7 +309,7 @@ function lobbySnapshot(){
   const list=[...rooms.values()].sort((a,b)=>(a.status==="waiting"?0:1)-(b.status==="waiting"?0:1)||b.createdAt-a.createdAt).slice(0,100);
   return{online:onlineCount(),queue:queue.length,rooms:list.map(r=>({
     id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,status:r.status,
-    players:r.seats.filter(Boolean).map(id=>{const u=users.get(id);return u?{nick:u.nick,hero:u.hero}:null;}).filter(Boolean)
+    players:r.seats.filter(Boolean).map(id=>{const u=users.get(id);return u?{id:u.id,nick:u.nick,hero:u.hero}:null;}).filter(Boolean)
   }))};
 }
 
@@ -428,13 +490,13 @@ class Match{
     this.seats.forEach((id,i)=>{
       const u=users.get(id);
       send(u,"game",{view:g.viewFor(i),events:full?[]:g.eventsFor(events,i),timer:this.timerInfo(),full:!!full,
-        foeOnline:!!(users.get(this.seats[1-i])||{}).connected,seq:this.seq});
+        foeOnline:!!(users.get(this.seats[1-i])||{}).connected,foeId:this.seats[1-i],seq:this.seq});
     });
     if(g.phase==="over"&&!this.over)this.finish();
   }
   sendTo(id){
     const i=this.seatOf(id);if(i<0)return;
-    send(users.get(id),"game",{view:this.game.viewFor(i),events:[],timer:this.timerInfo(),full:true,foeOnline:!!(users.get(this.seats[1-i])||{}).connected,seq:this.seq});
+    send(users.get(id),"game",{view:this.game.viewFor(i),events:[],timer:this.timerInfo(),full:true,foeOnline:!!(users.get(this.seats[1-i])||{}).connected,foeId:this.seats[1-i],seq:this.seq});
   }
   forfeit(seat,reason){if(this.over)return;this.game.forfeit(seat,reason);this.push(false);}
   finish(){
@@ -460,11 +522,14 @@ const reply=(cb,v)=>{if(typeof cb==="function")cb(v);};
 io.on("connection",socket=>{
   socket.on("hello",(d,cb)=>{
     d=d||{};
-    const cid=/^[A-Za-z0-9_-]{8,64}$/.test(d.clientId||"")?d.clientId:crypto.randomUUID();
+    const account=Store.byToken(String(d.token||""));
+    const cid=account?`acct_${account.uid}`:(/^[A-Za-z0-9_-]{8,64}$/.test(d.clientId||"")?d.clientId:crypto.randomUUID());
+    const mod=Store.moderationState(cid);
+    if(mod.ban){reply(cb,{ok:false,banned:true,error:"你的账号已被管理员封禁，暂时不能进行联机"});socket.disconnect(true);return;}
     let u=users.get(cid);
     if(u&&u.socket&&u.socket!==socket&&u.connected){u.socket.emit("kicked",{reason:"你在另一个窗口打开了游戏"});u.socket.disconnect(true);}
     if(!u){u={id:cid,nick:"",hero:"苏苏",deck:null,roomId:null};users.set(cid,u);}
-    u.nick=clean(d.nick,12)||u.nick||("玩家"+crypto.randomInt(1000,9999));
+    u.nick=mod.forcedName||clean(d.nick,12)||u.nick||("玩家"+crypto.randomInt(1000,9999));
     if(d.hero&&C.PROFILES[d.hero]){u.hero=d.hero;u.deck=C.deckError(d.hero,d.deck)?null:d.deck;}
     u.socket=socket;u.connected=true;socket.data.uid=cid;
     if(u.dcTimer){clearTimeout(u.dcTimer);u.dcTimer=null;}
@@ -490,7 +555,8 @@ io.on("connection",socket=>{
 
   socket.on("profile",(d)=>{
     const u=userOf(socket);if(!u||!d)return;
-    if(d.nick!==undefined)u.nick=clean(d.nick,12)||u.nick;
+    const mod=Store.moderationState(u.id);
+    if(d.nick!==undefined)u.nick=mod.forcedName||clean(d.nick,12)||u.nick;
     if(d.hero&&C.PROFILES[d.hero]&&!(u.roomId&&rooms.get(u.roomId)&&rooms.get(u.roomId).status==="playing")){
       u.hero=d.hero;u.deck=C.deckError(d.hero,d.deck)?null:d.deck;
       const r=u.roomId&&rooms.get(u.roomId);
@@ -499,11 +565,12 @@ io.on("connection",socket=>{
     const r=u.roomId&&rooms.get(u.roomId);if(r)roomChanged(r);else lobbyChanged();
   });
 
-  socket.on("lobby:chat",text=>{
+  socket.on("lobby:chat",(text,cb)=>{
     const u=userOf(socket);if(!u)return;
-    const t=clean(text,120);if(!t||limited(u,"_lc",800))return;
-    const m={nick:u.nick,text:t,ts:now()};lobbyChat.push(m);if(lobbyChat.length>40)lobbyChat.shift();
-    io.to("lobby").emit("lobby:chat",m);
+    if(Store.moderationState(u.id).mute)return reply(cb,{ok:false,error:"你已被管理员禁言"});
+    const t=clean(text,120);if(!t)return reply(cb,{ok:false,error:"消息不能为空"});if(limited(u,"_lc",800))return reply(cb,{ok:false,error:"发言太快了，稍等一下"});
+    const m={id:u.id,nick:u.nick,text:t,ts:now()};lobbyChat.push(m);if(lobbyChat.length>40)lobbyChat.shift();archiveChat(m,"lobby",null);
+    io.to("lobby").emit("lobby:chat",m);reply(cb,{ok:true});
   });
 
   socket.on("room:create",(d,cb)=>{
@@ -539,11 +606,12 @@ io.on("connection",socket=>{
     roomChanged(r);checkStart(r);
   });
 
-  socket.on("room:chat",text=>{
+  socket.on("room:chat",(text,cb)=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(!r)return;
-    const t=clean(text,120);if(!t||limited(u,"_rch",700))return;
-    const m={nick:u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();
-    io.to("room:"+r.id).emit("room:chat",m);
+    if(Store.moderationState(u.id).mute)return reply(cb,{ok:false,error:"你已被管理员禁言"});
+    const t=clean(text,120);if(!t)return reply(cb,{ok:false,error:"消息不能为空"});if(limited(u,"_rch",700))return reply(cb,{ok:false,error:"发言太快了，稍等一下"});
+    const m={id:u.id,nick:u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();archiveChat(m,"room",r.id);
+    io.to("room:"+r.id).emit("room:chat",m);reply(cb,{ok:true});
   });
 
   socket.on("match:quick",()=>{const u=userOf(socket);if(u)enqueue(u);});
@@ -570,12 +638,29 @@ io.on("connection",socket=>{
   socket.on("game:chat",(text,cb)=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
     if(!r||!r.match||!r.seats.includes(u.id))return reply(cb,{ok:false,error:"当前不在对局中"});
+    if(Store.moderationState(u.id).mute)return reply(cb,{ok:false,error:"你已被管理员禁言"});
     const t=clean(text,60);if(!t)return reply(cb,{ok:false,error:"消息不能为空"});
     if(limited(u,"_gc",1200))return reply(cb,{ok:false,error:"发言太快了，稍等一下"});
-    const m={nick:u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();
+    const m={id:u.id,nick:u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();archiveChat(m,"game",r.id);
     io.to("room:"+r.id).emit("room:chat",m);
     r.seats.forEach(sid=>{if(sid)send(users.get(sid),"game:chat",{who:sid===u.id?"me":"foe",nick:u.nick,text:t,ts:m.ts});});
     reply(cb,{ok:true});
+  });
+
+  socket.on("moderation:report",(d,cb)=>{
+    const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});d=d||{};
+    if(limited(u,"_report",30000))return reply(cb,{ok:false,error:"提交太快了，请稍后再试"});
+    const targetId=String(d.targetId||"");
+    if(!/^[A-Za-z0-9_-]{8,64}$/.test(targetId)||targetId===u.id)return reply(cb,{ok:false,error:"举报对象无效"});
+    const labels={abuse:"聊天骂人",afk:"故意不结束回合",name:"名字违规",cheat:"外挂"};
+    if(!Object.prototype.hasOwnProperty.call(labels,d.reason))return reply(cb,{ok:false,error:"举报理由无效"});
+    const target=users.get(targetId),targetMod=Store.moderationState(targetId);
+    const targetName=targetMod.forcedName||(target&&target.nick)||clean(d.targetName,24)||"未知玩家";
+    const roomId=u.roomId&&target&&target.roomId===u.roomId?u.roomId:null;
+    const report=Store.addReport({reporterId:u.id,reporterName:u.nick,targetId,targetName,source:clean(d.source,20)||"player",
+      reason:d.reason,reasonLabel:labels[d.reason],details:clean(d.details,500),transcript:reportTranscript(u.id,targetId,roomId),roomId,targetOnline:!!(target&&target.connected)});
+    io.to("admin").emit("moderation:report",{id:report.id});
+    reply(cb,{ok:true,id:report.id});
   });
 
   socket.on("disconnect",()=>{

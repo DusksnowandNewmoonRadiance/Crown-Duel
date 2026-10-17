@@ -27,7 +27,8 @@ const HERO_STYLE={
   七星:{aggro:.3,slow:true},
   下水:{aggro:.5},
   猪瘟鱼:{aggro:.3},
-  "045":{aggro:.45}
+  "045":{aggro:.45},
+  白猫:{aggro:.3,slow:true}
 };
 
 /* 打出前需要先让己方单位攻击的法术：只含"消耗己方单位"的牌（单位攻击完再献祭/整编，避免浪费攻击次数）。
@@ -36,8 +37,13 @@ const PRE_ATTACK=new Set([
   "consolidate","sacAoe3","fireShip"
 ]);
 
-const BURN={hero99:99,damage5:5,damage6:6,damage7:7,damage5draw:5,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2};
+const BURN={hero99:99,damage5:5,damage6:6,damage7:7,damage5draw:5,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2,
+  };
 function burnOf(s,c){
+  if(c.effect==="whiteFinal")return Math.min(18,4+(s.destroyedCards||0));
+  if(c.effect==="whiteStrike")return Math.min(7,2+Math.floor((s.destroyedCards||0)/3));
+  if(c.effect==="whiteBurst")return Math.min(10,3+Math.floor((s.destroyedCards||0)/2));
+  if(c.effect==="whiteNight")return 5;
   if(c.effect==="runaway")return s.money>=ESCAPE_TARGET?9999:2;
   if(c.effect==="unitDamageHero")return s.board.length;
   if(c.effect==="finish")return s.board.length*2;
@@ -94,12 +100,22 @@ function scoreCard(s,o,c,lethal,stage){
     if(c.id==="superman")sc+=6;
     if(e==="copySmallCannon")sc+=gunCount(s)*1.5;
     if(e==="baimaoDeploy")sc-=3;
+    if(e==="whiteAsh")sc+=Math.min(5,Math.floor((s.destroyedCards||0)/2))*2;
+    if(e==="whiteEngine")sc+=o.deck.length>=4?6:-2;
+    if(e==="whiteBoard")sc+=enN?Math.max(...o.board.map(unitValue))*.8:-2;
+    if(e==="whiteProof")sc+=o.board.some(u=>u.attack<=2)?5:0;
+    if(e==="whiteSentinel")sc+=o.deck.length+o.hand.length?2:0;
+    if(e==="whiteMargin")sc+=o.deck.length<=3?5:1;
+    if(e==="whiteCorruptHand")sc+=o.hand.filter(x=>x.effect!=="whiteJunk").length?5:-2;
+    if(e==="whiteMedic")sc+=Math.min(4,Math.max(0,s.maxHp-s.hp))*1.2;
+    if(e==="whiteDeck1"||e==="whiteDeck2"||e==="whiteHand1")sc+=(o.deck.length+o.hand.length)?3:-2;
     if(lethal&&burn>0)sc+=300;
   }else{
     sc=c.cost*.8+1;
     if(burn)sc+=burn*.8;
     if(lethal&&burn>0)sc+=500;
     if(e==="runaway")return s.money>=ESCAPE_TARGET?20000:-8;
+    if(e==="whiteJunk")return s.deck.length<=1?-20:-5;
     if(/^(aoe|redDawn)/.test(e)||e==="choose3x2")sc+=enN?enN*3:-100;
     else if(e==="saturation")sc+=gunCount(s)?(enN*2+gunCount(s)*2):-100;
     else if(e==="sacAoe3"){   // 燃烧弹：只在有残血(hp<=3)可收时打，否则不值得牺牲己方单位
@@ -122,6 +138,16 @@ function scoreCard(s,o,c,lethal,stage){
     else if(e==="buffOneDraw")sc+=myN?3:-2;
     else if(/^(summon|fillRed|namecardsummon)/.test(e)&&e!=="summonSuperman")sc+=myN>=MAX_BOARD?-100:(e==="fillRed"?8:3);
     else if(e==="ramp"||e==="starClimb")sc+=s.maxEnergy<7?3:-2;
+    else if(e==="whiteBurst")sc+=burn*.9;
+    else if(e==="whiteForce1"||e==="whiteForce2")sc+=o.deck.length===0?12+(o.fatigue||0)*3:o.deck.length<=3?6:1;
+    else if(e==="whiteDrawJunk5")sc+=o.deck.length===0?18:o.hand.length>=MAX_HAND-3?12:8;
+    else if(e==="whiteAoe")sc+=enN?enN*2.5+o.board.filter(u=>u.health<=3).length*2:-100;
+    else if(e==="whiteCorruptDeck")sc+=o.deck.filter(x=>x.effect!=="whiteJunk").length>=2?7:0;
+    else if(e==="whiteMend")sc+=Math.min(6,Math.max(0,s.maxHp-s.hp))*1.1+2;
+    else if(/^white/.test(e)){
+      const available=o.deck.length+o.hand.length;
+      sc+=available?(e==="whiteNight"?7:e==="whiteHand1"?5:3):-100;
+    }
     else if(/^(manaBurn|energyDownDraw)/.test(e))sc+=2;
     else if(e==="costRaise")sc+=o.handCount!==undefined?(o.handCount>=3?4:-100):(o.hand.length>=3?4:-100);
     else if(/^(unitDamageHero|finish)/.test(e))sc+=myN?myN*1.5:-100;

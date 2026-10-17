@@ -56,6 +56,16 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
     <div class="stats" id="stats"></div>
   </div>
 
+  <div class="box">
+    <div class="inline" style="justify-content:space-between"><h2>玩家举报与处罚</h2><button class="btn" id="modRefresh">刷新</button></div>
+    <p class="hint">处理举报前请核对双方 ID、举报原因和聊天记录。封号会立即断开联机；禁言会阻止大厅、房间和局内发言。</p>
+    <div class="inline"><input id="sanctionId" placeholder="手动处罚：玩家 ID" style="max-width:280px"><input id="sanctionReason" maxlength="200" placeholder="处罚原因" style="max-width:280px"><button class="btn btn-danger" id="manualBan">封号</button><button class="btn" id="manualMute">禁言</button></div>
+    <div class="msg" id="sanctionMsg"></div>
+    <div id="reportList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <h2>当前处罚</h2>
+    <div id="moderationList" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+
   <div class="row2">
     <div class="box">
       <h2 id="annFormTitle">发布公告</h2>
@@ -137,11 +147,50 @@ const fmtTime=t=>new Date(t).toLocaleString("zh-CN",{hour12:false});
 
 async function loadStatus(){
   const s=await api("GET","/status");
-  $("#stats").innerHTML=[["在线玩家",s.online],["进行中对局",s.matches],["房间",s.rooms],["匹配队列",s.queue],["运行时间",fmtDur(s.uptime)],["版本",s.build]]
+  $("#stats").innerHTML=[["在线玩家",s.online],["进行中对局",s.matches],["房间",s.rooms],["匹配队列",s.queue],["待审核举报",s.reportsPending||0],["运行时间",fmtDur(s.uptime)],["版本",s.build]]
     .map(([k,v])=>`<div class="stat-c">${k}<b>${esc(v)}</b></div>`).join("");
   const m=s.maintenance;
   $("#maintState").innerHTML=m.on?`<span class="maint-on">● 维护中</span>：${esc(m.message)}${m.drainUntil?`<br><span class="hint">等待对局结束后重启，最迟 ${fmtTime(m.drainUntil)}</span>`:""}`:`<span style="color:var(--green)">● 正常运行</span>`;
 }
+const reasonName={abuse:"聊天骂人",afk:"故意不结束回合",name:"名字违规",cheat:"外挂"};
+async function loadReports(){
+  const list=await api("GET","/reports");
+  const pending=list.filter(r=>r.status==="pending");
+  $("#reportList").innerHTML=pending.length?pending.map(r=>`<article class="ann" style="display:block">
+    <div class="meta"><b>${esc(r.reasonLabel||reasonName[r.reason]||r.reason)} · ${esc(r.reporterName)} 举报 ${esc(r.targetName)}</b>
+      <div class="sub">${fmtTime(r.createdAt)} · 来源：${esc(r.source||"玩家举报")} · 举报者 ID：<code>${esc(r.reporterId)}</code> · 被举报者 ID：<code>${esc(r.targetId)}</code></div>
+      ${r.details?`<div class="body">补充说明：${esc(r.details)}</div>`:""}
+      <div class="body">聊天记录：${r.transcript&&r.transcript.length?r.transcript.map(m=>`<div>[${fmtTime(m.ts)} · ${esc(m.channel)}] ${esc(m.nick)}（${esc(m.id)}）：${esc(m.text)}</div>`).join(""):`未找到近期相关聊天记录`}</div>
+    </div><div class="inline" style="margin-top:10px">
+      <button class="btn btn-danger" data-report-action="ban" data-id="${esc(r.id)}">确认封号</button>
+      <button class="btn" data-report-action="mute" data-id="${esc(r.id)}">确认禁言</button>
+      ${r.reason==="name"?`<button class="btn" data-report-action="rename" data-id="${esc(r.id)}">强制改名「名字违规」</button>`:""}
+      <button class="btn btn-ghost" data-report-action="dismiss" data-id="${esc(r.id)}">驳回</button>
+    </div></article>`).join(""):`<p class="hint">当前没有待审核举报</p>`;
+}
+async function loadModeration(){
+  const m=await api("GET","/moderation"),groups=[["封号","ban",m.bans],["禁言","mute",m.mutes],["违规昵称","name",m.forcedNames]];
+  const rows=groups.flatMap(([label,type,list])=>list.map(x=>({label,type,...x})));
+  $("#moderationList").innerHTML=rows.length?rows.map(x=>`<div class="ann"><div class="meta"><b>${esc(x.label)}：${esc(x.name||x.id)}</b><div class="sub">ID：<code>${esc(x.id)}</code>${x.reason?` · 原因：${esc(x.reason)}`:""}</div></div>${x.type==="name"?"":`<button class="btn" data-remove-sanction="${esc(x.type)}" data-id="${esc(x.id)}">解除${esc(x.label)}</button>`}</div>`).join(""):`<p class="hint">暂无处罚记录</p>`;
+}
+$("#reportList").onclick=async e=>{
+  const b=e.target.closest("[data-report-action]");if(!b)return;
+  const action=b.dataset.reportAction,labels={ban:"封号",mute:"禁言",rename:"强制改名",dismiss:"驳回"};
+  if(!confirm(`确认${labels[action]}这条举报？`))return;
+  try{await api("POST","/reports/"+encodeURIComponent(b.dataset.id)+"/resolve",{action});await Promise.all([loadReports(),loadModeration(),loadStatus()]);}catch(err){alert(err.message);}
+};
+$("#moderationList").onclick=async e=>{
+  const b=e.target.closest("[data-remove-sanction]");if(!b)return;
+  if(!confirm("确认解除该玩家处罚？"))return;
+  try{await api("DELETE","/moderation/"+encodeURIComponent(b.dataset.removeSanction)+"/"+encodeURIComponent(b.dataset.id));await loadModeration();}catch(err){alert(err.message);}
+};
+async function manualSanction(type){
+  const id=$("#sanctionId").value.trim();if(!id){msg("#sanctionMsg","请填写玩家 ID");return;}
+  if(!confirm(`确认对玩家 ${id} 执行${type==="ban"?"封号":"禁言"}？`))return;
+  try{await api("POST","/moderation",{id,type,reason:$("#sanctionReason").value});msg("#sanctionMsg","处罚已执行",true);await Promise.all([loadModeration(),loadStatus()]);}
+  catch(err){msg("#sanctionMsg",err.message);}
+}
+$("#manualBan").onclick=()=>manualSanction("ban");$("#manualMute").onclick=()=>manualSanction("mute");
 async function loadAnn(){
   const list=await api("GET","/announcements");
   $("#annList").innerHTML=list.length?list.map(a=>`<div class="ann"><div class="meta"><b><span class="pill">${esc(a.type)}</span>${a.pinned?"📌 ":""}${esc(a.title)}</b>
@@ -185,9 +234,9 @@ $("#balSave").onclick=async()=>{
   let map;try{map=JSON.parse($("#balJson").value||"{}");}catch(e){msg("#balMsg","JSON 格式错误："+e.message);return;}
   try{await api("PUT","/balance",{overrides:map});msg("#balMsg","已保存并生效：新开的对局会使用新数值",true);}catch(e){msg("#balMsg",e.message);}
 };
-async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal()]);}catch(e){}}
-$("#refresh").onclick=loadStatus;
-setInterval(()=>{if(!$("#main").hidden)loadStatus().catch(()=>{});},10000);
+async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadReports(),loadModeration()]);}catch(e){}}
+$("#refresh").onclick=loadAll;$("#modRefresh").onclick=()=>Promise.all([loadReports(),loadModeration(),loadStatus()]);
+setInterval(()=>{if(!$("#main").hidden)Promise.all([loadStatus(),loadReports(),loadModeration()]).catch(()=>{});},10000);
 if(TOKEN){$("#tok").value=TOKEN;login();}
 </script>
 </body>

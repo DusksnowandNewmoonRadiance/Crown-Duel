@@ -89,7 +89,11 @@ const ELITE={
   "045:xiashui":{pattern:"cross",palette:"ember",glyph:"✜",target:"foe"},
   "045:yuchun":{pattern:"rift",palette:"shadow",glyph:"☠",target:"foe"},
   "045:taojin":{pattern:"flash",palette:"magenta",glyph:"✺",target:"center"},
-  "045:copycrown":{pattern:"flash",palette:"gold",glyph:"♚",target:"me"}
+  "045:copycrown":{pattern:"flash",palette:"gold",glyph:"♚",target:"me"},
+  /* 白猫 */
+  "白猫:meteor":{pattern:"slash",palette:"frost",glyph:"☄",target:"foe"},
+  "白猫:sovereign":{pattern:"rise",palette:"white",glyph:"♛",target:"foe"},
+  "白猫:night":{pattern:"rain",palette:"shadow",glyph:"♨",target:"foe"}
 };
 
 function build(id,rarity,r){

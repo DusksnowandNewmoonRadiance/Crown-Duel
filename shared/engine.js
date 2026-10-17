@@ -111,6 +111,9 @@ function playError(card,me,foe){
     if(card.effect==="scrapToUnits"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
     if(card.effect==="supplyDeck"&&me.deck&&!me.deck.some(x=>x.kind==="unit"))return"牌库里没有单位牌";
     if(card.effect==="intelSteal"&&foe.deck&&!foe.deck.length)return"敌方牌库已经空了";
+    if(card.kind==="spell"&&["whiteDeckDraw","whiteDeck2","whiteDeckArmor","whiteDeck2Draw"].includes(card.effect)&&foe.deck&&!foe.deck.length)return"敌方牌库已经空了";
+    if(card.kind==="spell"&&["whiteHand1","whiteNight"].includes(card.effect)&&foe.hand&&!foe.hand.length&&foe.deck&&!foe.deck.length)return"敌方没有可销毁的卡牌";
+    if(card.effect==="whiteCorruptDeck"&&foe.deck&&!foe.deck.some(x=>x.effect!=="whiteJunk"))return"敌方牌库没有可污染的卡牌";
   }
   if(e==="consolidate"&&redCount(me)<2)return"整编需要至少 2 个【俄布】";
   if(e==="artilleryCommand"){
@@ -185,7 +188,7 @@ class Game{
     if(this.intro.some(x=>x.pi===i))shuffle(deck);
     const hp=prof?prof.hp:(p.hp||30);
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp,maxHp:hp,armor:0,energy:0,maxEnergy:0,
-      fatigue:0,deck,hand:[],board:[],money:0,heroImmune:false,turnsStarted:0,mulliganDone:false,
+      fatigue:0,deck,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
       decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,
       stats:{dmg:0,played:0,kills:0}};
@@ -208,12 +211,12 @@ class Game{
 
   /* ---------- 抽牌 / 手牌 ---------- */
   _drawRaw(p,n){for(let i=0;i<n&&p.deck.length;i++)p.hand.push(p.deck.pop());}
-  draw(p,n=1){
+  draw(p,n=1,credit=null,label="手牌上限"){
     if(this.lock!==null){if(n>0)this.note("停摆：无法抽牌",p);return;}
     for(let i=0;i<n;i++){
-      if(!p.deck.length){p.fatigue++;this.note(`牌库已空，疲劳伤害 ${p.fatigue}`,p);this.damageHero(p,p.fatigue,{fatigue:true});continue;}
+      if(!p.deck.length){p.fatigue++;const dmg=p.fatigue*(p.fatigue+1)/2;this.note(`牌库已空，第 ${p.fatigue} 次疲劳，受到 ${dmg} 点伤害`,p);this.damageHero(p,dmg,{fatigue:true});if(this.phase==="over")break;continue;}
       const card=p.deck.pop();
-      if(p.hand.length>=MAX_HAND){this.burn(p,card);continue;}
+      if(p.hand.length>=MAX_HAND){this.burn(p,card,credit,label);continue;}
       p.hand.push(card);this._drawHeal(p);
     }
   }
@@ -225,7 +228,76 @@ class Game{
     }
     p.hand.push(card);this._drawHeal(p);return true;
   }
-  burn(p,card){this.emit({t:"burn",pi:p.idx,card:pubCard(card)});this.note(`手牌已满，【${card.name}】被弃置`,p);}
+  burn(p,card,credit=null,label="手牌上限"){
+    if(credit){this.recordDestroyed(credit,card,"抽牌溢出",label);return;}
+    this.emit({t:"burn",pi:p.idx,sourcePi:p.idx,card:pubCard(card),overdraw:true,zone:"抽牌溢出"});
+    this.note(`手牌已满，新抽到的【${card.name}】被销毁`,p);
+  }
+  destroyEnemyCards(s,o,zone,n,label){
+    if(this.phase==="over")return 0;
+    let count=0;
+    for(let i=0;i<n;i++){
+      let card=null,from="牌库";
+      if((zone==="hand"||zone==="handOrDeck")&&o.hand.length){
+        card=o.hand.splice(Math.floor(Math.random()*o.hand.length),1)[0];from="手牌";
+      }else if(zone!=="hand"&&o.deck.length)card=o.deck.pop();
+      if(!card)break;
+      this.recordDestroyed(s,card,from,label);
+      count++;
+      if(this.phase==="over")break;
+    }
+    return count;
+  }
+  recordDestroyed(s,card,zone,label){
+    s.destroyedCards++;
+    s.destroyedLog.push({name:card.name,zone,source:label});
+    this.emit({t:"burn",pi:this.opp(s).idx,sourcePi:s.idx,card:pubCard(card),destroyed:true,zone,source:label});
+    this.note(`${label}：销毁敌方${zone}中的【${card.name}】`,s);
+    for(const u of s.board.filter(x=>x.effect==="whiteSentinel"&&x.health>0)){
+      u.attack++;u.health++;u.maxHealth++;
+      this.note(`${u.name}：因销毁敌牌获得 +1/+1`,s);
+    }
+  }
+  forcedRead(s,o,n,label){
+    for(let i=0;i<n&&this.phase!=="over";i++){
+      const before=new Set(o.hand.map(c=>c.uid));
+      this.draw(o,1,s,label);
+      const drawn=o.hand.find(c=>!before.has(c.uid));
+      if(drawn){
+        o.hand=o.hand.filter(c=>c!==drawn);
+        this.recordDestroyed(s,drawn,"刚抽到的手牌",label);
+      }
+    }
+  }
+  corruptEnemyCards(s,o,zone,n,label){
+    const cards=zone==="手牌"?o.hand:o.deck;
+    let changed=0;
+    for(let i=0;i<n;i++){
+      const candidates=cards.filter(c=>c.effect!=="whiteJunk");
+      if(!candidates.length)break;
+      const old=candidates[Math.floor(Math.random()*candidates.length)];
+      const at=cards.indexOf(old);
+      const into=cards[at]=this.clone(TOKENS.junk,o.hero);
+      changed++;
+      const msg=`${label}：敌方${zone}中的【${old.name}】变成了【垃圾】`;
+      this.note(msg,s);
+      this.emit({t:"transformCard",pi:o.idx,sourcePi:s.idx,zone,card:pubCard(old),into:pubCard(into)});
+    }
+    return changed;
+  }
+  drawAndCorrupt(s,o,n,label){
+    for(let i=0;i<n&&this.phase!=="over";i++){
+      const before=new Set(o.hand.map(c=>c.uid));
+      this.draw(o,1,s,label);
+      const drawn=o.hand.find(c=>!before.has(c.uid));
+      if(!drawn)continue;
+      const at=o.hand.indexOf(drawn);
+      const into=o.hand[at]=this.clone(TOKENS.junk,o.hero);
+      const msg=`${label}：敌方新抽到的【${drawn.name}】变成了【垃圾】`;
+      this.note(msg,s);
+      this.emit({t:"transformCard",pi:o.idx,sourcePi:s.idx,zone:"刚抽到的手牌",card:pubCard(drawn),into:pubCard(into)});
+    }
+  }
   _drawHeal(p){
     const n=p.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
     if(!n)return;this.heal(p,2*n);this.note(`彗星观察者×${n}：恢复 ${2*n} 点生命`,p);
@@ -444,6 +516,12 @@ class Game{
     }
     this.emit({t:"turn",pi});
     if(!(pi===this.first&&p.turnsStarted===1))this.draw(p,1);
+    for(const u of p.board.filter(x=>x.effect==="whiteEngine"&&x.health>0))
+      this.destroyEnemyCards(p,this.opp(p),"deck",2,u.name);
+    for(const u of p.board.filter(x=>x.effect==="whiteMargin"&&x.health>0&&this.phase!=="over")){
+      this.forcedRead(p,this.opp(p),1,u.name);
+    }
+    if(this.phase==="over")return;
     /* 苏苏开局：自动抽取并自动使用【苏维埃社会主义共和国联盟】——选择一个政体并成为它 */
     if(p.hero==="苏苏"&&p.regime===null&&p.turnsStarted===1){
       const opts=["rus","ukr","blr"].map(r=>({uid:-1,id:r,name:C.REGIMES[r],cost:0,kind:"spell",art:"☭",text:"开局确立此政体，其后新部署单位按其规则结算"}));
@@ -615,6 +693,34 @@ class Game{
       case"heal2":this.heal(s,2);break;
       case"heal3":this.heal(s,3);break;
       case"draw":this.draw(s,1);break;
+      case"whiteDeck1":this.destroyEnemyCards(s,o,"deck",2,c.name);break;
+      case"whiteDeck2":this.destroyEnemyCards(s,o,"deck",3,c.name);break;
+      case"whiteHand1":this.destroyEnemyCards(s,o,"handOrDeck",1,c.name);break;
+      case"whiteProof":{
+        const weak=o.board.filter(u=>u.attack<=2).sort((a,b)=>a.attack-b.attack||a.health-b.health)[0];
+        if(weak)this.destroyBoardUnit(s,o,weak,c.name);
+        break;
+      }
+      case"whiteMargin":this.forcedRead(s,o,1,c.name);break;
+      case"whiteCorruptHand":this.corruptEnemyCards(s,o,"手牌",1,c.name);break;
+      case"whiteMedic":this.heal(s,4);this.note(`${c.name}：恢复 4 点生命`,s);break;
+      case"whiteAsh":{
+        const n=Math.min(5,Math.floor(s.destroyedCards/2));
+        c.attack+=n;c.health+=n;c.maxHealth+=n;
+        this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，获得 +${n}/+${n}`,s);
+        break;
+      }
+      case"whiteBoard":if(o.board.length)this.destroyBoardUnit(s,o,o.board.slice().sort((a,b)=>b.attack-a.attack)[0],c.name);break;
+      case"whiteFinal":{
+        const n=Math.min(18,4+s.destroyedCards);
+        this.damageHero(o,n);this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，造成 ${n} 点伤害`,s);
+        break;
+      }
+      case"whiteStrike":{
+        const n=Math.min(7,2+Math.floor(s.destroyedCards/3));
+        this.damageHero(o,n);this.note(`${c.name}：造成 ${n} 点伤害`,s);
+        break;
+      }
       case"drawHeal1":this.draw(s,1);this.heal(s,1);break;
       case"drawArmor":this.draw(s,1);this.armor(s,1);break;
       case"armor1":this.armor(s,1);break;
@@ -760,6 +866,12 @@ class Game{
     t.health=0;
     this.note(`${label}：摧毁了 ${t.name}`,s);
     this.emit({t:"fx",name:"destroy",pi:s.idx,uid:t.uid});
+  }
+  destroyBoardUnit(s,o,u,label){
+    if(!u||u.health<=0)return;
+    u.health=0;
+    this.recordDestroyed(s,u,"战场",label);
+    this.emit({t:"fx",name:"destroy",pi:s.idx,uid:u.uid});
   }
   _summonFromDeck(s,o,pred,label){
     const i=s.deck.findIndex(pred);
@@ -993,6 +1105,36 @@ class Game{
         if(t){t.attack+=2;t.health+=2;t.maxHealth+=2;this.note(`${t.name} +2/+2`,s);}
         this.draw(s,1);break;}
       case"ramp":if(this.gainMax(s,1))s.energy+=1;this.draw(s,1);break;
+      case"whiteDeckDraw":this.destroyEnemyCards(s,o,"deck",2,c.name);this.draw(s,1);break;
+      case"whiteDeck2":this.destroyEnemyCards(s,o,"deck",3,c.name);break;
+      case"whiteForce1":this.destroyEnemyCards(s,o,"deck",2,c.name);this.forcedRead(s,o,1,c.name);break;
+      case"whiteForce2":this.forcedRead(s,o,2,c.name);this.armor(s,3);break;
+      case"whiteCorruptDeck":this.corruptEnemyCards(s,o,"牌库",2,c.name);break;
+      case"whiteDrawJunk5":this.drawAndCorrupt(s,o,5,c.name);break;
+      case"whiteMend":this.heal(s,6);this.armor(s,2);this.note(`${c.name}：恢复 6 点生命，获得 2 点护甲`,s);break;
+      case"whiteJunk":this.destroyEnemyCards(o,s,"deck",1,c.name);this.draw(s,1);break;
+      case"whiteHand1":this.destroyEnemyCards(s,o,"handOrDeck",1,c.name);break;
+      case"whiteDeckArmor":this.destroyEnemyCards(s,o,"deck",1,c.name);this.armor(s,3);break;
+      case"whiteDeck2Draw":this.destroyEnemyCards(s,o,"deck",2,c.name);this.draw(s,1);break;
+      case"whiteBurst":{
+        const n=Math.min(10,3+Math.floor(s.destroyedCards/2));
+        this.damageHero(o,n);this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，造成 ${n} 点伤害`,s);
+        break;
+      }
+      case"whiteAoe":{
+        let killed=0;
+        for(const u of o.board.filter(x=>x.health>0)){
+          this.damageUnit(o,u,3,s);
+          if(u.health<=0){this.recordDestroyed(s,u,"战场",c.name);killed++;}
+        }
+        this.note(`${c.name}：对所有敌方单位造成 3 点伤害，消灭 ${killed} 个`,s);
+        break;
+      }
+      case"whiteNight":{
+        const n=this.destroyEnemyCards(s,o,"hand",1,c.name)+this.destroyEnemyCards(s,o,"deck",4,c.name);
+        if(n&&this.phase!=="over"){this.damageHero(o,n);this.note(`${c.name}：额外造成 ${n} 点伤害`,s);}
+        break;
+      }
       case"starClimb":if(this.gainMax(s,1))s.energy=Math.min(s.energy+1,s.maxEnergy);this.loseMax(o,1);break;
       case"damage5":this.damageHero(o,5);break;
       case"damage6":this.damageHero(o,6);break;
@@ -1217,7 +1359,7 @@ function pubCard(c){
 }
 function pubPlayer(p,full){
   return{name:p.name,hero:p.hero,hp:p.hp,maxHp:p.maxHp,armor:p.armor,energy:p.energy,maxEnergy:p.maxEnergy,money:p.money,
-    heroImmune:p.heroImmune,turnsStarted:p.turnsStarted,fatigue:p.fatigue,deckCount:p.deck.length,handCount:p.hand.length,
+    heroImmune:p.heroImmune,turnsStarted:p.turnsStarted,fatigue:p.fatigue,deckCount:p.deck.length,handCount:p.hand.length,destroyedCards:p.destroyedCards||0,destroyedLog:p.destroyedLog||[],
     regime:p.regime||null,regimeChanges:p.regimeChanges||0,fedTurn:!!p.fedTurn,
     decay:p.decay||0,turnCap:p.turnCap==null?null:p.turnCap,playedTurn:p.playedTurn||0,noSpell:!!p.noSpell,
     nextCap:p.nextCap==null?null:p.nextCap,nextNoSpell:!!p.nextNoSpell,
