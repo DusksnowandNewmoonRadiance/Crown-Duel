@@ -116,6 +116,8 @@ input{font:inherit;color:var(--text)}
 .chat-head{padding:10px 14px;font-weight:700;border-bottom:1px solid var(--line);font-size:14px}
 .chat-log{flex:1;min-height:80px;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5}
 .chat-log .msg b{color:var(--gold2);margin-right:6px}
+.reportable-name{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.reportable-name:hover{color:#fff}
 .chat-log .msg.sys{color:var(--muted);font-size:12px;text-align:center}
 .chat-log .msg .t{color:#5f7178;font-size:11px;margin-left:6px}
 .chat-form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
@@ -154,6 +156,10 @@ input{font:inherit;color:var(--text)}
 .field label{font-size:12px;color:var(--muted);letter-spacing:.1em}
 .field input{border:1px solid var(--line2);background:var(--bg2);border-radius:10px;padding:10px 12px}
 .field input:focus,.chat-form input:focus,.join-code input:focus{outline:none;border-color:var(--gold)}
+.keyboard-open .screen{inset:auto 0 auto;top:var(--vv-top,0px);height:var(--vv-height,100dvh)}
+.keyboard-open .modal{inset:auto 0 auto;height:var(--vv-height,100dvh);top:var(--vv-top,0px);align-items:flex-start;justify-content:center;overflow:auto;padding:8px 10px max(8px,env(safe-area-inset-bottom))}
+.keyboard-open .panel{max-height:calc(var(--vv-height,100dvh) - 16px);overscroll-behavior:contain;scroll-padding-block:16px}
+.keyboard-open .panel-acts{position:sticky;bottom:-20px;z-index:2;margin-bottom:-20px;padding:10px 0 8px;background:linear-gradient(180deg,rgba(19,27,32,.9),#131b20 30%)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .seg button,.opp-grid button{border:1px solid var(--line2);background:var(--bg2);border-radius:10px;padding:9px 6px;font-weight:600;font-size:14px}
 .seg button.on,.opp-grid button.on{border-color:var(--gold);background:linear-gradient(180deg,rgba(226,180,103,.22),rgba(226,180,103,.06));color:var(--gold2)}
@@ -354,6 +360,9 @@ input{font:inherit;color:var(--text)}
 .unit .ukw i.death{border-color:#e0664f;color:#ffb3a3}
 .unit .ukw i.fleet{border-color:#b39ce8;color:#dccbff}
 .lock-tag{font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid #6b747a;background:rgba(255,255,255,.07);color:#d6dde1;font-family:var(--mono)}
+.destroy-tag{cursor:pointer}.destroy-tag:hover{filter:brightness(1.3)}
+#destroyList{max-height:42%;overflow-y:auto;border-bottom:1px solid var(--line);padding:10px 14px}
+#destroyList:empty{display:none}.destroy-history>b{display:block;margin:4px 0 8px;color:#e6d4f8}.destroy-history .lg{padding:4px 0}.destroy-history small{color:var(--muted)}
 .hero-block.foe .portrait.tgt{border-color:#ff6a50;box-shadow:0 0 0 5px rgba(255,106,80,.45),0 0 30px rgba(255,106,80,.7);cursor:crosshair;animation:tgtPulse 1s ease-in-out infinite}
 .hero-block.foe .portrait.hot{transform:scale(1.08);box-shadow:0 0 0 6px rgba(255,140,100,.75),0 0 40px rgba(255,120,90,.9)}
 @keyframes tgtPulse{50%{box-shadow:0 0 0 9px rgba(255,106,80,.25),0 0 36px rgba(255,106,80,.5)}}
@@ -455,14 +464,18 @@ input{font:inherit;color:var(--text)}
 #endBtn:active:not(:disabled){transform:scale(.97)}
 #endBtn:disabled{filter:grayscale(.85) brightness(.55);cursor:not-allowed}
 #endBtn.done{background:radial-gradient(ellipse at 50% 30%,#a8f0b8,#3f9a55 80%);border-color:#d4f8dc;animation:endPulse 1.3s ease-in-out infinite}
+#playBtn{min-height:48px;width:180px;border:2px solid #8ce4a4;border-radius:14px;background:linear-gradient(180deg,#276943,#184d32);color:#e4ffeb;font:800 16px var(--serif);box-shadow:0 5px 18px rgba(0,0,0,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#playBtn[hidden]{display:none}
 @keyframes endPulse{50%{box-shadow:0 0 0 8px rgba(111,208,138,.25),0 0 30px rgba(111,208,138,.6)}}
 .timer{width:170px;height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
 .timer i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#6fd08a,#a8f0b8);transform-origin:0 50%;transition:transform .25s linear}
 .timer.warn i{background:linear-gradient(90deg,#e0664f,#ffb09e)}
 
 #chatPanel{position:absolute;right:12px;top:350px;bottom:14px;z-index:85;width:300px;display:flex;flex-direction:column;border-radius:14px;background:rgba(14,20,24,.97);border:1px solid var(--line2);box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden}
-#chatPanel header{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line)}
+#chatPanel header{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);cursor:move;touch-action:none;user-select:none;-webkit-user-select:none}
+#chatPanel header:active{cursor:grabbing}
 #chatPanel header b{font:700 15px var(--serif);flex:1}
+#chatPanel #chatReport{padding:4px 7px;font-size:11px;white-space:nowrap}
 #chatPanel .mute{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer}
 #chatPanel .x{background:none;border:none;color:var(--muted);font-size:16px}
 #chatLog{flex:1;min-height:0;overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:6px;font-size:13.5px;line-height:1.5;user-select:text;-webkit-user-select:text}
@@ -626,6 +639,9 @@ input{font:inherit;color:var(--text)}
   .rules-grid{grid-template-columns:1fr}
   .deck-cards{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .dc .card{font-size:10px}
+}
+@media (max-width:900px){
+  input:not([type="checkbox"]){font-size:16px!important;min-height:44px}
 }
 @media (max-height:520px) and (orientation:landscape){
   .home{grid-template-columns:300px 1fr;gap:16px;padding:10px 16px}
@@ -845,6 +861,53 @@ input{font:inherit;color:var(--text)}
 #stage.compact .hname{font-size:17px}
 #stage.compact .mana b,#stage.compact .counts{font-size:13.5px}
 #stage.compact .hpb{min-width:52px;height:52px;font-size:24px}
+
+/* 手机横屏：压缩舞台高度，让战场和手牌在窄屏上占满可用画面 */
+#stage.mobile .lane.foe{top:14px;height:146px}
+#stage.mobile #midline{top:163px;height:28px}
+#stage.mobile .lane.me{top:196px;height:150px}
+#stage.mobile #hand{top:354px;height:206px;right:250px}
+#stage.mobile .hcard{top:3px}
+#stage.mobile .hcard.sel{transform:translateY(-40px) scale(1.1) rotate(0deg)}
+#stage.mobile .lane,#stage.mobile #midline{right:250px}
+#stage.mobile .row{gap:10px}
+#stage.mobile .unit{width:108px;height:126px}
+#stage.mobile .unit .u{padding:5px 4px 0}
+#stage.mobile .unit .ua{font-size:33px}
+#stage.mobile .unit .un{font-size:14px;max-height:32px}
+#stage.mobile .unit .ust{bottom:-7px}
+#stage.mobile .unit .ust .stat{width:38px;height:38px;font-size:21px}
+#stage.mobile .hero-block{gap:3px}
+#stage.mobile .hero-block.foe{top:5px}
+#stage.mobile .hero-block.me{bottom:4px}
+#stage.mobile .portrait{width:94px;height:94px;font-size:35px}
+#stage.mobile .hpb{min-width:48px;height:48px;font-size:23px}
+#stage.mobile .hname{font-size:16px}
+#stage.mobile .mana b,#stage.mobile .counts{font-size:14px}
+#stage.mobile #foeHand{top:-36px;right:250px}
+#stage.mobile #sideR{width:250px;padding:8px 10px}
+#stage.mobile .side-btns{display:grid;grid-template-columns:repeat(2,62px);gap:6px;align-self:flex-end}
+#stage.mobile .round-btn{width:62px;height:54px;font-size:25px}
+#stage.mobile .pile{display:none}
+#stage.mobile .turn-box{top:165px;right:12px;width:226px;gap:8px}
+#stage.mobile #endBtn{width:212px;height:68px;font-size:22px}
+#stage.mobile #playBtn{width:212px;min-height:56px;font-size:18px}
+#stage.mobile #midText{font-size:15px;max-width:700px}
+#stage.mobile #dropHint{font-size:17px}
+#stage.mobile #castBar{top:188px}
+#stage.mobile #gToast{top:185px;max-width:720px;overflow:hidden;text-overflow:ellipsis}
+#stage.mobile #preview{top:38px}
+#stage.mobile #preview .card{font-size:14px}
+#stage.mobile #preview .kwlist{width:190px}
+#stage.mobile #chatPanel{top:160px;bottom:8px}
+#stage.mobile #aim{height:560px}
+
+@media (max-width:640px){
+  #mSolo .panel{gap:10px;padding:14px;max-height:calc(100dvh - 20px)}
+  #mSolo .opp-grid{grid-template-columns:repeat(4,1fr)}
+  #mSolo .seg button,#mSolo .opp-grid button{min-height:44px}
+  #mSolo .panel-acts{position:sticky;bottom:-14px;background:#131b20;padding:10px 0 4px}
+}
 
 /* ============================================================
    账号 / 商店 / 仓库 / 剧情模式

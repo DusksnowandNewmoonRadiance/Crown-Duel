@@ -28,6 +28,9 @@ if(!Array.isArray(announcements)){
 let balance=read("balance.json",{rev:"",overrides:{},updatedAt:0});
 let stats=read("stats.json",{});
 let users=read("users.json",{});
+let moderation=read("moderation.json",{bans:{},mutes:{},forcedNames:{},reports:[]});
+moderation.bans=moderation.bans||{};moderation.mutes=moderation.mutes||{};
+moderation.forcedNames=moderation.forcedNames||{};moderation.reports=Array.isArray(moderation.reports)?moderation.reports:[];
 /* 胜率统计：{ [hero]: {wins,losses,draws,games,winRate} }，记录联机对局结果 */
 function calcRate(s){s.games=s.wins+s.losses+s.draws;s.winRate=s.games?Math.round(s.wins/s.games*1000)/10:0;return s;}
 
@@ -56,6 +59,41 @@ const Store={
   DATA_DIR,TYPES,
   pubUser,
   stats(){return stats;},
+  moderationState(id){return{ban:moderation.bans[id]||null,mute:moderation.mutes[id]||null,forcedName:moderation.forcedNames[id]||""};},
+  reports(){return moderation.reports.slice().sort((a,b)=>b.createdAt-a.createdAt);},
+  addReport(report){
+    const item=Object.assign({id:crypto.randomUUID(),createdAt:Date.now(),status:"pending",resolvedAt:0,action:""},report);
+    moderation.reports.push(item);if(moderation.reports.length>500)moderation.reports=moderation.reports.slice(-500);
+    write("moderation.json",moderation);return item;
+  },
+  resolveReport(id,action){
+    const item=moderation.reports.find(x=>x.id===id);
+    if(!item)return{ok:false,error:"举报记录不存在"};
+    if(item.status!=="pending")return{ok:false,error:"该举报已处理"};
+    if(!["ban","mute","rename","dismiss"].includes(action))return{ok:false,error:"未知处理方式"};
+    if(action==="rename"&&item.reason!=="name")return{ok:false,error:"只有名字违规举报可以强制改名"};
+    item.status=action==="dismiss"?"dismissed":"resolved";item.action=action;item.resolvedAt=Date.now();
+    const sanction={reason:item.reasonLabel||item.details||"经管理员核实的举报",reportId:item.id,createdAt:Date.now()};
+    if(action==="ban")moderation.bans[item.targetId]=sanction;
+    if(action==="mute")moderation.mutes[item.targetId]=sanction;
+    if(item.reason==="name"&&action!=="dismiss")moderation.forcedNames[item.targetId]="名字违规";
+    write("moderation.json",moderation);return{ok:true,report:item,state:this.moderationState(item.targetId)};
+  },
+  moderationLists(){
+    const rows=obj=>Object.entries(obj).map(([id,v])=>Object.assign({id},typeof v==="string"?{name:v}:{...v})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    return{bans:rows(moderation.bans),mutes:rows(moderation.mutes),forcedNames:rows(moderation.forcedNames)};
+  },
+  removeSanction(id,type){
+    const key=type==="ban"?"bans":type==="mute"?"mutes":null;
+    if(!key||!moderation[key][id])return false;
+    delete moderation[key][id];write("moderation.json",moderation);return true;
+  },
+  setSanction(id,type,reason){
+    const key=type==="ban"?"bans":type==="mute"?"mutes":null;
+    if(!key)return{ok:false,error:"未知处罚类型"};
+    const item={reason:String(reason||"管理员后台处理").slice(0,200),createdAt:Date.now(),reportId:""};
+    moderation[key][id]=item;write("moderation.json",moderation);return{ok:true,state:this.moderationState(id)};
+  },
   /* heroes:[h0,h1]，winner:0|1|"draw" */
   recordMatch(heroes,winner){
     if(!Array.isArray(heroes)||heroes.length<2)return stats;

@@ -26,6 +26,33 @@ function closeModal(id){$(id).hidden=true;}
 $$(".modal").forEach(m=>{
   m.addEventListener("click",e=>{if(e.target===m&&m.id!=="mMatch")m.hidden=true;if(e.target.closest("[data-close]"))m.hidden=true;});
 });
+/* 手机软键盘：让应用外壳和弹窗跟随可视区域收缩，并把当前输入框滚入可见区。 */
+(()=>{
+  const vv=window.visualViewport,root=document.documentElement;
+  let focused=null,scrollTimer=0;
+  const mobile=()=>matchMedia("(max-width: 900px)").matches;
+  function sync(){
+    if(!mobile()||!focused){root.classList.remove("keyboard-open");return;}
+    const h=vv?vv.height:window.innerHeight,top=vv?vv.offsetTop:0;
+    root.style.setProperty("--vv-height",`${Math.max(180,h)}px`);
+    root.style.setProperty("--vv-top",`${Math.max(0,top)}px`);
+    root.classList.add("keyboard-open");
+    clearTimeout(scrollTimer);
+    scrollTimer=setTimeout(()=>{
+      if(!focused||document.activeElement!==focused)return;
+      const r=focused.getBoundingClientRect(),viewTop=vv?vv.offsetTop:0,viewBottom=viewTop+(vv?vv.height:window.innerHeight);
+      if(r.top<viewTop+12||r.bottom>viewBottom-18)focused.scrollIntoView({block:"center",inline:"nearest",behavior:"smooth"});
+    },180);
+  }
+  document.addEventListener("focusin",e=>{
+    if(e.target.matches("input:not([type=checkbox]),textarea,[contenteditable=true]")){focused=e.target;sync();}
+  });
+  document.addEventListener("focusout",e=>{
+    if(e.target===focused){focused=null;setTimeout(()=>{if(!document.activeElement.matches("input:not([type=checkbox]),textarea,[contenteditable=true]")){root.classList.remove("keyboard-open");root.style.removeProperty("--vv-height");root.style.removeProperty("--vv-top");}else{focused=document.activeElement;sync();}},120);}
+  });
+  window.addEventListener("resize",sync);
+  if(vv){vv.addEventListener("resize",sync);vv.addEventListener("scroll",sync);}
+})();
 function confirmBox(title,text,yes){
   return new Promise(res=>{
     $("#cfTitle").textContent=title;$("#cfText").textContent=text;$("#cfYes").textContent=yes||"确定";
@@ -226,9 +253,9 @@ function openSolo(){
   $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();});
   if(Solo.opp===me)Solo.opp="";
   $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+HEROES.filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}</button>`).join("");
-  /* 敌方卡组选择：选七星作战时出现（随机 / 衰减流 / 星联邦流） */
+  /* 七星作为对手时才显示七星的两套敌方卡组 */
   const df=$("#soloOppDeckField");
-  df.hidden=!(me==="七星");
+  df.hidden=Solo.opp!=="七星";
   $$("#soloOppDeck button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.oppDeck));
   $$("#soloLevel button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.level));
   openModal("#mSolo");
@@ -245,7 +272,7 @@ class LocalController{
     const foe=Solo.opp&&Solo.opp!==me?Solo.opp:others[Math.floor(Math.random()*others.length)];
     /* 敌方卡组：七星 AI 可用衰减流/星联邦流——选了七星作战时可指定，否则随机 */
     let foeDeck=C.aiDeck(foe);
-    if(foe==="七星"&&Solo.oppDeck&&Solo.oppDeck!=="random"){
+    if(Solo.opp==="七星"&&foe==="七星"&&Solo.oppDeck&&Solo.oppDeck!=="random"){
       const pd=C.presetDeck("七星",Solo.oppDeck);
       if(pd)foeDeck=pd;
     }
@@ -396,8 +423,8 @@ const Net={
     const s=this.socket=io({transports:["websocket","polling"],reconnectionDelay:800,reconnectionDelayMax:4000});
     s.on("connect",()=>{
       $("#netDot").classList.add("on");$("#connBanner").hidden=true;
-      s.emit("hello",{clientId:Me.cid,nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)},r=>{
-        if(!r||!r.ok)return;this.myId=r.id;
+      s.emit("hello",{clientId:Me.cid,token:Account.token||"",nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)},r=>{
+        if(!r||!r.ok){if(r&&r.banned)toast(r.error||"账号已封禁",false,5000);return;}this.myId=r.id;
         if(this.wasDown&&this.gameOn){GameUI.notice("已重新连接",true);}
         this.wasDown=false;this.hbMiss=0;
         Live.checkBuild(r.build);Live.setMaint(r.maintenance);
@@ -413,6 +440,7 @@ const Net={
     s.io.on("reconnect_failed",()=>{if(this.gameOn)GameUI.notice("重连失败，请检查网络后刷新页面",false);});
     this.startHeartbeat();
     s.on("kicked",d=>{toast(d.reason||"连接已断开");this.leaveAll();});
+    s.on("profile:corrected",d=>{if(d&&d.nick){Me.nick=d.nick;renderHome();if(this.inLobby)renderLobby();}});
     s.on("lobby",d=>{this.lobby=d;renderLobby();});
     s.on("lobby:chatlog",list=>{$("#lobbyChatLog").innerHTML="";list.forEach(m=>chatLine("#lobbyChatLog",m));});
     s.on("lobby:chat",m=>chatLine("#lobbyChatLog",m));
@@ -514,8 +542,10 @@ const Net={
       this.gameOn=true;
       closeModal("#mMatch");$$(".modal").forEach(m=>m.hidden=true);
       show("#scrGame");
-      GameUI.start(this.ctl,"online",{tutorial:store.get("coach","")!=="1",onAgain:()=>this.backToRoomAfterGame(),onExit:()=>this.backToLobbyAfterGame()});
+      GameUI.start(this.ctl,"online",{tutorial:store.get("coach","")!=="1",opponentId:u.foeId,opponentName:u.view&&u.view.foe&&u.view.foe.name,onReport:(id,name)=>openReport(id,name,"game"),onAgain:()=>this.backToRoomAfterGame(),onExit:()=>this.backToLobbyAfterGame()});
     }
+    if(u.foeId)GameUI.opts.opponentId=u.foeId;
+    if(u.view&&u.view.foe)GameUI.opts.opponentName=u.view.foe.name;
     GameUI.push(u);
   },
   act(a){
@@ -545,11 +575,32 @@ function fmtTime(ts){const d=new Date(ts);return String(d.getHours()).padStart(2
 function chatLine(box,m){
   const el=document.createElement("div");el.className="msg"+(m.sys?" sys":"");
   if(m.sys)el.textContent=m.text;
-  else{const b=document.createElement("b");b.textContent=m.nick;el.appendChild(b);el.appendChild(document.createTextNode(m.text));const t=document.createElement("span");t.className="t";t.textContent=fmtTime(m.ts);el.appendChild(t);}
+  else{const b=document.createElement("b");b.textContent=m.nick;if(m.id){b.dataset.reportId=m.id;b.dataset.reportName=m.nick;b.title="点击举报这名玩家";b.classList.add("reportable-name");}el.appendChild(b);el.appendChild(document.createTextNode(m.text));const t=document.createElement("span");t.className="t";t.textContent=fmtTime(m.ts);el.appendChild(t);}
   const log=$(box);const stick=log.scrollTop+log.clientHeight>=log.scrollHeight-30;
   log.appendChild(el);while(log.children.length>80)log.firstChild.remove();
   if(stick)log.scrollTop=log.scrollHeight;
 }
+
+let reportTarget=null;
+function openReport(id,name,source){
+  if(!id||id===Net.myId){toast("请选择另一名玩家进行举报");return;}
+  reportTarget={id:String(id),name:String(name||"玩家"),source:source||"player"};
+  $("#reportTarget").textContent=`举报对象：${reportTarget.name}（ID ${reportTarget.id}）`;
+  $("#reportDetails").value="";$("#reportReason").value="abuse";openModal("#mReport");
+}
+document.addEventListener("click",e=>{
+  const name=e.target.closest("[data-report-id]");if(!name)return;
+  e.preventDefault();e.stopPropagation();
+  openReport(name.dataset.reportId,name.dataset.reportName||name.textContent.trim(),"click");
+},true);
+$("#reportSend").addEventListener("click",()=>{
+  if(!reportTarget||!Net.socket){toast("请先连接联机服务器");return;}
+  Net.socket.emit("moderation:report",{targetId:reportTarget.id,targetName:reportTarget.name,source:reportTarget.source,
+    reason:$("#reportReason").value,details:$("#reportDetails").value},r=>{
+      if(!r||!r.ok){toast((r&&r.error)||"举报未能提交");return;}
+      closeModal("#mReport");toast("举报已发送，等待管理员核实",true,3500);reportTarget=null;
+    });
+});
 
 /* ---------- 大厅 ---------- */
 function renderLobby(){
@@ -567,7 +618,7 @@ function renderLobby(){
     const full=r.players.length>=2,playing=r.status!=="waiting";
     const can=!full&&!playing;
     return`<div class="room-card"><div class="rc-top"><span class="rc-name">${r.locked?"🔒 ":""}${V.esc(r.name)}</span><span class="rc-code">#${V.esc(r.code)}</span><span class="tag ${playing?"play":"wait"}">${playing?"对局中":full?"已满":"等待中"}</span></div>
-      <div class="rc-players">${r.players.map(p=>`<span style="--hcr:${V.heroRgb(p.hero)}"><i>${V.esc(p.hero)}</i>${V.esc(p.nick)}</span>`).join("")}${r.players.length<2?`<span class="muted">空位</span>`:""}</div>
+      <div class="rc-players">${r.players.map(p=>`<span style="--hcr:${V.heroRgb(p.hero)}"><i>${V.esc(p.hero)}</i><b class="reportable-name" data-report-id="${V.esc(p.id)}" data-report-name="${V.esc(p.nick)}" title="点击举报">${V.esc(p.nick)}</b></span>`).join("")}${r.players.length<2?`<span class="muted">空位</span>`:""}</div>
       ${can?`<button class="btn btn-primary" data-join="${V.esc(r.id)}">加入</button>`:""}</div>`;
   }).join("");
 }
@@ -581,7 +632,7 @@ $("#crGo").addEventListener("click",()=>{
   Net.socket.emit("room:create",{name:$("#crName").value,password:$("#crPass").value},r=>{if(r&&r.ok)closeModal("#mCreate");else toast((r&&r.error)||"创建失败");});
 });
 $("#joinCodeForm").addEventListener("submit",e=>{e.preventDefault();const c=$("#joinCode").value.trim();if(!c)return;Net.joinRoom({code:c});});
-$("#lobbyChatForm").addEventListener("submit",e=>{e.preventDefault();const t=$("#lobbyChatIn").value.trim();if(!t||!Net.socket)return;Net.socket.emit("lobby:chat",t);$("#lobbyChatIn").value="";});
+$("#lobbyChatForm").addEventListener("submit",e=>{e.preventDefault();const t=$("#lobbyChatIn").value.trim();if(!t||!Net.socket)return;Net.socket.emit("lobby:chat",t,r=>{if(r&&r.ok)$("#lobbyChatIn").value="";else toast((r&&r.error)||"消息未发送");});});
 
 /* ---------- 房间 ---------- */
 let roomTick=null;
@@ -592,7 +643,7 @@ function renderRoom(){
     const el=$("#seat"+i);
     if(!s){el.className="seat empty-seat";el.style.removeProperty("--hcr");el.innerHTML=`<div style="font-size:30px">＋</div><div>等待对手加入…</div><div class="small">把房间号 <b style="color:var(--gold2)">${V.esc(r.code)}</b> 发给朋友</div>`;return;}
     el.className="seat";el.style.setProperty("--hcr",V.heroRgb(s.hero));
-    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick">${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)} · ${V.esc(C.HERO_INFO[s.hero].title)}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"✔ 已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
+    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)} · ${V.esc(C.HERO_INFO[s.hero].title)}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"✔ 已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
   });
   const me=r.seats[r.you];
   const both=r.seats.every(Boolean);
@@ -621,7 +672,7 @@ $("#roomCodeBtn").addEventListener("click",async()=>{
   try{await navigator.clipboard.writeText(url);toast("邀请链接已复制，发给朋友即可加入",true);}
   catch(e){toast("房间号："+r.code,true,4000);}
 });
-$("#roomChatForm").addEventListener("submit",e=>{e.preventDefault();const t=$("#roomChatIn").value.trim();if(!t||!Net.socket)return;Net.socket.emit("room:chat",t);$("#roomChatIn").value="";});
+$("#roomChatForm").addEventListener("submit",e=>{e.preventDefault();const t=$("#roomChatIn").value.trim();if(!t||!Net.socket)return;Net.socket.emit("room:chat",t,r=>{if(r&&r.ok)$("#roomChatIn").value="";else toast((r&&r.error)||"消息未发送");});});
 
 /* ============================================================
    运营：版本热更新 / 数值热更新 / 公告 / 广播 / 维护

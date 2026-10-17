@@ -17,12 +17,13 @@ const GameUI=(()=>{
   function fit(){
     const wrap=$("#stageWrap");if(!wrap)return;
     const W=wrap.clientWidth,H=wrap.clientHeight;if(!W||!H)return;
-    // 小屏（手机横屏）使用紧凑舞台：逻辑高度 660，整体比 720 高度时大约 9%
-    const compact=H/720<.8;
-    const SH=compact?660:720;
+    const mobile=W>H&&W<=1100;
+    const compact=!mobile&&H/720<.8;
+    const SH=mobile?560:compact?660:720;
     const st=$("#stage");
-    st.classList.toggle("compact",compact);st.style.height=SH+"px";
-    S.SH=SH;FX.setH&&FX.setH(SH);
+    st.classList.toggle("compact",compact);st.classList.toggle("mobile",mobile);st.style.height=SH+"px";
+    S.mobile=mobile;S.SH=SH;FX.setH&&FX.setH(SH);
+    $("#aim").setAttribute("viewBox",`0 0 1280 ${SH}`);
     const s=Math.min(W/1280,H/SH);S.scale=s;
     st.style.transform=`translate(${(W-1280*s)/2}px,${(H-SH*s)/2}px) scale(${s})`;
     if(S.coach)placeCoach();
@@ -39,6 +40,7 @@ const GameUI=(()=>{
     S.viewSeq=undefined;S.introShown=false;S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
     ["#meRow","#foeRow","#hand","#foeHand","#fx","#logList"].forEach(s=>$(s).innerHTML="");
     ["#mulligan","#pick","#option","#result","#pause","#castBar","#preview","#reveal","#chatPanel","#netNotice","#coach","#aim"].forEach(s=>$(s).hidden=true);
+    ["left","top","right","bottom"].forEach(k=>$("#chatPanel").style.removeProperty(k));
     $("#logPanel").classList.add("closed");
     S.chat={log:[],unread:0,sending:false};renderChat();
     $("#pRestart").hidden=mode!=="solo";
@@ -252,8 +254,12 @@ const GameUI=(()=>{
     await FX.play(e.name,e,el);
   }
   function animBurn(e){
+    if(e.destroyed){
+      gtoast(`${e.source}销毁了${e.zone}中的【${e.card.name}】`,false,2800);
+      return;
+    }
+    if(e.overdraw)gtoast(`手牌已满，新抽到的【${e.card.name}】被销毁`,false,2800);
     if(e.pi!==S.view.you)return;
-    gtoast(`手牌已满，【${e.card.name}】被弃置`,false,2000);
     const d=document.createElement("div");
     d.style.cssText="position:absolute;left:574px;top:520px;z-index:75;pointer-events:none;transition:transform .8s cubic-bezier(.4,0,.7,0),opacity .8s";
     d.innerHTML=V.card(e.card);$("#fx").appendChild(d);
@@ -319,9 +325,11 @@ const GameUI=(()=>{
       st+=`<span class="lock-tag st-regime r-${p.fedTurn?"all":p.regime}" title="${V.esc(tip)}">☭ ${V.esc(nm)}${p.fedTurn&&p.regime?" · "+V.esc(C.REGIMES[p.regime]):""}</span>`;
     }
     if(p.hero==="绘梨衣")st+=`<span class="lock-tag st-regime r-all" title="皇冠产出：每个回合开始，手牌获得 1 张【碎纸】">♻ 皇冠产出</span>`;
+    if(p.hero==="白猫")st+=`<button type="button" class="lock-tag st-regime r-all destroy-tag" title="点击查看销毁的卡牌">销毁 ${p.destroyedCards||0} · 查看牌名</button>`;
     if(p.noSpell)st+=`<span class="lock-tag st-lock">禁法术</span>`;
     if((p.nextCap!=null||p.nextNoSpell)&&p.turnCap==null&&!p.noSpell)st+=`<span class="lock-tag st-next">下回合受封锁</span>`;
     box.querySelector(".hr").innerHTML=V.esc(p.hero)+" "+lock+st;
+    box.querySelector(".destroy-tag")?.addEventListener("click",()=>{const panel=$("#logPanel");panel.classList.remove("closed");renderLog();});
     let gems="";for(let i=0;i<10;i++)gems+=`<i class="${i<p.energy?"":(i<p.maxEnergy?"used":"lock")}"></i>`;
     box.querySelector(".gems").innerHTML=gems;
     box.querySelector(".mn").textContent=`${p.energy}/${p.maxEnergy}`;
@@ -402,10 +410,10 @@ const GameUI=(()=>{
   function cls(el){el.className=el._base+(el._enter?" enter":"")+(el._slam?" slam":"")+(el._hit?" hit":"")+(el._dying?" dying":"");}
 
   function layoutHand(n){
-    const avail=816,w=132;
+    const avail=S.mobile?$("#hand").clientWidth:816,w=132;
     const sp=n>1?Math.min(140,(avail-w-10)/(n-1)):0;
     const total=(n-1)*sp+w,start=(avail-total)/2,mid=(n-1)/2;
-    return i=>({left:start+i*sp,rot:(i-mid)*(n>6?2.2:3),ty:Math.pow(Math.abs(i-mid),2)*(n>6?1.1:1.6)});
+    return i=>({left:start+i*sp,rot:(i-mid)*(S.mobile?1.7:(n>6?2.2:3)),ty:Math.pow(Math.abs(i-mid),2)*(S.mobile?.45:(n>6?1.1:1.6))});
   }
   function syncHand(full){
     const v=S.view,box=$("#hand"),hand=v.me.hand;
@@ -457,7 +465,7 @@ const GameUI=(()=>{
     // 目标高亮
     const selU=S.sel&&S.sel.type==="unit"?v.me.board.find(x=>x.uid===S.sel.uid):null;
     heroEl("foe").classList.toggle("tgt",!!(selU&&E.attackTargets(selU,v.foe).hero));
-    renderEndBtn();renderMid();
+    renderEndBtn();renderPlayBtn();renderMid();
     renderMulligan();renderPending();renderCastBar();
     $("#meLane").classList.toggle("drop",!!(S.drag||(S.sel&&S.sel.type==="hand")));
     if(!$("#logPanel").classList.contains("closed"))renderLog();
@@ -476,6 +484,12 @@ const GameUI=(()=>{
     b.textContent="结束回合";b.disabled=!ready()||S.inflight;
     b.classList.toggle("done",ready()&&!actionsLeft()&&!S.cast);
   }
+  function renderPlayBtn(){
+    const b=$("#playBtn"),v=S.view;
+    const c=S.sel&&S.sel.type==="hand"?v.me.hand.find(x=>x.uid===S.sel.uid):null;
+    b.hidden=!S.mobile||!c||!ready()||!!S.cast||!!E.playError(c,v.me,v.foe);
+    if(!b.hidden)b.textContent=`打出 ${c.name}`;
+  }
   function renderMid(){
     const v=S.view,m=$("#midText");let t="",foe=false;
     if(v.phase==="mulligan")t="调度阶段：换掉不想要的起手牌";
@@ -484,12 +498,17 @@ const GameUI=(()=>{
     else if(v.pending)t="请做出选择";
     else if(S.cast)t=`<b>${V.esc(S.cast.spec.label)}</b>`;
     else if(S.sel&&S.sel.type==="unit")t="选择攻击目标（点击红框目标）";
-    else if(S.sel&&S.sel.type==="hand")t="再点一次，或拖到战场上打出";
-    else{const a=actionsLeft();t=a==="play"?"把<b>发光的手牌</b>拖到战场上出牌":a==="attack"?"拖动<b>发光的单位</b>攻击敌人":"没有可执行的操作了，点击<b>结束回合</b>";}
+    else if(S.sel&&S.sel.type==="hand")t=S.mobile?"点右侧按钮出牌，或再点一次手牌":"再点一次，或拖到战场上打出";
+    else{const a=actionsLeft();t=a==="play"?(S.mobile?"点选<b>发光的手牌</b>，再点右侧按钮出牌":"把<b>发光的手牌</b>拖到战场上出牌"):a==="attack"?"拖动<b>发光的单位</b>攻击敌人":"没有可执行的操作了，点击<b>结束回合</b>";}
     m.innerHTML=t;m.className=foe?"foe":"";
   }
   function renderLog(){
     const v=S.view;if(!v)return;
+    const records=[v.me,v.foe].filter(p=>p.hero==="白猫").map(p=>{
+      const rows=(p.destroyedLog||[]).slice().reverse().map((r,i)=>`<div class="lg"><b>${(p.destroyedLog||[]).length-i}.</b> ${V.esc(r.name)} <small>（${V.esc(r.zone)} · ${V.esc(r.source)}）</small></div>`).join("");
+      return `<section class="destroy-history"><b>${V.esc(p.name)}销毁的卡牌（${p.destroyedCards||0}）</b>${rows||'<div class="lg">暂无</div>'}</section>`;
+    }).join("");
+    $("#destroyList").innerHTML=records;
     $("#logList").innerHTML=v.log.slice().reverse().map(l=>`<div class="lg ${l.who}">${l.who==="me"?"<b>你</b> ":l.who==="foe"?"<b>对手</b> ":""}${V.esc(l.text)}</div>`).join("");
   }
 
@@ -699,7 +718,7 @@ const GameUI=(()=>{
     if(pr.drag==="hand"){
       const p=toStage(e.clientX,e.clientY);
       pr.el.style.transform=`translate(${dx/S.scale}px,${dy/S.scale}px) scale(1.06)`;
-      const over=p.y<492;
+      const over=p.y<(S.mobile?354:492);
       const c=S.view.me.hand.find(x=>x.uid===pr.uid),bad=c&&E.playError(c,S.view.me,S.view.foe);
       const lane=$("#meLane");lane.classList.toggle("ready",over&&!bad);lane.classList.toggle("bad",over&&!!bad);
       $("#dropHint").textContent=over?(bad||"松手出牌"):"向上拖到这里出牌";
@@ -731,7 +750,7 @@ const GameUI=(()=>{
       const p=toStage(e.clientX,e.clientY);
       S.drag=null;$("#meLane").classList.remove("ready","bad");$("#dropHint").textContent="松手出牌";
       const c=S.view.me.hand.find(x=>x.uid===pr.uid);
-      if(p.y<492&&c)tryPlay(c);else clearSel();
+      if(p.y<(S.mobile?354:492)&&c)tryPlay(c);else clearSel();
       return;
     }
     if(pr.drag==="aim"){
@@ -757,7 +776,7 @@ const GameUI=(()=>{
       if(S.sel&&S.sel.type==="hand"&&S.sel.uid===c.uid){tryPlay(c);return;}
       S.sel={type:"hand",uid:c.uid};Audio2.sfx("select");
       const err=E.playError(c,v.me,v.foe);if(err)gtoast(err,true);
-      render(false);showPreview(c,pr.el);
+      render(false);if(S.mobile)hidePreview();else showPreview(c,pr.el);
       return;
     }
     if(pr.kind==="unit"&&pr.side==="me"){
@@ -853,6 +872,29 @@ const GameUI=(()=>{
       if(matchMedia("(hover:hover)").matches)setTimeout(()=>$("#chatIn").focus(),30);
     }else $("#chatIn").blur();
   }
+  function setupChatDrag(){
+    const panel=$("#chatPanel"),head=panel.querySelector("header");
+    let drag=null;
+    head.addEventListener("pointerdown",e=>{
+      if(e.button!==0||e.target.closest("button,label,input"))return;
+      const sr=$("#stage").getBoundingClientRect(),pr=panel.getBoundingClientRect(),scale=S.scale||1;
+      drag={id:e.pointerId,scale,sr,w:pr.width/scale,h:pr.height/scale,
+        startX:(e.clientX-sr.left)/scale,startY:(e.clientY-sr.top)/scale,
+        left:(pr.left-sr.left)/scale,top:(pr.top-sr.top)/scale};
+      panel.style.right="auto";panel.style.bottom="auto";
+      panel.style.left=`${drag.left}px`;panel.style.top=`${drag.top}px`;
+      head.setPointerCapture(e.pointerId);e.preventDefault();
+    });
+    head.addEventListener("pointermove",e=>{
+      if(!drag||drag.id!==e.pointerId)return;
+      const x=(e.clientX-drag.sr.left)/drag.scale,y=(e.clientY-drag.sr.top)/drag.scale;
+      const maxX=Math.max(0,1280-drag.w),maxY=Math.max(0,(S.SH||720)-drag.h);
+      panel.style.left=`${Math.min(maxX,Math.max(0,drag.left+x-drag.startX))}px`;
+      panel.style.top=`${Math.min(maxY,Math.max(0,drag.top+y-drag.startY))}px`;
+    });
+    const end=e=>{if(drag&&drag.id===e.pointerId)drag=null;};
+    head.addEventListener("pointerup",end);head.addEventListener("pointercancel",end);
+  }
   async function sendChat(text){
     text=String(text||"").trim().slice(0,60);
     if(!text||!S.ctl||!S.ctl.chat||S.chat.sending)return;
@@ -899,7 +941,7 @@ const GameUI=(()=>{
     const tip=$("#coachTip");
     let tx=Math.min(1280-360,Math.max(20,p.x-170));
     let ty=p.y>360?p.y-p.h/2-pad-170:p.y+p.h/2+pad+16;
-    if(step.sel==="#meHero .portrait"||step.sel==="#meHero .mana"){tx=p.x+p.w/2+30;ty=Math.min(720-190,Math.max(20,p.y-80));}
+    if(step.sel==="#meHero .portrait"||step.sel==="#meHero .mana"){tx=p.x+p.w/2+30;ty=Math.min(S.SH-190,Math.max(20,p.y-80));}
     if(step.sel==="#foeHero .portrait"){tx=p.x+p.w/2+30;ty=p.y-40;}
     if(step.sel==="#endBtn"||step.sel==="#gMenu"){tx=Math.max(20,p.x-p.w/2-380);ty=Math.max(20,p.y-50);}
     tip.style.left=tx+"px";tip.style.top=ty+"px";
@@ -941,7 +983,9 @@ const GameUI=(()=>{
     $("#gLog").addEventListener("click",()=>{const p=$("#logPanel");p.classList.toggle("closed");if(!p.classList.contains("closed"))renderLog();});
     $("#logClose").addEventListener("click",()=>$("#logPanel").classList.add("closed"));
     $("#gChat").addEventListener("click",()=>toggleChat());
+    $("#chatReport").addEventListener("click",()=>{if(S.opts.onReport)S.opts.onReport(S.opts.opponentId,S.opts.opponentName);});
     $("#chatClose").addEventListener("click",()=>toggleChat(false));
+    setupChatDrag();
     $("#chatQuick").addEventListener("click",e=>{const b=e.target.closest("button");if(b)sendChat(b.textContent);});
     $("#chatForm").addEventListener("submit",e=>{e.preventDefault();sendChat($("#chatIn").value);});
     $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Escape"){e.stopPropagation();toggleChat(false);}});
@@ -949,6 +993,7 @@ const GameUI=(()=>{
       if(e.target.checked){S.chat.log=S.chat.log.filter(m=>m.who!=="foe");S.chat.unread=0;$("#stage").querySelectorAll(".emote-bubble.foe").forEach(x=>x.remove());}
       renderChat();});
     $("#gMenu").addEventListener("click",()=>{Audio2.sfx("click");openPause();});
+    $("#playBtn").addEventListener("click",()=>{const c=S.sel&&S.sel.type==="hand"&&S.view&&S.view.me.hand.find(x=>x.uid===S.sel.uid);if(c)tryPlay(c);});
     $("#pResume").addEventListener("click",()=>$("#pause").hidden=true);
     $("#pSfx").addEventListener("click",()=>{Audio2.setSfx(!Audio2.sfxOn);syncPause();});
     $("#pMusic").addEventListener("click",()=>{Audio2.setMusic(!Audio2.musicOn);syncPause();});

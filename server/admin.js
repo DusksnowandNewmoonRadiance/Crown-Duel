@@ -32,6 +32,23 @@ module.exports=function adminRouter(ctx){
 
   router.get("/api/status",(req,res)=>res.json(ctx.status()));
   router.get("/api/stats",(req,res)=>res.json(Store.stats()));
+  router.get("/api/reports",(req,res)=>res.json(ctx.reports()));
+  router.post("/api/reports/:id/resolve",(req,res)=>{
+    const out=ctx.resolveReport(req.params.id,String((req.body||{}).action||""));
+    if(!out.ok)return res.status(400).json({error:out.error||"处理失败"});
+    res.json(out);
+  });
+  router.get("/api/moderation",(req,res)=>res.json(ctx.moderation()));
+  router.post("/api/moderation",(req,res)=>{
+    const b=req.body||{},out=ctx.sanctionPlayer(String(b.id||""),String(b.type||""),String(b.reason||""));
+    if(!out.ok)return res.status(400).json({error:out.error||"处罚失败"});
+    res.json(out);
+  });
+  router.delete("/api/moderation/:type/:id",(req,res)=>{
+    const out=ctx.removeSanction(req.params.id,req.params.type);
+    if(!out.ok)return res.status(404).json({error:out.error||"记录不存在"});
+    res.json(out);
+  });
 
   router.get("/api/announcements",(req,res)=>res.json(Store.announcements()));
   router.post("/api/announcements",(req,res)=>{
