@@ -386,7 +386,32 @@ function defaultDeck(hero){
 }
 
 /* ---- 多套预设卡组：AI 随机选一套；单人模式可选敌方卡组 ---- */
+/* 第二套卡组优先装入主题牌，再按官方推荐卡组补足 40 张，始终遵守携带上限。 */
+function focusedDeck(hero,focus){
+  const pool=PROFILES[hero].cards,list=[],count={};
+  const add=id=>{
+    const c=pool.find(x=>x.id===id);
+    if(!c||list.length>=DECK_SIZE||(count[id]||0)>=c.limit)return false;
+    list.push(id);count[id]=(count[id]||0)+1;return true;
+  };
+  for(const id of focus){
+    const c=pool.find(x=>x.id===id);
+    if(!c)continue;
+    for(let i=0;i<c.limit;i++)add(id);
+  }
+  for(const id of defaultDeck(hero))add(id);
+  for(const c of pool)while(add(c.id)){}
+  return list;
+}
 const DECK_PRESETS={
+  "苏苏":{
+    "俄布海":defaultDeck("苏苏"),
+    "政委整编":focusedDeck("苏苏",["consolidate","red","redcharge","mobilize","vanguard","october","rally","forward","warcom","redOfficer","peoplearmy","kazakh","reddawn"])
+  },
+  "字母":{
+    "新式铺场":defaultDeck("字母"),
+    "策反突破":focusedDeck("字母",["rebelWeakest","rebelLowest","rebel","takeover","break","order","tacticsquad","commando","shadow","evasion","disruption","armored","heavytank","remove"])
+  },
   "七星":{
     "衰减流":defaultDeck("七星"),
     "星联邦流":[
@@ -398,9 +423,37 @@ const DECK_PRESETS={
       "cometTrail","starlightEcho","stardustBeacon",
       "cometTutor","cometTutor","tune","tune"
     ]
+  },
+  "核弹":{
+    "禁忌召唤":defaultDeck("核弹"),
+    "皇冠潜行":focusedDeck("核弹",["superman","ritual","filter","whisper","tea","escape","retreat","forbiddenknowledge","revenge","airstrike","vanish","gaze","resonance","barrier"])
+  },
+  "猪瘟鱼":{
+    "偷钱逃跑":defaultDeck("猪瘟鱼"),
+    "金库控制":focusedDeck("猪瘟鱼",["vaultguard","vault","vaultgate","bribelord","taxman","steal","greyincome","fakebooks","count","escape","vaultfill","accountant","transfer"])
+  },
+  "八幡":{
+    "海盗速攻":defaultDeck("八幡"),
+    "火船炮击":focusedDeck("八幡",["firebomb","fireship","revengepirate","gunner","rum","raider","stalker","intimidate","boarding","finish","king","wallbreaker","raid"])
+  },
+  "045":{
+    "架子班召集":defaultDeck("045"),
+    "情报开发":focusedDeck("045",["develop","adapt","network","handoff","intel","advisor","cardmaker","blueprint","copycrown","meeting","upgrade","summoncall","namecardsummon","taojin","qixing","baimao","highcommand"])
+  },
+  "下水":{
+    "火炮阵地":defaultDeck("下水"),
+    "覆盖轰炸":focusedDeck("下水",["cover","volley","prepfire","saturation","bombardcmd","recon","resupply","ammo","smallcannon","cannon","battery","commander","howitzer","emplacement"])
+  },
+  "绘梨衣":{
+    "废料转化":defaultDeck("绘梨衣"),
+    "回收巨像":focusedDeck("绘梨衣",["colossus","fortress","corner","shredder","station","recycle","sweep","rummage","trade","upcycle","remelt","stocktake","eriyi","crown","guard"])
+  },
+  "白猫":{
+    "毁稿疲劳":defaultDeck("白猫"),
+    "污染审判":focusedDeck("白猫",["editor","pollute","flood","guardian","rally","surge","engine","reserve","night","inspector","medic","mend","shredstorm","sovereign","sentinel"])
   }
 };
-/* 该卡牌师的预设卡组列表（无多套时为 null） */
+/* 该卡牌师的预设卡组列表 */
 function presets(hero){return DECK_PRESETS[hero]||null;}
 /* 按名称取预设卡组 */
 function presetDeck(hero,name){const ps=DECK_PRESETS[hero];return ps&&ps[name]?ps[name]:null;}
