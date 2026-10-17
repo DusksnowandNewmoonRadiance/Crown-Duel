@@ -272,7 +272,7 @@ const PROFILES={
     {id:"sovereign",name:"白猫·空白终章",cost:6,kind:"unit",art:"♛",atk:6,hp:6,text:"部署：对敌方英雄造成 4 点伤害；本局每销毁 1 张敌方卡牌，伤害 +1（至多 18 点）。",effect:"whiteFinal",n:1,limit:1,rarity:"elite"},
     {id:"spark",name:"撕掉一页",cost:1,kind:"spell",art:"✦",text:"销毁敌方牌库顶的 2 张牌，抽 1 张牌。",effect:"whiteDeckDraw",n:4,limit:4,rarity:"common"},
     {id:"surge",name:"强制翻页",cost:2,kind:"spell",art:"⇧",text:"销毁敌方牌库顶的 2 张牌，再强制对手抽 1 张并销毁抽到的牌；牌库为空则触发疲劳。",effect:"whiteForce1",n:2,limit:3,rarity:"rare"},
-    {id:"insight",name:"没收手稿",cost:3,kind:"spell",art:"◎",text:"随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 1 张牌。",effect:"whiteHand1",n:1,limit:2,rarity:"special"},
+    {id:"insight",name:"没收手稿",cost:2,kind:"spell",art:"◎",text:"随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 2 张牌。抽 1 张牌。",effect:"whiteConfiscate",n:1,limit:2,rarity:"special"},
     {id:"rally",name:"末页催读",cost:3,kind:"spell",art:"✧",text:"强制对手抽 2 张牌并销毁抽到的牌；牌库为空时每次抽牌触发疲劳。你获得 3 点护甲。",effect:"whiteForce2",n:1,limit:3,rarity:"rare"},
     {id:"shelter",name:"缺页追击",cost:4,kind:"spell",art:"◈",text:"对敌方英雄造成 3 点伤害；本局每销毁 2 张敌方卡牌，伤害 +1（至多 10 点）。",effect:"whiteBurst",n:1,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"pollute",name:"废稿雨",cost:4,kind:"spell",art:"☣",text:"随机将敌方牌库中的 2 张非垃圾牌变成【垃圾】。",effect:"whiteCorruptDeck",n:2,limit:2,rarity:"special"},

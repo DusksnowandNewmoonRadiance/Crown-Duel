@@ -112,7 +112,7 @@ function playError(card,me,foe){
     if(card.effect==="supplyDeck"&&me.deck&&!me.deck.some(x=>x.kind==="unit"))return"牌库里没有单位牌";
     if(card.effect==="intelSteal"&&foe.deck&&!foe.deck.length)return"敌方牌库已经空了";
     if(card.kind==="spell"&&["whiteDeckDraw","whiteDeck2","whiteDeckArmor","whiteDeck2Draw"].includes(card.effect)&&foe.deck&&!foe.deck.length)return"敌方牌库已经空了";
-    if(card.kind==="spell"&&["whiteHand1","whiteNight"].includes(card.effect)&&foe.hand&&!foe.hand.length&&foe.deck&&!foe.deck.length)return"敌方没有可销毁的卡牌";
+    if(card.kind==="spell"&&["whiteHand1","whiteConfiscate","whiteNight"].includes(card.effect)&&foe.hand&&!foe.hand.length&&foe.deck&&!foe.deck.length)return"敌方没有可销毁的卡牌";
     if(card.effect==="whiteCorruptDeck"&&foe.deck&&!foe.deck.some(x=>x.effect!=="whiteJunk"))return"敌方牌库没有可污染的卡牌";
   }
   if(e==="consolidate"&&redCount(me)<2)return"整编需要至少 2 个【俄布】";
@@ -1114,6 +1114,12 @@ class Game{
       case"whiteMend":this.heal(s,6);this.armor(s,2);this.note(`${c.name}：恢复 6 点生命，获得 2 点护甲`,s);break;
       case"whiteJunk":this.destroyEnemyCards(o,s,"deck",1,c.name);this.draw(s,1);break;
       case"whiteHand1":this.destroyEnemyCards(s,o,"handOrDeck",1,c.name);break;
+      case"whiteConfiscate":{
+        const hasHand=o.hand.length>0;
+        this.destroyEnemyCards(s,o,hasHand?"hand":"deck",hasHand?1:2,c.name);
+        this.draw(s,1);
+        break;
+      }
       case"whiteDeckArmor":this.destroyEnemyCards(s,o,"deck",1,c.name);this.armor(s,3);break;
       case"whiteDeck2Draw":this.destroyEnemyCards(s,o,"deck",2,c.name);this.draw(s,1);break;
       case"whiteBurst":{
