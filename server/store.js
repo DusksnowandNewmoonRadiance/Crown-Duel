@@ -44,6 +44,7 @@ function newUser(user,pass,nick,email){
   return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,email:email||"",gold:0,
     inv:[],                    // 仓库 [{id,qty}]
     campaign:{},               // [hero]:{unlocked,slots:[{deck,ch1,upgrades},×3]}
+    decks:null,                // 云端卡组 {v:2,list:[{id,hero,name,cards,updatedAt}],active:{hero:deckId}}
     token:crypto.randomBytes(16).toString("hex"),
     resetCode:"",resetExp:0,
     createdAt:Date.now()};
@@ -166,6 +167,12 @@ const Store={
     return null;
   },
   logout(token){const u=this.byToken(token);if(u){u.token="";write("users.json",users);}return!!u;},
+  /* ---------- 卡组云端同步（跟着账号走） ---------- */
+  decks(uid){const u=users[uid];return u?(u.decks||null):null;},
+  saveDecks(uid,decks){
+    const u=users[uid];if(!u)return false;
+    u.decks=decks;write("users.json",users);return true;
+  },
   /* ---------- 金币与仓库 ---------- */
   addGold(uid,n){const u=users[uid];if(!u)return 0;u.gold=Math.max(0,u.gold+n);write("users.json",users);return u.gold;},
   /* 商品由 server 侧的 SHOP 定义；buy(item) 返回 {ok,msg} */

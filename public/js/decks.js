@@ -49,6 +49,91 @@ const Decks=(()=>{
   }
   data=load();
 
+  /* ============================================================
+     云端同步：登录后卡组跟着账号走（未登录完全走本地，不报错）
+     - 首次 load 拉一次服务端数据，按卡组 updatedAt 逐条取较新后合并，再推回去
+     - 本地改动后防抖 1.5s 推送，失败静默重试一次
+     ============================================================ */
+  const SYNC={state:"local",timer:0,busy:false};
+  const syncToken=()=>{try{return localStorage.getItem("cd.token")||"";}catch(e){return"";}};
+  function syncState(s){
+    SYNC.state=s;
+    const el=(typeof document!=="undefined"&&document.getElementById)?document.getElementById("dkSync"):null;
+    if(!el)return;
+    el.textContent={synced:"已同步",syncing:"同步中…",error:"同步失败（仅本地）",local:"仅本地（未登录）"}[s]||"";
+    el.dataset.s=s;
+  }
+  function ensureSyncBadge(){
+    if(typeof document==="undefined"||!document.getElementById||document.getElementById("dkSync"))return;
+    const cnt=document.getElementById("dkCount");
+    const host=cnt&&cnt.parentElement;
+    if(!host)return;
+    const el=document.createElement("span");
+    el.id="dkSync";el.className="muted small";el.style.marginLeft="8px";
+    host.appendChild(el);syncState(SYNC.state);
+  }
+  function mergeRemote(remote){
+    if(!remote||!Array.isArray(remote.list))return false;
+    let changed=false;
+    const byId=new Map(data.list.map(d=>[d.id,d]));
+    for(const rd of remote.list){
+      if(!rd||typeof rd.id!=="string"||typeof rd.hero!=="string"||!Array.isArray(rd.cards))continue;
+      const rec={id:rd.id,hero:rd.hero,name:cleanName(rd.name)||"未命名卡组",
+        cards:rd.cards.filter(x=>typeof x==="string"),updatedAt:+rd.updatedAt||0};
+      const cur=byId.get(rec.id);
+      if(!cur){if(data.list.length<MAX_DECKS){data.list.push(rec);byId.set(rec.id,rec);changed=true;}}
+      else if(rec.updatedAt>(+cur.updatedAt||0)){Object.assign(cur,rec);changed=true;}
+    }
+    if(remote.active&&typeof remote.active==="object"){
+      for(const h in remote.active){
+        if(typeof remote.active[h]==="string"&&!data.active[h]){data.active[h]=remote.active[h];changed=true;}
+      }
+    }
+    if(changed)persist();
+    return changed;
+  }
+  async function syncPull(){
+    const t=syncToken();
+    if(!t||typeof fetch!=="function"){syncState("local");return;}
+    syncState("syncing");
+    try{
+      const r=await fetch("/api/decks?token="+encodeURIComponent(t),{cache:"no-store"});
+      const j=await r.json();
+      if(!j||!j.ok){syncState("local");return;}
+      mergeRemote(j.decks);
+      syncState("synced");
+      scheduleSync(0);                       // 合并结果写回服务端
+      const scr=(typeof document!=="undefined"&&document.getElementById)?document.getElementById("scrDecks"):null;
+      if(scr&&!scr.hidden&&typeof renderAll==="function")renderAll();
+    }catch(e){syncState("error");}
+  }
+  function scheduleSync(delay){
+    if(!syncToken())return;
+    clearTimeout(SYNC.timer);
+    SYNC.timer=setTimeout(()=>syncPush(),delay===undefined?1500:delay);
+  }
+  async function syncPush(){
+    const t=syncToken();
+    if(!t||typeof fetch!=="function"){syncState("local");return;}
+    if(SYNC.busy)return;
+    SYNC.busy=true;syncState("syncing");
+    let ok=false;
+    for(let i=0;i<2&&!ok;i++){
+      try{
+        const r=await fetch("/api/decks?token="+encodeURIComponent(t),{
+          method:"PUT",headers:{"content-type":"application/json"},
+          body:JSON.stringify({decks:{v:2,list:data.list,active:data.active}})
+        });
+        const j=await r.json();ok=!!(j&&j.ok);
+      }catch(e){}
+      if(!ok&&i===0)await new Promise(r=>setTimeout(r,900));
+    }
+    SYNC.busy=false;syncState(ok?"synced":"error");
+  }
+  ensureSyncBadge();
+  syncState(syncToken()?"syncing":"local");
+  syncPull();
+
   const virtualDeck=h=>({id:"default:"+h,hero:h,name:"官方推荐",cards:C.defaultDeck(h),virtual:true});
   const api={
     MAX:MAX_DECKS,NAME_MAX,
@@ -72,7 +157,7 @@ const Decks=(()=>{
       const before=data.list.length;
       data.list=data.list.filter(keep);
       for(const h of Object.keys(data.active)){if(!keep({hero:h}))delete data.active[h];}
-      if(data.list.length!==before)persist();
+      if(data.list.length!==before){persist();scheduleSync();}
       const list=allHeroes();
       if(!hero||!list.includes(hero))hero=vanillaHeroes()[0]||list[0]||null;
       if(W&&!list.includes(W.hero))W=null;
@@ -82,7 +167,7 @@ const Decks=(()=>{
     },
     setActive(h,id){
       if(!id||String(id).startsWith("default:"))delete data.active[h];else data.active[h]=id;
-      persist();
+      persist();scheduleSync();
     },
     isActive:d=>api.active(d.hero).id===d.id,
     save(d){
@@ -96,13 +181,13 @@ const Decks=(()=>{
         if(data.list.length>=MAX_DECKS)throw new Error(`最多保存 ${MAX_DECKS} 个卡组，请先删除不用的卡组`);
         rec={id:uid(),hero:d.hero,name,cards,updatedAt:Date.now()};data.list.push(rec);
       }
-      persist();return rec;
+      persist();scheduleSync();return rec;
     },
     remove(id){
       const d=data.list.find(x=>x.id===id);if(!d)return;
       data.list=data.list.filter(x=>x.id!==id);
       if(data.active[d.hero]===id)delete data.active[d.hero];
-      persist();
+      persist();scheduleSync();
     },
     /* 导出 / 导入：CD1.<base64url(json)> */
     encode(d){

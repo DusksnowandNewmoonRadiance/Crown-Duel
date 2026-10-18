@@ -107,6 +107,45 @@ app.get("/api/me",(req,res)=>{
   const u=Store.byToken(tok(req));
   res.json(u?{ok:true,me:Store.pubUser(u)}:{ok:false,msg:"未登录"});
 });
+/* ---------- 卡组云端同步：登录后卡组跟账号走 ---------- */
+const DECKS_MAX=30,DECK_NAME_MAX=16;
+/* 校验并清洗一份卡组数据；不合法返回 null */
+function cleanDecks(raw){
+  if(!raw||typeof raw!=="object"||!Array.isArray(raw.list))return null;
+  if(raw.list.length>DECKS_MAX)return null;
+  const list=[];
+  for(const d of raw.list){
+    if(!d||typeof d!=="object")return null;
+    if(typeof d.id!=="string"||!d.id)return null;
+    const hero=String(d.hero||"");
+    if(!C.PROFILES[hero])return null;                      // 英雄不存在（含未上传的 DIY 角色）
+    if(!Array.isArray(d.cards)||!d.cards.every(x=>typeof x==="string"))return null;
+    const name=String(d.name==null?"":d.name).replace(/[\u0000-\u001f\u007f<>]/g,"").trim().slice(0,DECK_NAME_MAX)||"未命名卡组";
+    list.push({id:d.id.slice(0,40),hero,name,cards:d.cards.slice(0,60),updatedAt:+d.updatedAt||0});
+  }
+  const active={};
+  if(raw.active&&typeof raw.active==="object"){
+    for(const h in raw.active){
+      if(C.PROFILES[h]&&typeof raw.active[h]==="string")active[h]=raw.active[h].slice(0,40);
+    }
+  }
+  return{v:2,list,active};
+}
+app.get("/api/decks",(req,res)=>{
+  res.setHeader("Cache-Control","no-cache");
+  const u=Store.byToken(tok(req));
+  if(!u){res.json({ok:false,msg:"未登录"});return;}
+  res.json({ok:true,decks:Store.decks(u.uid)});
+});
+app.put("/api/decks",(req,res)=>{
+  const u=Store.byToken(tok(req));
+  if(!u){res.json({ok:false,msg:"未登录"});return;}
+  const d=cleanDecks(req.body&&req.body.decks);
+  if(!d){res.status(400).json({ok:false,msg:"卡组数据不合法"});return;}
+  d.updatedAt=Date.now();
+  Store.saveDecks(u.uid,d);
+  res.json({ok:true,updatedAt:d.updatedAt});
+});
 app.get("/api/shop",(req,res)=>res.json({ok:true,items:SHOP}));
 app.post("/api/shop/buy",(req,res)=>{
   const u=needUser(req,res);if(!u)return;
