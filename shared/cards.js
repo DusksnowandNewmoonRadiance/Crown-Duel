@@ -102,7 +102,7 @@ const PROFILES={
     {id:"cardCap",name:"星域封锁",cost:3,kind:"spell",art:"⛓",text:"敌方在下个回合最多只能打出 2 张牌。",effect:"lockCap2",n:2,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"gravityLock",name:"引力锁定",cost:3,kind:"spell",art:"⛓",text:"所有敌方单位在下个回合无法攻击。",effect:"gravityLock",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"gravityFold",name:"引力折叠",cost:3,kind:"spell",art:"⊘",text:"使敌方当前手牌的费用永久 +1。",effect:"costRaise",n:1,limit:1,rarity:"elite"},
-    {id:"stasis",name:"静滞领域",cost:4,kind:"spell",art:"◌",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
+    {id:"stasis",name:"静滞领域",cost:4,kind:"spell",art:"◌",text:"使所有敌方单位的攻击力 -1。",effect:"enemyAtkDown1",n:1,limit:1,rarity:"elite"},
     {id:"silence",name:"寂静星环",cost:4,kind:"spell",art:"◌",text:"敌方在下个回合无法打出法术牌。",effect:"lockSpell",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"withering",name:"凋零彗尾",cost:4,kind:"spell",art:"☄",text:"敌方英雄获得 2 层【衰减】，抽 1 张牌。",effect:"decay2draw",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"doomsday",name:"终焉倒计时",cost:5,kind:"spell",art:"⌛",text:"使敌方英雄的【衰减】层数翻倍（至少 +1 层）。",effect:"decayDouble",n:1,limit:1,rarity:"elite"},
