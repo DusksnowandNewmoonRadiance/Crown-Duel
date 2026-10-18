@@ -65,6 +65,124 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   g.endTurn(1);
   check("护甲在自己的下个回合开始时清空",a.armor===0);
 }
+/* ---- 白俄罗斯铁壁体系：10 张专用卡 ---- */
+{
+  const P=C.PROFILES["苏苏"].cards,by=id=>P.find(c=>c.id===id);
+  const c1=by("blrConscript"),tr=by("blrTrench"),g1=by("blrGarrison"),b1=by("blrBastion"),
+        r1=by("blrRailway"),rp=by("blrRepair"),f1=by("blrFortify"),w1=by("blrArmorWall"),
+        st=by("blrSteelTide"),tk=C.TOKENS.redTank;
+  check("白俄罗斯民兵：1 费 1/2 嘲讽 亡语 +2 甲",
+    c1.cost===1&&c1.atk===1&&c1.hp===2&&c1.taunt&&c1.effect==="blrDeathArmor"&&c1.rarity==="common"&&c1.limit===4);
+  check("战壕：2 费 0/5 嘲讽",tr.cost===2&&tr.atk===0&&tr.hp===5&&tr.taunt&&!tr.effect&&tr.rarity==="common"&&tr.limit===4);
+  check("明斯克卫戍军：2 费 2/4 嘲讽 部署 +2 甲",
+    g1.cost===2&&g1.atk===2&&g1.hp===4&&g1.taunt&&g1.effect==="blrGarrison"&&g1.rarity==="common"&&g1.limit===4);
+  check("边防哨所：3 费 0/6 嘲讽 回合末 +1 甲",
+    b1.cost===3&&b1.atk===0&&b1.hp===6&&b1.taunt&&b1.effect==="blrBastion"&&b1.limit===4);
+  check("装甲列车：5 费 4/6 嘲讽 部署 +3 甲",
+    r1.cost===5&&r1.atk===4&&r1.hp===6&&r1.taunt&&r1.effect==="blrRailway"&&r1.rarity==="special"&&r1.limit===2);
+  check("抢修列车：3 费法术 3 甲抽 1",rp.cost===3&&rp.kind==="spell"&&rp.effect==="armor3draw"&&rp.rarity==="common"&&rp.limit===4);
+  check("筑垒令：2 费法术，护甲=2×嘲讽数",f1.cost===2&&f1.kind==="spell"&&f1.effect==="blrFortify"&&f1.rarity==="rare"&&f1.limit===3);
+  check("铁壁：3 费法术，嘲讽 +1/+1 并 +2 甲",w1.cost===3&&w1.kind==="spell"&&w1.effect==="blrArmorWall"&&w1.rarity==="rare"&&w1.limit===3);
+  check("钢铁洪流：10 费精英，每回合产 1 张坦克",st.cost===10&&st.kind==="spell"&&st.effect==="blrSteelTide"&&st.rarity==="elite"&&st.limit===1);
+  check("红军坦克 token：5/4 冲锋",tk.atk===5&&tk.hp===4&&tk.charge===true&&tk.kind==="unit");
+  check("10 张铁壁专用卡都带 blr 标记",[c1,tr,g1,b1,r1,rp,f1,w1,st].every(c=>c.rep==="blr"));
+}
+/* ---- 白俄罗斯铁壁：部署 / 亡语 / 回合末 叠甲 ---- */
+{
+  const {g,a}=setup(2);a.energy=a.maxEnergy=99;a.armor=0;
+  play(g,0,give(g,a,"blrGarrison"));
+  const u=a.board.find(x=>x.id==="blrGarrison");
+  check("卫戍军：部署获得 2 点护甲",a.armor===2,a.armor);
+  check("白俄罗斯：新嘲讽单位 +1/+2（卫戍军 3/6）",u.attack===3&&u.health===6,u.attack+"/"+u.health);
+  play(g,0,give(g,a,"blrRailway"));
+  check("装甲列车：部署获得 3 点护甲（累计 5）",a.armor===5,a.armor);
+
+  const d=setup(2);d.a.armor=0;
+  const m=mk(d.g,"苏苏","blrConscript");d.a.board.push(m);m.health=0;d.g.cleanup();
+  check("白俄罗斯民兵：亡语获得 2 点护甲",d.a.armor===2,d.a.armor);
+
+  const t=setup(2);t.a.armor=0;t.a.board.push(mk(t.g,"苏苏","blrBastion"));
+  t.g.endTurn(0);
+  check("边防哨所：有嘲讽单位时回合末额外 +1（政体 2 + 哨所 1）",t.a.armor===3,t.a.armor);
+  const n=setup(2);n.a.armor=0;
+  const bast=mk(n.g,"苏苏","blrBastion");bast.taunt=false;n.a.board.push(bast);
+  n.g.endTurn(0);
+  check("边防哨所：没有嘲讽单位时只吃政体 +2",n.a.armor===2,n.a.armor);
+}
+/* ---- 筑垒令：2×嘲讽单位数（0 / 1 / 3） ---- */
+{
+  const {g,a}=setup(2);a.energy=a.maxEnergy=99;a.armor=0;
+  play(g,0,give(g,a,"blrFortify"));
+  check("筑垒令：0 个嘲讽 → 0 护甲",a.armor===0,a.armor);
+  a.board.push(mk(g,"苏苏","redheavy"));
+  play(g,0,give(g,a,"blrFortify"));
+  check("筑垒令：只有非嘲讽单位 → 仍是 0",a.armor===0,a.armor);
+  a.board.push(mk(g,"苏苏","blrConscript"));
+  play(g,0,give(g,a,"blrFortify"));
+  check("筑垒令：1 个嘲讽 → 2 护甲",a.armor===2,a.armor);
+  a.board.push(mk(g,"苏苏","blrConscript"),mk(g,"苏苏","blrBastion"));
+  a.armor=0;
+  play(g,0,give(g,a,"blrFortify"));
+  check("筑垒令：3 个嘲讽 → 6 护甲",a.armor===6,a.armor);
+}
+/* ---- 铁壁 / 抢修列车 ---- */
+{
+  const {g,a}=setup(2);a.energy=a.maxEnergy=99;a.armor=0;
+  const u1=mk(g,"苏苏","blrConscript"),u2=mk(g,"苏苏","blrGarrison"),u3=mk(g,"苏苏","redheavy");
+  a.board.push(u1,u2,u3);
+  const a2=u2.attack;
+  play(g,0,give(g,a,"blrArmorWall"));
+  check("铁壁：嘲讽单位 +1/+1",u1.attack===2&&u1.health===3&&u2.attack===a2+1&&u2.health===5,u1.attack+"/"+u1.health+" "+u2.attack+"/"+u2.health);
+  check("铁壁：非嘲讽单位不受影响",u3.attack===4&&u3.health===5);
+  check("铁壁：获得 2 点护甲",a.armor===2,a.armor);
+  a.armor=0;
+  play(g,0,give(g,a,"blrRepair"));
+  check("抢修列车：3 点护甲并抽 1 张",a.armor===3,a.armor);
+}
+/* ---- 钢铁洪流：10 费终端，每个自己的回合开始产 1 张红军坦克 ---- */
+{
+  const {g,a}=setup(2);a.energy=a.maxEnergy=99;a.armor=0;a.hand=[];
+  const res=play(g,0,give(g,a,"blrSteelTide"));
+  check("钢铁洪流：可以打出（10 费）",res.ok,res.error);
+  check("钢铁洪流：标记为永久生效",a.steelTide===true);
+  const c2=give(g,a,"blrSteelTide");
+  check("钢铁洪流：重复打出被拒绝",!!E.playError(c2,a,g.players[1]),E.playError(c2,a,g.players[1]));
+
+  a.hand=[];
+  g.endTurn(0);g.endTurn(1);
+  const t1=a.hand.filter(c=>c.id==="redTank");
+  check("钢铁洪流：下个自己的回合开始获得 1 张红军坦克",t1.length===1,t1.length);
+  a.hand=[];
+  g.endTurn(0);g.endTurn(1);
+  check("钢铁洪流：再下一个回合再获得 1 张",a.hand.filter(c=>c.id==="redTank").length===1,a.hand.length);
+
+  a.hand=[];for(let i=0;i<C.MAX_HAND;i++)a.hand.push(g.clone(C.TOKENS.redTank,"苏苏"));
+  const before=a.hand.length;
+  g.endTurn(0);g.endTurn(1);
+  check("钢铁洪流：手牌满时不加牌",a.hand.length===before&&a.hand.length<=C.MAX_HAND,a.hand.length);
+}
+/* ---- 红军坦克：5/4 冲锋，落场即可攻击（blr 政体不吃掉它的冲锋） ---- */
+{
+  const {g,a}=setup(2);a.energy=a.maxEnergy=99;
+  const t=g.clone(C.TOKENS.redTank,"苏苏");a.hand=[t];
+  const res=g.playCard(0,t.uid,[],null);
+  const tank=a.board.find(u=>u.id==="redTank");
+  check("红军坦克：可以打出",res.ok,res.error);
+  check("红军坦克：5/4 冲锋且当回合可攻击",!!tank&&tank.attack===5&&tank.health===4&&tank.charge&&tank.atkLeft>0,tank?tank.attack+"/"+tank.health+" atkLeft="+tank.atkLeft:"");
+}
+/* ---- 两套预设：俄布海 / 白俄罗斯铁壁 ---- */
+{
+  const rus=C.presetDeck("苏苏","俄布海"),blr=C.presetDeck("苏苏","白俄罗斯铁壁");
+  check("苏苏有两套预设",!!rus&&!!blr);
+  check("俄布海 40 张且合法",rus.length===40&&!C.deckError("苏苏",rus),C.deckError("苏苏",rus));
+  check("白俄罗斯铁壁 40 张且合法",blr.length===40&&!C.deckError("苏苏",blr),C.deckError("苏苏",blr));
+  check("俄布海不含铁壁卡",!rus.some(id=>/^blr/.test(id)));
+  check("铁壁卡组不含俄布体系牌",!blr.some(id=>["red","redguard","redcharge","redOfficer","commissar","mobilize","vanguard","october","consolidate","rally","warcom","kazakh","reddawn","peoplearmy"].includes(id)));
+  check("铁壁卡组里 9 张 blr 专用卡齐全",new Set(blr.filter(id=>/^blr/.test(id))).size===9,[...new Set(blr.filter(id=>/^blr/.test(id)))].join(","));
+  check("铁壁卡组带钢铁洪流终端",blr.includes("blrSteelTide"));
+  check("苏苏牌表 28 张以上（含铁壁卡）",C.PROFILES["苏苏"].cards.filter(c=>c.id!=="awaSwap").length>=28,C.PROFILES["苏苏"].cards.length);
+}
+
 /* ---- 整编 ---- */
 {
   const {g,a,b}=setup(0);
@@ -219,13 +337,33 @@ const play=(g,pi,c,t,o)=>g.playCard(pi,c.uid,t||[],o);
   const v=g.viewFor(1);
   check("视图公开政体和更换次数",v.foe.regime==="ukr"&&v.foe.regimeChanges===1);
 }
-/* ---- 默认卡组 ---- */
+/* ---- 默认卡组（俄布海） ---- */
 {
   const d=C.defaultDeck("苏苏"),ids=new Set(d);
-  check("苏苏默认卡组合法",!C.deckError("苏苏",d));
+  check("苏苏默认卡组（俄布海）合法",!C.deckError("苏苏",d));
+  check("苏苏默认卡组正好 40 张",d.length===40,d.length);
+  check("默认卡组保留俄布核心",["red","mobilize","october","kazakh"].every(id=>d.includes(id)));
+  check("默认卡组不含铁壁卡（两套卡组分开）",!d.some(id=>/^blr/.test(id)));
   const drawText=C.PROFILES["苏苏"].cards.filter(c=>/抽 \d+ 张牌|抽 1 张牌/.test(c.text));
   check("苏苏现在有抽牌组件（战时共产主义 / 先锋动员）",drawText.length>0,drawText.map(c=>c.name).join(","));
-  check("苏苏牌表在 18~26 张之间",ids.size>=18&&ids.size<=26,ids.size);
+  check("默认卡组牌型数量在 18~26 之间",ids.size>=18&&ids.size<=26,ids.size);
+}
+/* ---- 钢铁洪流的 AI 决策：残血不乱打、健康时当终端 ---- */
+{
+  const AIPlayer=require("../shared/ai.js").AIPlayer;
+  const mkGame=hp=>{
+    const g=new E.Game({players:[{name:"甲",hero:"苏苏",deck:C.presetDeck("苏苏","白俄罗斯铁壁")},{name:"乙",hero:"字母"}],first:0});
+    g.mulligan(0,[]);g.mulligan(1,[]);
+    if(g.pending&&g.pending.pi===0)g.resolvePending(0,0);
+    const a=g.players[0];a.hp=hp;a.armor=0;a.energy=a.maxEnergy=10;a.board=[];
+    const t=g.clone(C.cardDef("苏苏","blrSteelTide"),"苏苏");a.hand=[t];
+    return{g,a,t};
+  };
+  const low=mkGame(5),high=mkGame(20);
+  const actLow=new AIPlayer("normal").next(low.g,0);
+  const actHigh=new AIPlayer("normal").next(high.g,0);
+  check("钢铁洪流：残血（5 血）时 AI 不会主动打出",!(actLow.type==="play"&&actLow.uid===low.t.uid),actLow.type);
+  check("钢铁洪流：血量健康时 AI 会打出",actHigh.type==="play"&&actHigh.uid===high.t.uid,actHigh.type);
 }
 console.log(fail?"SUSU TEST FAILED":"SUSU TEST PASSED");
 process.exit(fail?1:0);

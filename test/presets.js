@@ -5,9 +5,9 @@ const counts=deck=>Object.entries(deck.reduce((out,id)=>{
   out[id]=(out[id]||0)+1;return out;
 },{})).sort(([a],[b])=>a.localeCompare(b));
 
-/* 只有成熟的多套预设才允许保留（目前仅七星：衰减流 / 星联邦流）。
+/* 只有成熟的多套预设才允许保留（七星：衰减流 / 星联邦流；苏苏：俄布海 / 白俄罗斯铁壁）。
    其余卡牌师只留官方推荐那一套，第二套已撤下。 */
-const MULTI_HEROES=new Set(["七星"]);
+const MULTI_HEROES=new Set(["七星","苏苏"]);
 
 for(const hero of Object.keys(Cards.PROFILES)){
   const presets=Cards.presets(hero);

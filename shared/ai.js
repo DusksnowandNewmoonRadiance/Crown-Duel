@@ -22,7 +22,7 @@ const HERO_STYLE={
   核弹:{aggro:.9},
   八幡:{aggro:.9},
   字母:{aggro:.55,rebelWall:true},
-  苏苏:{aggro:.5},
+  苏苏:{aggro:.45,armorEngine:true},
   绘梨衣:{aggro:.35,scrapEngine:true},
   七星:{aggro:.3,slow:true},
   下水:{aggro:.5},
@@ -98,6 +98,10 @@ function scoreCard(s,o,c,lethal,stage){
     if(e==="drawHeal")sc+=4;
     if(e==="decay1")sc+=2.5;
     if(c.id==="superman")sc+=6;
+    if(c.id==="redTank"){   // 红军坦克 token：5/4 冲锋，能打脸时高分
+      const reach=faceReachAll(s,o)+(c.attack||0)*(c.strikes||1);
+      sc+=reach>=o.hp+o.armor?20:2;
+    }
     if(e==="copySmallCannon")sc+=gunCount(s)*1.5;
     if(e==="baimaoDeploy")sc-=3;
     if(e==="whiteAsh")sc+=Math.min(5,Math.floor((s.destroyedCards||0)/2))*2;
@@ -191,6 +195,18 @@ function scoreCard(s,o,c,lethal,stage){
     if(/armor|traceBoost|nebulaShield2|timeShield2/.test(e))sc+=.8;   // 护甲会在自己的下个回合开始时消散，价值较低
     if(e==="evasion")sc+=s.hp<=12&&o.board.length?4:-3;
     if(e==="disruption")sc+=enN?3:0;
+    /* 白俄罗斯铁壁：嘲讽站场 → 叠甲 → 拖到 10 费铺开坦克产线 */
+    if(/^blr/.test(e)){
+      const walls=s.board.filter(u=>u.health>0&&u.taunt).length;
+      if(c.kind==="unit"){
+        if(e==="blrGarrison"||e==="blrRailway")sc+=2.5;        // 部署即叠甲，稳赚
+        else if(e==="blrBastion")sc+=1.5+(walls?1:0);          // 每回合 +1 甲，站得住才值
+        else if(e==="blrDeathArmor")sc+=1.5;                   // 亡语甲，被清场时补偿
+      }
+      else if(e==="blrFortify")sc+=walls>=1?5+walls*1.2:-2;    // 至少 1 个嘲讽才打
+      else if(e==="blrArmorWall")sc+=walls>=1?4+walls*1.5:(s.hp<=14?1:-3);
+      else if(e==="blrSteelTide")sc+=s.hp>8?12:-60;            // 终端：血够厚才铺永久坦克产线
+    }
   }
   /* —— 角色风格修正（叠加在通用打分之上） —— */
   const style=HERO_STYLE[s.hero]||{};
@@ -231,6 +247,9 @@ function scoreCard(s,o,c,lethal,stage){
   if(style.rebelWall&&/^(rebel|takeover|rebelLowest|rebelWeakest)/.test(e)){   // 字母：敌方有嘲讽时策反稍偏拆墙
     const walls=o.board.filter(u=>u.taunt);
     if(walls.length)sc+=Math.min(4,walls.length*2);
+  }
+  if(style.armorEngine){   // 苏苏·白俄罗斯铁壁：护甲是资源，不是消耗品
+    if(/^blr/.test(e)&&e!=="blrSteelTide"&&s.board.some(u=>u.taunt&&u.health>0))sc+=1.5;
   }
   if(s.hero==="核弹"){   // 核弹：积极找超人（直伤抢血由通用 burn 分处理）
     if(c.id==="superman"||e==="summonSuperman"||e==="tutorSuperman"||e==="filterSuperman")sc+=4;

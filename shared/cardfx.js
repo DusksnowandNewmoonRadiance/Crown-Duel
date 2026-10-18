@@ -56,6 +56,7 @@ const ELITE={
   "苏苏:winter":{pattern:"ring",palette:"frost",glyph:"❄",target:"foeBoard"},
   "苏苏:peoplearmy":{native:true,label:"人民军（原有动画）"},
   "苏苏:reddawn":{native:true,label:"赤色黎明（原有动画）"},
+  "苏苏:blrSteelTide":{pattern:"wave",palette:"steel",glyph:"✹",target:"foeBoard"},
   /* 字母 */
   "字母:guard":{pattern:"pillar",palette:"gold",glyph:"◈",target:"meBoard"},
   "字母:heavytank":{pattern:"cross",palette:"steel",glyph:"▣",target:"meBoard"},

@@ -41,7 +41,20 @@ const PROFILES={
     {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
     {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"},
-    {id:"awaSwap",name:"终局突袭",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"}
+    {id:"awaSwap",name:"终局突袭",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"},
+    /* ============ 白俄罗斯铁壁（第二套卡组专用：极防 + 拖时间，不吃俄布体系） ============ */
+    /* 单位：廉价嘲讽墙，铺满前期 */
+    {id:"blrConscript",name:"白俄罗斯民兵",cost:1,kind:"unit",art:"▤",atk:1,hp:2,text:"嘲讽。亡语：获得 2 点护甲。",flavor:"明斯克郊外的防线，从民兵开始。",taunt:true,effect:"blrDeathArmor",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrTrench",name:"战壕",cost:2,kind:"unit",art:"▥",atk:0,hp:5,text:"嘲讽。",flavor:"一条战壕能拖住一个师。",taunt:true,rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrGarrison",name:"明斯克卫戍军",cost:2,kind:"unit",art:"⛨",atk:2,hp:4,text:"嘲讽。部署：获得 2 点护甲。",taunt:true,effect:"blrGarrison",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrBastion",name:"边防哨所",cost:3,kind:"unit",art:"▥",atk:0,hp:6,text:"嘲讽。你的回合结束时，若你控制至少 1 个嘲讽单位，获得 1 点护甲。",flavor:"哨所还在，防线就没断。",taunt:true,effect:"blrBastion",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrRailway",name:"装甲列车",cost:5,kind:"unit",art:"▦",atk:4,hp:6,text:"嘲讽。部署：获得 3 点护甲。",taunt:true,effect:"blrRailway",rep:"blr",n:0,limit:2,rarity:"special"},
+    /* 法术：叠甲 / 加固 / 清场 */
+    {id:"blrRepair",name:"抢修列车",cost:3,kind:"spell",art:"⚒",text:"获得 3 点护甲，抽 1 张牌。",flavor:"铁轨通了，防线就还在。",effect:"armor3draw",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrFortify",name:"筑垒令",cost:2,kind:"spell",art:"⛨",text:"获得 2 点护甲 × 你的嘲讽单位数。",flavor:"每一条街都要变成工事。",effect:"blrFortify",rep:"blr",n:0,limit:3,rarity:"rare"},
+    {id:"blrArmorWall",name:"铁壁",cost:3,kind:"spell",art:"▨",text:"使你的所有嘲讽单位获得 +1/+1，获得 2 点护甲。",effect:"blrArmorWall",rep:"blr",n:0,limit:3,rarity:"rare"},
+    /* 终端：10 费永久状态，此后每个自己的回合开始固定产出 1 张【红军坦克】 */
+    {id:"blrSteelTide",name:"钢铁洪流",cost:10,kind:"spell",art:"✹",text:"本局永久生效：你的每个回合开始时，将 1 张【红军坦克】加入你的手牌。",flavor:"铁轨修好了，洪流就停不下来。",effect:"blrSteelTide",rep:"blr",n:0,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[
     {id:"sentry",name:"卫戍哨兵",cost:1,kind:"unit",art:"盾",atk:1,hp:3,text:"嘲讽。",taunt:true,n:2,limit:3,rarity:"rare"},
@@ -287,6 +300,8 @@ const PROFILES={
 const TOKENS={
   awaBand:{id:"awaBand",name:"爵士乐队",cost:3,kind:"unit",art:"♪",atk:0,hp:4,owner:"awa",untargetable:true,text:"无法被敌方单位攻击。你的单位和法术对敌方造成的伤害 +1（可叠加）。"},
   redGuard:{id:"redGuard",name:"近卫红军",cost:0,kind:"unit",art:"★",atk:0,hp:1,charge:true,rep:"rus",text:"冲锋。整编的产物：属性等于被整编的【俄布】之和。"},
+  /* 钢铁洪流的产物：只存在于手牌，不进任何卡池 / 默认卡组 */
+  redTank:{id:"redTank",name:"红军坦克",cost:2,kind:"unit",art:"▰",atk:5,hp:4,charge:true,rep:"blr",text:"冲锋。"},
   second:{id:"second",name:"苏二世",cost:4,kind:"unit",art:"Ⅱ",atk:3,hp:5,effect:"secondDeploy",transfer:"third",text:"部署：选择一个政体，并使攻击力最高的敌方单位眩晕 1 回合。引渡：被消灭时，把【苏三世】置入你的手牌。",flavor:"自行引渡至德德，逐渐正常化。",rep:"rus"},
   third:{id:"third",name:"苏三世",cost:6,kind:"unit",art:"Ⅲ",atk:6,hp:6,charge:true,effect:"thirdDeploy",text:"冲锋。部署：本回合三种政体的加成同时生效（代价不生效）。",flavor:"人脉威望达到顶峰。",rep:"rus"},
   scrap:{id:"scrap",name:"碎纸",cost:0,kind:"spell",art:"▫",text:"废料。没有任何效果。",scrap:true},
@@ -312,7 +327,7 @@ const COLORS={绘梨衣:"#a8c97a",苏苏:"#e0664f",字母:"#6fb6dc",七星:"#a98
 /* 新手引导信息：难度 1~3 */
 const HERO_INFO={
   绘梨衣:{difficulty:3,title:"小怪兽国 · 架子班",tip:"每个回合开始你会得到一张【碎纸】——它们是废料，也是原料。前期靠废料单位撑住，攒够废料后用【变废为宝】【回炉重造】换成真正的好牌，或者一口气打成伤害和生命。手牌上限只有 10 张，别让废料把手牌塞满。"},
-  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"开局自动打出【苏维埃社会主义共和国联盟】，选择一个政体成为它——俄布海通常选【俄罗斯】（新单位部署即可攻击）。铺满【俄布】后用【整编令】【红军集结】和增益一波推进，靠【战时共产主义】补牌。怕群伤清场，注意别一次铺太满。"},
+  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"开局自动打出【苏维埃社会主义共和国联盟】，选择一个政体成为它——俄布海通常选【俄罗斯】（新单位部署即可攻击）。铺满【俄布】后用【整编令】【红军集结】和增益一波推进，靠【战时共产主义】补牌。也可以走白俄罗斯铁壁：嘲讽站场、回合末叠甲，再用【钢铁洪流】把护甲换成清场。怕群伤清场，注意别一次铺太满。"},
   字母:{difficulty:2,title:"新式战法领袖",tip:"超模单位压场，用【消除限制】撕掉嘲讽和免疫后直伤突破；关键时刻策反对手最强的单位。"},
   七星:{difficulty:3,title:"彗星国领袖",tip:"不急着赢：压低对手的费用上限、封锁出牌，再用【衰减】一层一层磨死对手。"},
   核弹:{difficulty:2,title:"凹槽皇帝",tip:"卡组很薄，靠防御和逃跑撑住，找到【超人】后一击决胜——它每回合攻击两次，但只存在到你的下个回合开始。"},
@@ -407,7 +422,25 @@ function focusedDeck(hero,focus){
   return list;
 }
 const DECK_PRESETS={
-  "苏苏":{"俄布海":defaultDeck("苏苏")},
+  "苏苏":{
+    /* 原体系：俄布海（吃俄罗斯政体的冲锋 + 整编 + 俄布增益） */
+    "俄布海":defaultDeck("苏苏"),
+    /* 第二套：白俄罗斯铁壁——极防 + 拖时间，几乎全是 blr 组件，只有极少数不吃俄布的通用牌。
+       不打俄布体系（没有 red / redguard / redcharge / 整编 / 俄布增益），
+       唯一制胜点是 10 费【钢铁洪流】：此后每个自己的回合开始固定产 1 张【红军坦克】。 */
+    "白俄罗斯铁壁":[
+      "blrConscript","blrConscript","blrConscript","blrConscript",
+      "blrTrench","blrTrench","blrTrench","blrTrench",
+      "blrGarrison","blrGarrison","blrGarrison","blrGarrison",
+      "blrBastion","blrBastion","blrBastion","blrBastion",
+      "blrRailway","blrRailway",
+      "blrRepair","blrRepair","blrRepair","blrRepair",
+      "blrFortify","blrFortify","blrFortify",
+      "blrArmorWall","blrArmorWall","blrArmorWall",
+      "blrSteelTide",
+      "forward","forward","winter","intel","intel","intelSteal","intelSteal","supply","supply","redheavy","redheavy"
+    ]
+  },
   "字母":{"新式铺场":defaultDeck("字母")},
   "七星":{
     "衰减流":defaultDeck("七星"),
@@ -418,7 +451,7 @@ const DECK_PRESETS={
       "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
       "stasisfield","cometStrike","starlightPray","starlock","cometShackle",
       "cometTrail","starlightEcho","stardustBeacon",
-      "cometTutor","cometTutor","tune","tune"
+      "cometTutor","cometTutor","cometWatcher","tune"
     ]
   },
   "核弹":{"禁忌召唤":defaultDeck("核弹")},

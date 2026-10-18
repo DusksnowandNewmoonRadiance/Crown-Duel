@@ -21,9 +21,15 @@ function hasBonus(p,r){return!!p&&(p.regime===r||!!p.fedTurn);}
 function hasCost(p,r){return!!p&&p.regime===r;}
 /* 增伤：爵士乐队（所有伤害）、乌克兰政体（部署与法术伤害，不含战斗） */
 function boost(src,n,combat){return n>0?n+bandCount(src)+((!combat&&hasBonus(src,"ukr"))?1:0):n;}
+/* 白俄罗斯铁壁：卡组里带了足够多的 blr 组件时，开局优先选白俄罗斯（俄罗斯政体拿不到护甲，整套甲牌会哑火） */
+function blrPieces(p){
+  const cards=((p&&p.deck)||[]).concat((p&&p.hand)||[]);
+  return cards.filter(c=>c&&(c.rep==="blr"||/^blr/.test(c.id||""))).length;
+}
 function bestRegime(me,foe){
   const enAtk=foe.board.reduce((a,u)=>a+(u.health>0?u.attack:0),0);
   if(me.hp<=12||enAtk>=8)return"blr";
+  if(blrPieces(me)>=6)return"blr";
   if(foe.board.length>=3)return"ukr";
   return"rus";
 }
@@ -98,6 +104,7 @@ function playError(card,me,foe){
   if(e==="reshuffleDraw"&&!me.hand.length)return"调节：你手牌为空";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
+  if(e==="blrSteelTide"&&me.steelTide)return"钢铁洪流：本局已经生效，不需要再打第二张";
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
   {
     const sc=me.hand.filter(x=>x.scrap&&x.uid!==card.uid).length;
@@ -190,7 +197,7 @@ class Game{
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp,maxHp:hp,armor:0,energy:0,maxEnergy:0,
       fatigue:0,deck,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
-      decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,
+      decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,steelTide:false,
       stats:{dmg:0,played:0,kills:0}};
   }
   clone(c,hero,upLvl){
@@ -329,7 +336,7 @@ class Game{
   _enter(p,u){
     this._ready(u);
     if(u.kind!=="unit")return;
-    if(hasCost(p,"blr")&&u.charge){u.charge=false;u.atkLeft=0;}
+    if(hasCost(p,"blr")&&u.charge&&u.id!=="redTank"){u.charge=false;u.atkLeft=0;}
     if(hasBonus(p,"rus")&&!u.charge){u.charge=true;u.atkLeft=u.strikes;}
     if(hasBonus(p,"blr")&&u.taunt){u.attack+=1;u.health+=2;u.maxHealth+=2;}
     if(hasCost(p,"ukr")&&u.health>1){u.health-=1;u.maxHealth=Math.max(1,u.maxHealth-1);}
@@ -356,7 +363,7 @@ class Game{
   }
   loseMax(p,n){p.maxEnergy=Math.max(0,p.maxEnergy-n);p.energy=Math.min(p.energy,p.maxEnergy);}
   cleanup(){
-    const triggers=[],souls=[];
+    const triggers=[],souls=[],armorTriggers=[];
     for(const p of this.players){
       const dead=p.board.filter(u=>u.health<=0);
       if(!dead.length)continue;
@@ -370,7 +377,7 @@ class Game{
           this.emit({t:"ce",id:"killBoss",text:(this.campaign.events&&this.campaign.events.killBoss)||"敌方首领被击杀了！"});
         }
       }
-      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);});
+      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);if(u.effect==="blrDeathArmor")armorTriggers.push([p,u]);});
     }
     souls.forEach(([p,u])=>{
       const id=u.transfer||u.recycle;
@@ -387,6 +394,10 @@ class Game{
     triggers.forEach(([p,u])=>{
       this.note(`${u.name} 的亡语：对敌方英雄造成 ${u.deathDmg} 点伤害`,p);
       this.damageHero(this.opp(p),u.deathDmg);
+    });
+    /* 白俄罗斯民兵：亡语叠 2 点护甲 */
+    armorTriggers.forEach(([p,u])=>{
+      this.armor(p,2);this.note(`${u.name} 的亡语：获得 2 点护甲`,p);
     });
   }
   _ready(u){u.atkLeft=u.charge?u.strikes:0;u.fresh=true;}
@@ -506,6 +517,12 @@ class Game{
       this.damageHero(p,p.decay,{fatigue:true});
     }
     if(this.phase==="over")return;
+    /* 钢铁洪流：永久状态，每个自己的回合开始把 1 张【红军坦克】加入手牌（手牌满则跳过） */
+    if(p.steelTide){
+      const tank=this.clone(TOKENS.redTank,p.hero);
+      if(this.addToHand(p,tank))this.note("钢铁洪流：红军坦克进入手牌",p);
+      else this.note("钢铁洪流：手牌已满，红军坦克没能进入手牌",p);
+    }
     if(this.lock!==null)this.note("停摆：费用上限无法增加",p);
     p.maxEnergy=Math.min(MAX_ENERGY,p.maxEnergy+(this.lock!==null?0:1));
     p.energy=p.maxEnergy;
@@ -555,6 +572,10 @@ class Game{
     const p=this.players[pi];
     for(const u of p.board){u.fresh=false;if(u.tempAtk){u.attack=Math.max(0,u.attack-u.tempAtk);u.tempAtk=0;}}
     if(hasBonus(p,"blr")){this.armor(p,2);this.note("白俄罗斯政体：回合结束，获得 2 点护甲",p);}
+    /* 边防哨所：己方回合结束时，只要场上还有嘲讽单位，就再叠 1 点护甲 */
+    if(p.board.some(u=>u.health>0&&u.effect==="blrBastion")&&p.board.some(u=>u.health>0&&u.taunt)){
+      this.armor(p,1);this.note("边防哨所：回合结束，获得 1 点护甲",p);
+    }
     p.fedTurn=false;
     p.hand.forEach(x=>{x.sealed=false;});
     this.emit({t:"endTurn",pi});
@@ -725,6 +746,9 @@ class Game{
       case"drawArmor":this.draw(s,1);this.armor(s,1);break;
       case"armor1":this.armor(s,1);break;
       case"armor2":this.armor(s,2);break;
+      /* 白俄罗斯铁壁：部署即叠甲 */
+      case"blrGarrison":this.armor(s,2);this.note(`${c.name}：部署，获得 2 点护甲`,s);break;
+      case"blrRailway":this.armor(s,3);this.note(`${c.name}：部署，获得 3 点护甲`,s);break;
       case"armor3":this.armor(s,3);this.note("海岸防线：获得 3 点护甲",s);break;
       case"hero1":this.damageHero(o,1);break;
       case"hero2":this.damageHero(o,2);break;
@@ -1012,6 +1036,19 @@ class Game{
       case"armor3draw":this.armor(s,3);this.draw(s,1);break;
       case"traceBoost":this.armor(s,6);this.draw(s,2);break;
       case"timeShield2":this.armor(s,5);this.heal(s,3);break;
+      /* 白俄罗斯铁壁：嘲讽刺数 → 护甲 → 甲换清场 */
+      case"blrFortify":{
+        const n=s.board.filter(u=>u.health>0&&u.taunt).length*2;
+        if(n>0)this.armor(s,n);
+        this.note(`筑垒令：${n>0?`获得 ${n} 点护甲`:"没有嘲讽单位，未获得护甲"}`,s);
+        break;}
+      case"blrArmorWall":{
+        const walls=s.board.filter(u=>u.health>0&&u.taunt);
+        walls.forEach(u=>{u.attack+=1;u.health+=1;u.maxHealth+=1;});
+        this.armor(s,2);
+        this.note(`铁壁：${walls.length} 个嘲讽单位 +1/+1，获得 2 点护甲`,s);
+        break;}
+      case"blrSteelTide":s.steelTide=true;this.note("钢铁洪流：本局你的每个回合开始都会获得 1 张【红军坦克】",s);break;
       case"nebulaShield2":this.armor(s,10);this.draw(s,2);break;
       case"buffPirate3":{
         const list=(targets&&targets.length)?targets:autoTargets(c,s,o);
