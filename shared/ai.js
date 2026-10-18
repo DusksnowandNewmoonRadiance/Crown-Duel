@@ -146,6 +146,7 @@ function scoreCard(s,o,c,lethal,stage){
     }
     else if(e==="fireShip")sc+=(enN>=2&&myN)?enN*2.5-myN*1.5:-100;
     else if(/^enemyAtkDown/.test(e))sc+=enN?o.board.reduce((a,u)=>a+Math.min(u.attack,2),0)*1.3:-100;
+    else if(e==="stasisField")sc+=(enN?o.board.reduce((a,u)=>a+Math.min(u.attack,1),0)*1.3:0)+3;
     else if(e==="gravityLock")sc+=enN>=2?4:-100;
     else if(e==="removeRestrict")sc+=3+(o.heroImmune?4:0)+o.board.filter(u=>u.taunt).length*2;
     else if(/^(remove|adapt)/.test(e))sc+=enN?Math.max(...o.board.map(unitValue))*.9:(e==="adapt"?-2:-100);
@@ -244,7 +245,7 @@ function scoreCard(s,o,c,lethal,stage){
     if(/^(aoe2|aoe4|whiteAoe|stunAllDraw|cometStrike)$/.test(e||""))sc+=enN>=2?4:0;
     if(/^(draw1|draw2|draw3|foresee|forecast|cometTutor|tune|reshuffleDraw)$/.test(e||""))sc+=s.hand.length<=5?2.5:1;  // 找牌但别爆牌
     if(c.taunt)sc+=1.5;
-    if(e==="cometStrike")sc+=s.hp>42?12:(s.hp>=38?2:0);            // 彗星陨击要血 >40 才能打
+    if(e==="cometStrike")sc+=s.hp>40?12:(s.hp>=36?2:0);            // 彗星陨击要血 >40 才能打
     if(/^(heal2|heal3draw|heal4Draw1|heal5Armor2|healDraw|draw2heal2|draw2heal6|draw1heal2|armor3draw|armor3Draw1)$/.test(e||""))sc+=s.hp<44?2.5:0;  // 先把血叠过 40
   }
   /* —— 角色风格修正（叠加在通用打分之上） —— */
@@ -264,8 +265,8 @@ function scoreCard(s,o,c,lethal,stage){
     if(c.id==="cometWatcher")sc+=2;
     if(s.board.some(u=>u.effect==="drawHeal")&&/draw|foresee/.test(e))sc+=2;
     if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
-    if(c.effect==="cometStrike")sc+=(s.hp>42?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
-    if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e)&&s.hp<=46)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
+    if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
+    if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
     if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者时仅手牌多才洗（重抽），手牌少绝不打（亏费，低于出牌底线直接跳过）
       const w=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
       if(w)sc+=10+w*6;

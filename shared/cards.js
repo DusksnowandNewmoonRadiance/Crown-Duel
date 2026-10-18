@@ -102,7 +102,7 @@ const PROFILES={
     {id:"cardCap",name:"星域封锁",cost:3,kind:"spell",art:"⛓",text:"敌方在下个回合最多只能打出 2 张牌。",effect:"lockCap2",n:2,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"gravityLock",name:"引力锁定",cost:3,kind:"spell",art:"⛓",text:"所有敌方单位在下个回合无法攻击。",effect:"gravityLock",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"gravityFold",name:"引力折叠",cost:3,kind:"spell",art:"⊘",text:"使敌方当前手牌的费用永久 +1。",effect:"costRaise",n:1,limit:1,rarity:"elite"},
-    {id:"stasis",name:"静滞领域",cost:4,kind:"spell",art:"◌",text:"使所有敌方单位的攻击力 -1。",effect:"enemyAtkDown1",n:1,limit:1,rarity:"elite"},
+    {id:"stasis",name:"静滞领域",cost:4,kind:"spell",art:"◌",text:"使所有敌方单位的攻击力 -1，并使敌方的费用上限 -1。",effect:"stasisField",n:1,limit:1,rarity:"elite"},
     {id:"silence",name:"寂静星环",cost:4,kind:"spell",art:"◌",text:"敌方在下个回合无法打出法术牌。",effect:"lockSpell",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"withering",name:"凋零彗尾",cost:4,kind:"spell",art:"☄",text:"敌方英雄获得 2 层【衰减】，抽 1 张牌。",effect:"decay2draw",n:1,limit:2,rarity:"special",fx:"sp_bind"},
     {id:"doomsday",name:"终焉倒计时",cost:5,kind:"spell",art:"⌛",text:"使敌方英雄的【衰减】层数翻倍（至少 +1 层）。",effect:"decayDouble",n:1,limit:1,rarity:"elite"},
@@ -117,7 +117,7 @@ const PROFILES={
     {id:"cometTutor",name:"彗星预言",cost:3,kind:"spell",art:"☄",text:"从牌库中将【彗星陨击】加入手牌。如果没有，改为抽 2 张牌。",effect:"cometTutor",n:0,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"starcore",name:"星核卫士",cost:5,kind:"unit",art:"▥",atk:3,hp:12,text:"嘲讽。部署：选择你手牌中的 1 张牌，其费用变为 0。",taunt:true,effect:"starCoreZero",n:0,limit:1,rarity:"elite"},
     {id:"tune",name:"调节",cost:2,kind:"spell",art:"⇄",text:"将你的手牌全部洗入牌库并洗牌，然后抽取等同于洗入数量 +1 的牌。",effect:"reshuffleDraw",n:0,limit:4,rarity:"common"},
-    {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 42，对敌方英雄造成 35 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
+    {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 40，对敌方英雄造成 35 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
   ]},
   "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:30,cards:[
     {id:"refugee",name:"旧大陆难民",cost:1,kind:"unit",art:"◇",atk:1,hp:3,text:"嘲讽。",taunt:true,n:3,limit:3,rarity:"rare"},
