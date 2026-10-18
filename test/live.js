@@ -36,6 +36,23 @@ const results=[];const check=(name,ok,extra)=>{results.push(ok);console.log((ok?
   await api("PUT","/admin/api/balance",{overrides:{}});
   check("删除覆盖后恢复原值",C.PROFILES["苏苏"].cards.find(c=>c.id==="red").cost===2);
   check("数值保存到磁盘",fs.existsSync(path.join(process.env.DATA_DIR,"balance.json")));
+  // 名字违规处理与解除：解除后服务端应接受新昵称
+  const Store=require("../server/store.js");
+  const report=Store.addReport({reporterId:"live-reporter",reporterName:"举报者",targetId:hello.id,targetName:"测试",reason:"name",reasonLabel:"名字违规"});
+  const corrected=wait(s,"profile:corrected");
+  const rename=await api("POST",`/admin/api/reports/${report.id}/resolve`,{action:"rename"});
+  check("举报确认后强制改名",rename.status===200&&(await corrected).nick==="名字违规");
+  const stillForced=wait(s,"profile:corrected");
+  s.emit("profile",{nick:"未解除时修改"});
+  check("强制改名期间不能改昵称",(await stillForced).nick==="名字违规");
+  const released=await api("DELETE",`/admin/api/moderation/name/${hello.id}`);
+  check("后台可解除强制改名",released.status===200&&!Store.moderationState(hello.id).forcedName);
+  s.emit("profile",{nick:"恢复昵称"});
+  const roomEvent=wait(s,"room");
+  const namedRoom=await new Promise(r=>s.emit("room:create",{name:"改名测试"},r));
+  const view=await roomEvent;
+  check("解除后新昵称在房间中生效",namedRoom.ok&&view.seats[0].nick==="恢复昵称");
+  s.emit("room:leave");
   // 维护
   const pm=wait(s,"maintenance");await api("POST","/admin/api/maintenance",{action:"on",message:"维护测试"});const m=await pm;
   const cr=await new Promise(r=>s.emit("room:create",{},r));

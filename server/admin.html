@@ -48,7 +48,7 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
 <div class="adm" id="login">
   <div class="box">
     <h1>运营后台</h1>
-    <p class="hint">请输入后台口令（部署时生成，保存在服务器的 /etc/crown-duel.env 里）。</p>
+    <p class="hint">请输入后台口令。Windows 启动脚本会显示口令，也会保存在 data/admin-token.txt；服务器部署请查看 /etc/crown-duel.env。</p>
     <input id="tok" type="password" placeholder="后台口令" autocomplete="current-password">
     <button class="btn btn-gold" id="loginBtn">进入</button>
     <div class="msg err" id="loginMsg"></div>
@@ -187,7 +187,7 @@ async function loadReports(){
 async function loadModeration(){
   const m=await api("GET","/moderation"),groups=[["封号","ban",m.bans],["禁言","mute",m.mutes],["违规昵称","name",m.forcedNames]];
   const rows=groups.flatMap(([label,type,list])=>list.map(x=>({label,type,...x})));
-  $("#moderationList").innerHTML=rows.length?rows.map(x=>`<div class="ann"><div class="meta"><b>${esc(x.label)}：${esc(x.name||x.id)}</b><div class="sub">ID：<code>${esc(x.id)}</code>${x.reason?` · 原因：${esc(x.reason)}`:""}</div></div>${x.type==="name"?"":`<button class="btn" data-remove-sanction="${esc(x.type)}" data-id="${esc(x.id)}">解除${esc(x.label)}</button>`}</div>`).join(""):`<p class="hint">暂无处罚记录</p>`;
+  $("#moderationList").innerHTML=rows.length?rows.map(x=>`<div class="ann"><div class="meta"><b>${esc(x.label)}：${esc(x.name||x.id)}</b><div class="sub">ID：<code>${esc(x.id)}</code>${x.reason?` · 原因：${esc(x.reason)}`:""}</div></div><button class="btn" data-remove-sanction="${esc(x.type)}" data-id="${esc(x.id)}">解除${x.type==="name"?"强制改名":esc(x.label)}</button></div>`).join(""):`<p class="hint">暂无处罚记录</p>`;
 }
 $("#reportList").onclick=async e=>{
   const b=e.target.closest("[data-report-action]");if(!b)return;

@@ -84,7 +84,7 @@ const Store={
     return{bans:rows(moderation.bans),mutes:rows(moderation.mutes),forcedNames:rows(moderation.forcedNames)};
   },
   removeSanction(id,type){
-    const key=type==="ban"?"bans":type==="mute"?"mutes":null;
+    const key=type==="ban"?"bans":type==="mute"?"mutes":type==="name"?"forcedNames":null;
     if(!key||!moderation[key][id])return false;
     delete moderation[key][id];write("moderation.json",moderation);return true;
   },
