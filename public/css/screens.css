@@ -59,6 +59,7 @@
 }
 .act-go .ic{width:17px;height:17px}
 .act:hover{border-color:var(--line-3);background:rgba(255,255,255,.025)}
+.act:focus-visible,.act-row:focus-visible,.htile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .act:hover .act-go{transform:translateX(4px);color:var(--text)}
 
 /* 主行动：场上最亮的一块纸白，全页唯一的高对比面 */
@@ -86,7 +87,7 @@
 }
 .act-row .ic{width:13px;height:13px;color:var(--ink-500);transition:transform var(--t-slow) var(--e-out),color var(--t-fast)}
 .act-row:hover{color:var(--ink-0);border-color:var(--line-3)}
-.act-row:hover .ic{color:var(--ink-100);transform:translateX(3px)}
+.act-row:hover .ic,.act-row:focus-visible .ic{color:var(--ink-100);transform:translateX(3px)}
 
 .ver{
   font-size:var(--fs-xs);color:var(--ink-400);letter-spacing:0;
