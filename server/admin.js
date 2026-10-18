@@ -58,6 +58,67 @@ module.exports=function adminRouter(ctx){
     res.json(out);
   });
 
+  /* ---- 玩家管理（查人 / 金币 / 段位 / 配饰 / 踢下线 / 清空卡组 + 审计） ---- */
+  const audit=(req,action,uid,payload)=>Store.adminLog({ip:req.ip,action,uid:uid||"",payload:payload||null});
+  const onlineUids=()=>{try{return ctx.onlineUids?ctx.onlineUids():new Set();}catch(e){return new Set();}};
+
+  router.get("/api/users",(req,res)=>{
+    const online=onlineUids();
+    const users=Store.adminListUsers(req.query.q,req.query.limit).map(u=>({
+      uid:u.uid,nick:u.nick,user:u.user,gold:u.gold||0,
+      rank:(u.rank&&u.rank.seg)||25,
+      rankPoints:(u.rank&&u.rank.points)||0,
+      online:online.has(u.uid),
+      createdAt:u.createdAt||0,
+      decks:(u.decks&&Array.isArray(u.decks.list))?u.decks.list.length:0,
+      titles:(u.cosmetics&&u.cosmetics.titles)||[],
+      color:(u.cosmetics&&u.cosmetics.equip&&u.cosmetics.equip.color)||null
+    }));
+    res.json({users,total:users.length});
+  });
+  router.get("/api/users/:uid",(req,res)=>{
+    const u=Store.adminUser(String(req.params.uid||""));
+    if(!u)return res.status(404).json({error:"用户不存在"});
+    const online=onlineUids();
+    res.json({user:{
+      uid:u.uid,user:u.user,nick:u.nick,email:u.email||"",gold:u.gold||0,
+      rank:u.rank||null,cosmetics:u.cosmetics||null,
+      online:online.has(u.uid),createdAt:u.createdAt||0,
+      decks:u.decks?{count:Array.isArray(u.decks.list)?u.decks.list.length:0,active:u.decks.active||null,updatedAt:u.decks.updatedAt||0}:null
+    }});
+  });
+  router.post("/api/users/:uid/gold",(req,res)=>{
+    const b=req.body||{},out=Store.adminAddGold(String(req.params.uid||""),b.delta,b.reason);
+    if(!out.ok)return res.status(400).json({error:out.error});
+    audit(req,"gold",req.params.uid,{delta:out.delta,reason:out.reason,gold:out.gold});
+    res.json(out);
+  });
+  router.post("/api/users/:uid/rank",(req,res)=>{
+    const b=req.body||{},out=Store.adminSetRank(String(req.params.uid||""),b.seg);
+    if(!out.ok)return res.status(400).json({error:out.error});
+    audit(req,"rank",req.params.uid,{seg:out.rank.seg});
+    res.json(out);
+  });
+  router.post("/api/users/:uid/cosmetics",(req,res)=>{
+    const b=req.body||{},out=Store.adminCosmetic(String(req.params.uid||""),String(b.kind||""),String(b.id||""),String(b.action||"grant"));
+    if(!out.ok)return res.status(400).json({error:out.error});
+    audit(req,"cosmetics",req.params.uid,{kind:b.kind,id:b.id,action:b.action});
+    res.json(out);
+  });
+  router.post("/api/users/:uid/kick",(req,res)=>{
+    const uid=String(req.params.uid||"");
+    const n=ctx.kickUser?ctx.kickUser(uid):0;
+    audit(req,"kick",uid,{sockets:n});
+    res.json({ok:true,kicked:n});
+  });
+  router.post("/api/users/:uid/decks/reset",(req,res)=>{
+    const out=Store.adminClearDecks(String(req.params.uid||""));
+    if(!out.ok)return res.status(400).json({error:out.error});
+    audit(req,"decks-reset",req.params.uid,null);
+    res.json({ok:true});
+  });
+  router.get("/api/logs",(req,res)=>res.json({logs:Store.adminLogs(req.query.limit)}));
+
   router.get("/api/announcements",(req,res)=>res.json(Store.announcements()));
   router.post("/api/announcements",(req,res)=>{
     try{

@@ -310,6 +310,71 @@ const Store={
     write("users.json",users);return res;
   },
   rankOf(uid){const u=findUser("uid",uid);return u?Rank.normalize(u.rank):null;},
+  /* ============================================================
+     后台 · 玩家管理（查人 / 金币 / 段位 / 配饰 / 清空卡组 / 审计）
+     ============================================================ */
+  adminListUsers(q,limit){
+    const kw=String(q||"").trim().toLowerCase();
+    const out=[];
+    for(const k in users){
+      const u=users[k];
+      if(kw){
+        const hay=(String(u.nick||"")+" "+String(u.uid||"")+" "+String(u.user||"")).toLowerCase();
+        if(!hay.includes(kw))continue;
+      }
+      out.push(u);
+    }
+    out.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    return out.slice(0,Math.max(1,Math.min(200,+limit||50)));
+  },
+  adminUser(uid){return users[uid]||null;},
+  adminAddGold(uid,delta,reason){
+    const u=users[uid];if(!u)return{ok:false,error:"用户不存在"};
+    const d=Math.round(+delta||0);
+    if(!d)return{ok:false,error:"金额不能为 0"};
+    if((u.gold||0)+d<0)return{ok:false,error:`金币不足（当前 ${u.gold||0}）`};
+    u.gold=(u.gold||0)+d;write("users.json",users);
+    return{ok:true,gold:u.gold,delta:d,reason:String(reason||"").slice(0,80)};
+  },
+  adminSetRank(uid,seg){
+    const u=users[uid];if(!u)return{ok:false,error:"用户不存在"};
+    const s=Math.round(+seg||0);
+    if(!(s>=Rank.MIN_SEG&&s<=Rank.MAX_SEG))return{ok:false,error:`段位必须是 ${Rank.MIN_SEG}~${Rank.MAX_SEG}`};
+    u.rank=Object.assign(Rank.empty(),{seg:s,points:0,streak:0,lossStreak:0});
+    write("users.json",users);return{ok:true,rank:u.rank};
+  },
+  adminCosmetic(uid,kind,id,action){
+    const u=users[uid];if(!u)return{ok:false,error:"用户不存在"};
+    if(!u.cosmetics)u.cosmetics={titles:[],colors:[],equip:{title:null,color:null}};
+    const cos=u.cosmetics;
+    if(kind==="title"){
+      if(!["title_recruit","title_general"].includes(id))return{ok:false,error:"未知头衔"};
+      if(action==="grant"){if(!cos.titles.includes(id))cos.titles.push(id);}
+      else{cos.titles=cos.titles.filter(x=>x!==id);if(cos.equip.title===id)cos.equip.title=null;}
+    }else if(kind==="color"){
+      if(!NAME_COLORS.some(c=>c.id===id))return{ok:false,error:"未知颜色"};
+      if(action==="grant"){if(!cos.colors.includes(id))cos.colors.push(id);}
+      else{cos.colors=cos.colors.filter(x=>x!==id);if(cos.equip.color===id)cos.equip.color=null;}
+    }else return{ok:false,error:"未知配饰类型"};
+    write("users.json",users);return{ok:true,cosmetics:cos};
+  },
+  adminClearDecks(uid){
+    const u=users[uid];if(!u)return{ok:false,error:"用户不存在"};
+    u.decks=null;write("users.json",users);return{ok:true};
+  },
+  /* 操作审计：DATA_DIR/admin-log.json，最多 2000 条 */
+  adminLog(entry){
+    let list=read("admin-log.json",[]);
+    if(!Array.isArray(list))list=[];
+    list.push(Object.assign({ts:Date.now()},entry||{}));
+    if(list.length>2000)list=list.slice(list.length-2000);
+    write("admin-log.json",list);return true;
+  },
+  adminLogs(limit){
+    const list=read("admin-log.json",[]);
+    const arr=Array.isArray(list)?list:[];
+    return arr.slice(-Math.max(1,Math.min(200,+limit||50))).reverse();
+  },
   announcements(){return announcements.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt);},
   upsertAnnouncement(a){
     const now=Date.now();

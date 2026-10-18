@@ -33,6 +33,10 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
 .msg.ok{color:var(--green)}.msg.err{color:#f0a090}
 .maint-on{color:#f0a090;font-weight:700}
 .cards-ref{max-height:220px;overflow:auto;font-size:12px;font-family:var(--mono);color:#b9c6c6;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg2)}
+/* 玩家管理：行内操作按钮 */
+.row-acts{display:flex;gap:6px;flex-wrap:wrap}
+.row-acts .btn{padding:4px 9px;font-size:12px;white-space:nowrap}
+
 /* DIY 角色表 */
 #diyTable{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
 #diyTable table{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -133,6 +137,16 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
     <div class="inline"><input id="diySearch" placeholder="按名字过滤" style="max-width:240px"><span class="hint" id="diyCount"></span></div>
     <div class="msg" id="diyMsg"></div>
     <div id="diyTable"></div>
+  </div>
+
+  <div class="box">
+    <div class="inline" style="justify-content:space-between"><h2>玩家管理</h2><button class="btn" id="userRefresh">刷新</button></div>
+    <p class="hint">查人 / 发金币 / 设段位 / 发配饰 / 踢下线 / 清空云端卡组。所有写操作都会记进下方的操作审计。</p>
+    <div class="inline"><input id="userSearch" placeholder="按昵称或 uid 搜索" style="max-width:260px"><span class="hint" id="userCount"></span></div>
+    <div class="msg" id="userMsg"></div>
+    <div id="userTable"></div>
+    <h2 style="margin-top:16px">最近操作</h2>
+    <div id="logTable"></div>
   </div>
 </div>
 
@@ -286,7 +300,77 @@ $("#diyTable").onclick=async e=>{
     await loadDiy();
   }catch(err){msg("#diyMsg",err.message);}
 };
-async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadReports(),loadModeration(),loadDiy()]);}catch(e){}}
+/* ---- 玩家管理 ---- */
+let userRows=[];
+async function loadUsers(){
+  const q=encodeURIComponent(($("#userSearch").value||"").trim());
+  const d=await api("GET","/users?q="+q);
+  userRows=Array.isArray(d.users)?d.users:[];
+  renderUsers();
+}
+function renderUsers(){
+  $("#userCount").textContent=`共 ${userRows.length} 人`;
+  if(!userRows.length){$("#userTable").innerHTML=`<p class="hint" style="padding:10px 12px">没有匹配的玩家</p>`;return;}
+  $("#userTable").innerHTML=`<table><thead><tr><th>昵称</th><th>uid</th><th>金币</th><th>段位</th><th>在线</th><th>卡组</th><th>操作</th></tr></thead><tbody>${
+    userRows.map(u=>`<tr>
+      <td><b>${esc(u.nick)}</b>${u.titles&&u.titles.length?`<span class="builtin">${esc(u.titles.join("/"))}</span>`:""}</td>
+      <td class="hint">${esc(String(u.uid).slice(0,10))}</td>
+      <td>${esc(u.gold)}</td>
+      <td>${esc(u.rank)} 段${u.rankPoints?` <span class="hint">${u.rankPoints}分</span>`:""}</td>
+      <td>${u.online?"● 在线":"—"}</td>
+      <td>${esc(u.decks)}</td>
+      <td class="row-acts">
+        <button class="btn" data-act="gold" data-uid="${esc(u.uid)}">+金币</button>
+        <button class="btn" data-act="rank" data-uid="${esc(u.uid)}">设段位</button>
+        <button class="btn" data-act="cos" data-uid="${esc(u.uid)}">配饰</button>
+        <button class="btn btn-danger" data-act="kick" data-uid="${esc(u.uid)}">踢下线</button>
+        <button class="btn btn-danger" data-act="decks" data-uid="${esc(u.uid)}">清空卡组</button>
+      </td>
+    </tr>`).join("")
+  }</tbody></table>`;
+}
+async function loadLogs(){
+  const d=await api("GET","/logs?limit=50");
+  const rows=Array.isArray(d.logs)?d.logs:[];
+  if(!rows.length){$("#logTable").innerHTML=`<p class="hint" style="padding:10px 12px">暂无操作记录</p>`;return;}
+  $("#logTable").innerHTML=`<table><thead><tr><th>时间</th><th>操作</th><th>uid</th><th>详情</th><th>IP</th></tr></thead><tbody>${
+    rows.map(r=>`<tr><td>${fmtTime(r.ts)}</td><td>${esc(r.action)}</td><td class="hint">${esc(String(r.uid||"").slice(0,10))}</td><td class="hint">${esc(JSON.stringify(r.payload||{}))}</td><td class="hint">${esc(r.ip||"")}</td></tr>`).join("")
+  }</tbody></table>`;
+}
+$("#userSearch").oninput=()=>{clearTimeout(window.__uT);window.__uT=setTimeout(()=>loadUsers().catch(()=>{}),250);};
+$("#userRefresh").onclick=()=>Promise.all([loadUsers(),loadLogs()]).catch(e=>msg("#userMsg",e.message));
+$("#userTable").onclick=async e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const uid=b.dataset.uid,act=b.dataset.act;
+  try{
+    if(act==="gold"){
+      const raw=prompt("发放金币（负数表示扣除）：","100");if(raw===null)return;
+      const delta=Number(raw);if(!Number.isFinite(delta)||!delta){msg("#userMsg","金额不合法");return;}
+      const out=await api("POST",`/users/${encodeURIComponent(uid)}/gold`,{delta,reason:"后台发放"});
+      msg("#userMsg",`已调整：余额 ${out.gold}`,true);
+    }else if(act==="rank"){
+      const raw=prompt("设置段位（1~25，1 最高）：","25");if(raw===null)return;
+      const out=await api("POST",`/users/${encodeURIComponent(uid)}/rank`,{seg:Number(raw)});
+      msg("#userMsg",`已设为 ${out.rank.seg} 段`,true);
+    }else if(act==="cos"){
+      const spec=prompt("配饰：类型:id:动作\n头衔 id：title_recruit / title_general\n颜色 id：red/orange/yellow/green/cyan/blue/purple\n例：title:title_general:grant","title:title_recruit:grant");
+      if(!spec)return;
+      const parts=String(spec).split(":");
+      await api("POST",`/users/${encodeURIComponent(uid)}/cosmetics`,{kind:parts[0],id:parts[1],action:parts[2]||"grant"});
+      msg("#userMsg","配饰已更新",true);
+    }else if(act==="kick"){
+      if(!confirm("确认把该玩家所有连接踢下线？"))return;
+      const out=await api("POST",`/users/${encodeURIComponent(uid)}/kick`,{});
+      msg("#userMsg",`已断开 ${out.kicked} 个连接`,true);
+    }else if(act==="decks"){
+      if(!confirm("确认清空该玩家的云端卡组？（本地卡组不受影响）"))return;
+      await api("POST",`/users/${encodeURIComponent(uid)}/decks/reset`,{});
+      msg("#userMsg","云端卡组已清空",true);
+    }
+    await Promise.all([loadUsers(),loadLogs()]);
+  }catch(err){msg("#userMsg",err.message);}
+};
+async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadReports(),loadModeration(),loadDiy(),loadUsers(),loadLogs()]);}catch(e){}}
 $("#refresh").onclick=loadAll;$("#modRefresh").onclick=()=>Promise.all([loadReports(),loadModeration(),loadStatus()]);
 setInterval(()=>{if(!$("#main").hidden)Promise.all([loadStatus(),loadReports(),loadModeration()]).catch(()=>{});},10000);
 if(TOKEN){$("#tok").value=TOKEN;login();}

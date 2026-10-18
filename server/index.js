@@ -249,7 +249,21 @@ app.use("/admin",adminRouter({
   removeSanction:(id,type)=>removeSanction(id,type),
   /* 后台 DIY 管理：列表与删除（删除会注销注册表 + 落盘 + 广播 diy:list） */
   diyList:()=>{const heroes=DiyServer.list();return{heroes,total:heroes.length};},
-  diyRemove:name=>DiyServer.adminRemove(name)
+  diyRemove:name=>DiyServer.adminRemove(name),
+  /* 后台玩家管理：在线 uid 集合 / 踢下线（断开该账号所有 socket） */
+  onlineUids:()=>{
+    const s=new Set();
+    for(const u of users.values())if(u&&u.connected&&u.uid)s.add(u.uid);
+    return s;
+  },
+  kickUser:uid=>{
+    let n=0;
+    for(const u of users.values()){
+      if(!u||u.uid!==uid||!u.socket)continue;
+      try{u.socket.disconnect(true);n++;}catch(e){}
+    }
+    return n;
+  }
 }));
 
 const server=http.createServer(app);
