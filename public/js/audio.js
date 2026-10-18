@@ -74,19 +74,21 @@ const Audio2=(()=>{
      覆盖全部高频音效，仍然走同一条压缩/混响总线。取不到就退回下面的合成实现，
      所以断网、离线包、老缓存都不会出现哑音。 */
   const SAMPLE_URL={
-    click:"audio/sfx/click.ogg", select:"audio/sfx/select.ogg", pick:"audio/sfx/pick.ogg",
-    draw:"audio/sfx/draw.ogg", play:"audio/sfx/play.ogg", spell:"audio/sfx/spell.ogg",
-    swing:"audio/sfx/swing.ogg", hit:"audio/sfx/hit.ogg", heal:"audio/sfx/heal.ogg",
-    die:"audio/sfx/die.ogg", turn:"audio/sfx/turn.ogg", enemy:"audio/sfx/enemy.ogg",
-    coin:"audio/sfx/coin.ogg", error:"audio/sfx/error.ogg", tick:"audio/sfx/tick.ogg",
-    core:"audio/sfx/core.ogg", satur:"audio/sfx/satur.ogg", emote:"audio/sfx/emote.ogg",
-    match:"audio/sfx/match.ogg"
+    play:"audio/sfx/play.ogg", hit:"audio/sfx/hit.ogg", die:"audio/sfx/die.ogg",
+    swing:"audio/sfx/swing.ogg", satur:"audio/sfx/satur.ogg",
+    core:"audio/sfx/core.ogg", match:"audio/sfx/match.ogg"
   };
-  /* 素材本身是母带过的，这里只做相对配平 */
-  const SAMPLE_GAIN={
-    click:.55, select:.55, pick:.5, draw:.6, play:.8, spell:.75, swing:.65, hit:.95,
-    heal:.7, die:.85, turn:.7, enemy:.65, coin:.55, error:.65, tick:.45,
-    core:.85, satur:.9, emote:.55, match:.75
+  /* 采样只用在「打击 / 摩擦」这类真实质感上；音阶类（选牌、金币、回合）继续合成——
+     上一版把所有音效都换采样，UI 提示音全是高频嘶声，反而更廉价。
+     每个采样统一降调 + 低通 + 压音量，再叠一层正弦「身体」，把「尖」磨掉。 */
+  const SAMPLE_MIX={
+    play:{rate:.94,cut:4200,gain:.50,body:[96,.16]},
+    hit:{rate:.90,cut:3000,gain:.58,body:[78,.14]},
+    die:{rate:.92,cut:2400,gain:.55,body:[62,.18]},
+    swing:{rate:.95,cut:5200,gain:.40},
+    satur:{rate:.90,cut:2800,gain:.55,body:[70,.12]},
+    core:{rate:.96,cut:5000,gain:.45},
+    match:{rate:.96,cut:5200,gain:.42}
   };
   const samples={};
   let samplesLoading=false;
@@ -102,17 +104,20 @@ const Audio2=(()=>{
     });
   }
   function playSample(n){
-    const b=samples[n];
-    if(!b||!AC)return false;
+    const cfg=SAMPLE_MIX[n],b=samples[n];
+    if(!cfg||!b||!AC)return false;
     try{
       const src=AC.createBufferSource();src.buffer=b;
-      const g=AC.createGain();g.gain.value=SAMPLE_GAIN[n]==null?.8:SAMPLE_GAIN[n];
-      src.connect(g);bus(g,.12);
+      src.playbackRate.value=cfg.rate||1;
+      const lp=AC.createBiquadFilter();lp.type="lowpass";
+      lp.frequency.value=cfg.cut||4200;lp.Q.value=.6;
+      const g=AC.createGain();g.gain.value=cfg.gain||.5;
+      src.connect(lp);lp.connect(g);bus(g,.14);
       src.start(AC.currentTime);
+      if(cfg.body)voice(cfg.body[0],0,.24,{type:"sine",vol:cfg.body[1],cutoff:420,glide:.72,wet:.08});
       return true;
     }catch(e){return false;}
   }
-
   /* ---------------- 基本声部 ---------------- */
   /* 一个音：低通（可扫频）+ 起音/衰减包络 */
   function voice(freq,at,dur,o){
