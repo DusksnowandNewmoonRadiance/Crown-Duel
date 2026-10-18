@@ -146,7 +146,7 @@ function scoreCard(s,o,c,lethal,stage){
     else if(e==="whiteMend")sc+=Math.min(6,Math.max(0,s.maxHp-s.hp))*1.1+2;
     else if(/^white/.test(e)){
       const available=o.deck.length+o.hand.length;
-      sc+=available?(e==="whiteNight"?7:e==="whiteHand1"?5:3):-100;
+      sc+=available?(e==="whiteNight"?7:e==="whiteConfiscate"?(o.hand.length?7:5):e==="whiteHand1"?5:3):-100;
     }
     else if(/^(manaBurn|energyDownDraw)/.test(e))sc+=2;
     else if(e==="costRaise")sc+=o.handCount!==undefined?(o.handCount>=3?4:-100):(o.hand.length>=3?4:-100);

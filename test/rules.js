@@ -243,6 +243,22 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   check("策动叛乱：下个回合仍在你战场（永久）",a.board.some(x=>x.uid===foe.uid)&&!b.board.some(x=>x.uid===foe.uid));
 }
 
+/* ---- 没收手稿：手牌优先，空手牌时销毁两张牌库牌，并补牌 ---- */
+{
+  const g=game("白猫","七星"),a=g.players[0],b=g.players[1];
+  const confiscate=mk(g,"白猫","insight"),victim=mk(g,"七星","awaBand"),drawn=mk(g,"白猫","spark");
+  ready(g,0,[confiscate]);a.deck=[drawn];b.hand=[victim];b.deck=[mk(g,"七星","awaBand"),mk(g,"七星","awaBand")];
+  const r=play(g,0,confiscate);
+  check("没收手稿：2 费销毁敌方手牌并抽牌",r.ok&&a.energy===8&&b.hand.length===0&&b.deck.length===2&&a.hand.some(c=>c.uid===drawn.uid)&&a.destroyedCards===1,r.error||"");
+}
+{
+  const g=game("白猫","七星"),a=g.players[0],b=g.players[1];
+  const confiscate=mk(g,"白猫","insight"),drawn=mk(g,"白猫","spark");
+  ready(g,0,[confiscate]);a.deck=[drawn];b.hand=[];b.deck=[mk(g,"七星","awaBand"),mk(g,"七星","awaBand"),mk(g,"七星","awaBand")];
+  const r=play(g,0,confiscate);
+  check("没收手稿：敌方空手时销毁牌库顶 2 张并抽牌",r.ok&&b.deck.length===1&&a.hand.some(c=>c.uid===drawn.uid)&&a.destroyedCards===2,r.error||"");
+}
+
 /* ---- 数据一致性 ---- */
 {
   let bad=[];
