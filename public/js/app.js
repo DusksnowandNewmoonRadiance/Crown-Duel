@@ -1147,7 +1147,7 @@ $("#reportSend").addEventListener("click",()=>{
 function renderLobby(){
   const me=Me.hero;
   const mc=$("#lobbyMe");mc.style.setProperty("--hcr",V.heroRgb(me));
-  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)} · ${V.esc((C.HERO_INFO[me]||{}).title||"")} · 卡组：${V.esc(Me.deckName(me))}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
+  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)}${isDiyHero(me)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[me]||{}).title||(C.PROFILES[me]||{}).faction||"")} · 卡组：${V.esc(Me.deckName(me))}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
   $("#lobbyHero").onclick=()=>pickHero(h=>{Me.hero=h;Net.profile();renderLobby();renderHome();});
   $("#lobbyDeck").onclick=()=>openDecks(Me.hero);
   const L=Net.lobby;
