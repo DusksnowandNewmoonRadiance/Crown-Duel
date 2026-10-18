@@ -29,6 +29,7 @@ const store={
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
   ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  document.body.classList.toggle("in-game",id==="#scrGame");   // 对局中关掉整屏装饰层（不用 :has，避免整页样式失效）
   if(id==="#scrGame")GameUI.fit();
   if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
 }
@@ -618,7 +619,7 @@ const DiyUI={
         <label class="${kind==="spell"?"off":""}">血<input type="number" inputmode="numeric" data-k="hp" min="1" max="30" value="${this.num(c.hp)}"${kind==="spell"?" disabled":""}></label>
         <label>张数<input type="number" inputmode="numeric" data-k="n" min="1" max="4" value="${this.num(c.n)}"></label>
         <label>上限<input type="number" inputmode="numeric" data-k="limit" min="1" max="4" value="${this.num(c.limit)}"></label>
-        <label>角标<input data-k="art" maxlength="2" value="${V.esc(c.art||"")}" placeholder="◆" autocomplete="off"></label>
+        <label>图标<button type="button" class="diy-ico" data-op="icon" title="选择卡面图标（留空 = 自动）">${DuelIcons.svg(c.icon||CardIcons.forCard(Object.assign({hero:(this.def&&this.def.name)||""},c,{kind})),{size:"1.5em",stroke:1.7})}${c.icon?"":"<i>自动</i>"}</button></label>
       </div>
       <div class="diy-card-fields2">
         <label class="grow">机制<select data-k="effect">${opts}</select></label>
@@ -691,6 +692,24 @@ const DiyUI={
     else c[k]=el.value;
     this.renderPreview();
     this.renderStats();
+  },
+  /* 图标选择器：来自 DuelIcons 白名单，选「自动」则按机制 / 关键字推断 */
+  pickIcon(i){
+    const c=this.def.cards[i];if(!c)return;
+    let m=document.getElementById("mDiyIcon");
+    if(!m){
+      m=document.createElement("div");m.className="modal";m.id="mDiyIcon";
+      m.innerHTML=`<div class="panel"><button class="x-btn" data-close aria-label="关闭">✕</button><h2>选择卡面图标</h2><div class="ico-grid" id="icoGrid"></div><div class="panel-acts"><button class="btn" id="icoAuto">自动（按机制推断）</button><button class="btn btn-gold" data-close>完成</button></div></div>`;
+      document.body.appendChild(m);
+      m.addEventListener("click",e=>{if(e.target===m||e.target.closest("[data-close]"))m.hidden=true;});
+    }
+    const draw=()=>{
+      $("#icoGrid").innerHTML=DuelIcons.list().map(x=>`<button type="button" class="ico-opt${c.icon===x.id?" on":""}" data-id="${x.id}" title="${V.esc(x.label)}">${DuelIcons.svg(x.id,{size:"26px",stroke:1.6})}<small>${V.esc(x.label)}</small></button>`).join("");
+    };
+    draw();
+    $("#icoGrid").onclick=e=>{const b=e.target.closest(".ico-opt");if(!b)return;c.icon=b.dataset.id;draw();this.renderList();this.renderPreview();};
+    $("#icoAuto").onclick=()=>{c.icon="";draw();this.renderList();this.renderPreview();};
+    m.hidden=false;
   },
   setKind(i,kind){
     const c=this.def.cards[i];if(!c)return;
@@ -934,6 +953,7 @@ $("#diyList").addEventListener("click",e=>{
   const i=+b.closest(".diy-card").dataset.i;
   if(b.dataset.op==="up")DiyUI.move(i,-1);
   else if(b.dataset.op==="down")DiyUI.move(i,1);
+  else if(b.dataset.op==="icon")DiyUI.pickIcon(i);
   else DiyUI.del(i);
 });
 $("#diyAddCard").addEventListener("click",()=>DiyUI.add());

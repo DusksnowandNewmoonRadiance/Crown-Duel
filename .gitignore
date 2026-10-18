@@ -11,3 +11,5 @@ docs/pr/
 .shots/
 screenshots/
 .shots-batch.cjs
+tools/music/.bin/
+.build/

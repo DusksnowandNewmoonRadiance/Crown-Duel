@@ -14,56 +14,9 @@ const CardView=(()=>{
   const KW_RE=/(无视嘲讽|【衰减】|【垃圾】|手牌上限|冲锋|嘲讽|部署|策反|亡语|限时|销毁|毁坏|污染|疲劳)/g;
   const richText=t=>esc(t).replace(KW_RE,"<b>$1</b>");
 
-  function kwChips(c){
-    let h="";
-    if(c.charge)h+=`<i class="kw charge">冲锋</i>`;
-    if(c.taunt)h+=`<i class="kw taunt">嘲讽</i>`;
-    if(c.ignoreTaunt)h+=`<i class="kw pierce">无视嘲讽</i>`;
-    if(c.untargetable)h+=`<i class="kw hide">隐匿</i>`;
-    if(c.strikes>1)h+=`<i class="kw multi">连击</i>`;
-    if(c.lifespan>0)h+=`<i class="kw multi">限时</i>`;
-    if(c.core)h+=`<i class="kw core">核心</i>`;
-    return h?`<div class="kws">${h}</div>`:"";
-  }
-  /* c: 卡牌数据（引擎实例或卡牌定义），opts: {cant} */
-  function card(c,opts){
-    // 数据兜底：任何 null / undefined / 缺 id 或 kind 的对象都渲染成占位卡，
-    // 不抛异常，避免把整个手牌区（及对局流程）拖死。
-    if(!c||c.id===undefined||c.kind===undefined){
-      return '<div class="card k-spell r-common"><span class="cost">?</span>'+
-        '<div class="art"><span class="glyph">?</span></div>'+
-        '<div class="nm">数据缺失</div>'+
-        '<div class="tx">这张卡的数据异常，请刷新页面</div></div>';
-    }
-    opts=opts||{};
-    const atk=c.attack!==undefined?c.attack:c.atk,hp=c.health!==undefined?c.health:c.hp,maxHp=c.maxHealth!==undefined?c.maxHealth:c.hp;
-    const base=c.baseCost!==undefined?c.baseCost:c.cost;
-    const def=c.hero&&C.cardDef(c.hero,c.id);
-    const cls=["card","k-"+c.kind];
-    if(opts.cant)cls.push("cant");
-    if(c.cost>base)cls.push("costup");else if(c.cost<base)cls.push("costdown");
-    if(c.core)cls.push("core");
-    if(c.owner==="awa")cls.push("awa");
-    const rar=C.RARITY&&C.RARITY[c.rarity]?c.rarity:"";
-    if(rar)cls.push("r-"+rar);
-    let stats="";
-    if(c.kind==="unit"){
-      const baseAtk=def?def.atk:atk;
-      stats=`<div class="stats"><b class="stat atk${atk>baseAtk?" buff":""}">${atk}</b><b class="stat hp${hp<maxHp?" dmg":(def&&maxHp>def.hp?" buff":"")}">${hp}</b></div>`;
-    }
-    const rep=c.rep&&C.REGIMES?C.REGIMES[c.rep]:"";
-    const tag=c.scrap?"废料":c.gun?"火炮":c.member?"架子班":(c.id==="red"&&c.hero==="苏苏")?"俄布":(rep&&c.hero==="苏苏"?rep:c.hero);
-    const type=(c.owner==="awa"?"awa · 法术":(c.kind==="unit"?"单位":"法术")+(tag?" · "+esc(tag):""))
-      +(rar?` · <span class="rar r-${rar}">${C.RARITY[rar].name}</span>`:"");
-    const gem=rar?`<i class="gem r-${rar}" title="${C.RARITY[rar].name}"></i>`:"";
-    const body=richText(c.text)+(c.flavor?`<i class="flv">${esc(c.flavor)}</i>`:"");
-    /* 长描述自动降一档字号，避免在 9.5px 的卡池/预览里被裁成半句；悬停仍可看完整文本 */
-    const txLen=String(c.text||"").length;
-    const txCls=txLen>66?"tx tx-xs":txLen>44?"tx tx-s":"tx";
-    /* 卡面插画：程序化 SVG（见 cardart.js），glyph 只作为兜底文字保留 */
-    const artwork=window.CardArt?CardArt.art(c):"";
-    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art">${artwork}<span class="glyph">${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="${txCls}" title="${esc(c.text||"")}">${body}</div>${gem}${stats}</div>`;
-  }
+  /* 卡面由标准模板生成（src/ui/cardtemplate.ts → public/js/cardtemplate.js）。
+     c: 卡牌数据（引擎实例或卡牌定义），opts: {cant} */
+  function card(c,opts){return CardTemplate.render(c,opts);}
   function backInner(){return window.CardArt?CardArt.back():"";}
   function back(costUp){return`<div class="card-back${costUp?" up":""}">${backInner()}<span class="glyph">♛</span></div>`;}
 

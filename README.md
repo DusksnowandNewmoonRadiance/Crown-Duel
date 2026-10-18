@@ -3,7 +3,7 @@
 > 网页联机卡牌对战。10 位官方卡牌师 + **玩家自制（DIY）角色**，支持单人练习、联机大厅、房间对局与断线重连。
 > 纯前端 + Node/Express + Socket.IO，无构建步骤，`npm start` 即跑。
 
-**当前版本：3.3.1** · 适配桌面 / 平板 / 手机横竖屏
+**当前版本：3.4.0** · 适配桌面 / 平板 / 手机横竖屏
 
 ---
 
@@ -19,7 +19,9 @@ npm start
 浏览器打开 <http://localhost:3000>。同局域网的朋友用 `http://你的IP:3000` 即可联机。
 
 ```bash
-npm test        # 14 个测试文件（规则 / 卡组 / 联机 / DIY / AI 流派 / 运营）
+npm test            # 测试（规则 / 卡组 / 联机 / DIY / 图标 / AI 流派 / 运营）
+npm run typecheck   # TypeScript 类型检查（src/）
+npm run build       # 改了 src/ 之后：编译并写入 shared/ 与 public/js/（产物已提交，运行时无需构建）
 ```
 
 ## 玩法一览
@@ -76,7 +78,9 @@ npm test        # 14 个测试文件（规则 / 卡组 / 联机 / DIY / AI 流�
 ├─ public/          前端（无构建）
 │  ├─ css/          tokens / base / cards / screens / stage
 │  └─ js/           app / game-ui / decks / codex / cardart / fx …
-├─ test/            自动化测试（14 个文件）
+├─ src/             TypeScript 源码（shared/ → 共用 UMD 模块，ui/ → 浏览器脚本；见 tools/build.js）
+├─ music/           原声配乐：MIDI、说明与试听版
+├─ test/            自动化测试
 ├─ docs/            说明书与设定集
 └─ deploy/          setup.sh / systemd / nginx
 ```

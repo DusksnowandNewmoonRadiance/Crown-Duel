@@ -37,6 +37,7 @@ const GameUI=(()=>{
   function start(ctl,mode,opts){
     stop(true);
     S.ctl=ctl;S.mode=mode;S.opts=opts||{};
+    GameInput.reset();
     S.viewSeq=undefined;S.introShown=false;S.view=null;S.queue=[];S.prev={};S.sel=null;S.cast=null;S.drag=null;S.inflight=false;S.mulOut=new Set();S.resultShown=false;S.turnBanner=-1;
     ["#meRow","#foeRow","#hand","#foeHand","#fx","#logList"].forEach(s=>$(s).innerHTML="");
     ["#mulligan","#pick","#option","#result","#pause","#castBar","#preview","#reveal","#chatPanel","#netNotice","#coach","#aim"].forEach(s=>$(s).hidden=true);
@@ -52,7 +53,7 @@ const GameUI=(()=>{
   }
   function stop(silent){
     S.ctl=null;S.queue=[];S.waiters.splice(0).forEach(f=>f());
-    setTimer(null);FX.clear();hidePreview();
+    setTimer(null);FX.clear();hidePreview();GameInput.reset();
     if(S.coach){S.coach=null;$("#coach").hidden=true;}
   }
   function push(u){if(!S.ctl)return;S.queue.push(u);if(!S.processing)processQueue();}
@@ -231,7 +232,11 @@ const GameUI=(()=>{
     const mine=e.pi===S.view.you;
     const a=unitEl(e.uid),t=e.target!=null?unitEl(e.target):heroEl(mine?"foe":"me");
     if(!a||!t)return;
-    if(!mine){drawAim(a,FX.pos(t));$("#aim").hidden=false;await sleep(380);$("#aim").hidden=true;}
+    if(!mine){
+      const pa0=FX.pos(a),pt0=FX.pos(t);
+      Targeting.draw({x:pa0.x,y:pa0.y},{x:pt0.x,y:pt0.y},{tone:"invalid",snap:{x:pt0.x-pt0.w/2,y:pt0.y-pt0.h/2,w:pt0.w,h:pt0.h}});
+      await sleep(460);Targeting.hide();
+    }
     const pa=FX.pos(a),pt=FX.pos(t);
     const dx=(pt.x-pa.x)*.82,dy=(pt.y-pa.y)*.82;
     a.style.zIndex=60;Audio2.sfx("swing");
@@ -373,19 +378,20 @@ const GameUI=(()=>{
 
   function unitHTML(u,side){
     let kw="";
-    if(u.charge)kw+=`<i class="charge">冲</i>`;
-    if(u.ignoreTaunt)kw+=`<i class="pierce">穿</i>`;
-    if(u.untargetable)kw+=`<i class="hide">隐</i>`;
-    if(u.deathDmg>0)kw+=`<i class="death" title="亡语：对敌方英雄造成 ${u.deathDmg} 点伤害">亡</i>`;
-    if(u.lifespan>0)kw+=`<i class="fleet" title="限时：下个回合开始时消散">限</i>`;
+    const ic=n=>DuelIcons.svg(n,{size:"100%",stroke:2.1});
+    if(u.charge)kw+=`<i class="charge" title="冲锋">${ic("dash")}</i>`;
+    if(u.ignoreTaunt)kw+=`<i class="pierce" title="无视嘲讽">${ic("sword")}</i>`;
+    if(u.untargetable)kw+=`<i class="hide" title="隐匿">${ic("ghost")}</i>`;
+    if(u.deathDmg>0)kw+=`<i class="death" title="亡语：对敌方英雄造成 ${u.deathDmg} 点伤害">${ic("skull")}</i>`;
+    if(u.lifespan>0)kw+=`<i class="fleet" title="限时：下个回合开始时消散">${ic("hourglass")}</i>`;
     let badge="";
     if(u.stun>0)badge=`<span class="badge stun">眩晕</span>`;
     else if(u.strikes>1)badge=`<span class="badge multi">×${Math.max(0,u.atkLeft)}/${u.strikes}</span>`;
     else if(side==="me"&&u.fresh&&!u.charge&&u.atkLeft<=0&&S.view.myTurn)badge=`<span class="badge zz">Zz</span>`;
     const def=u.hero&&C.cardDef(u.hero,u.id);
     const atkB=def&&u.attack>def.atk?" buff":"",hpB=u.health<u.maxHealth?" dmg":(def&&u.maxHealth>def.hp?" buff":"");
-    const uart=window.CardArt?CardArt.unitArt(u):"";
-    return`<div class="u"><div class="ukw">${kw}</div><div class="ua">${uart}<span class="glyph">${V.esc(u.art)}</span></div><div class="un">${V.esc(u.name)}</div>${badge}<div class="ust"><b class="stat atk${atkB}">${u.attack}</b><b class="stat hp${hpB}">${u.health}</b></div></div>`;
+    const uart=CardTemplate.unitArt(u);
+    return`<div class="u"><div class="ukw">${kw}</div><div class="ua">${uart}</div><div class="un"${u.owner==="awa"?` data-t="${V.esc(u.name)}"`:""}>${V.esc(u.name)}</div>${badge}<div class="ust">${CardTemplate.stat("atk",u.attack,atkB.trim())}${CardTemplate.stat("hp",u.health,hpB.trim())}</div></div>`;
   }
   function unitFlags(u,side){
     const v=S.view;let f="";
@@ -397,8 +403,11 @@ const GameUI=(()=>{
       const ok=ready()&&!S.cast&&!E.canAttack(u)&&hasTarget(u);
       if(ok)f+=" can";else if(v.myTurn&&(u.atkLeft<=0||u.stun))f+=" tired";
       if(selU&&selU.uid===u.uid)f+=" sel";
-    }else if(selU&&E.attackTargets(selU,v.foe).units.includes(u.uid))f+=" tgt";
-    if(S.cast&&S.cast.spec.side===side&&S.cast.spec.eligible.includes(u.uid))f+=S.cast.picked.includes(u.uid)?" picked":" choose";
+    }else if(selU)f+=E.attackTargets(selU,v.foe).units.includes(u.uid)?" tgt":" nt";
+    if(S.cast){
+      if(S.cast.spec.side===side&&S.cast.spec.eligible.includes(u.uid))f+=S.cast.picked.includes(u.uid)?" picked":" choose";
+      else f+=" nt";
+    }
     return f;
   }
   function hasTarget(u){const t=E.attackTargets(u,S.view.foe);return t.hero||t.units.length>0;}
@@ -502,6 +511,7 @@ const GameUI=(()=>{
     renderMulligan();renderPending();renderCastBar();
     $("#meLane").classList.toggle("drop",!!(S.drag||(S.sel&&S.sel.type==="hand")));
     if(!$("#logPanel").classList.contains("closed"))renderLog();
+    GameInput.refresh();
   }
   function actionsLeft(){
     const v=S.view;
@@ -529,10 +539,10 @@ const GameUI=(()=>{
     else if(v.phase==="over")t="对局结束";
     else if(!v.myTurn){t=v.foePending?"对手正在做选择…":"对手回合…";foe=true;}
     else if(v.pending)t="请做出选择";
-    else if(S.cast)t=`<b>${V.esc(S.cast.spec.label)}</b>`;
-    else if(S.sel&&S.sel.type==="unit")t="选择攻击目标（点击红框目标）";
-    else if(S.sel&&S.sel.type==="hand")t=S.mobile?"点右侧按钮出牌，或再点一次手牌":"再点一次，或拖到战场上打出";
-    else{const a=actionsLeft();t=a==="play"?(S.mobile?"点选<b>发光的手牌</b>，再点右侧按钮出牌":"把<b>发光的手牌</b>拖到战场上出牌"):a==="attack"?"拖动<b>发光的单位</b>攻击敌人":"没有可执行的操作了，点击<b>结束回合</b>";}
+    else if(S.cast)t=`<b>${V.esc(S.cast.spec.label)}</b>　<small>点击目标　右键 / Esc 取消</small>`;
+    else if(S.sel&&S.sel.type==="unit")t="<b>点击目标</b>发起攻击　<small>右键 / Esc 取消</small>";
+    else if(S.sel&&S.sel.type==="hand")t=S.mobile?"点战场放下出牌，或点右侧按钮":"<b>点战场</b>放下出牌　<small>右键 / Esc 放回</small>";
+    else{const a=actionsLeft();t=a==="play"?"<b>拖动</b>发光的手牌到战场，或<b>点一下</b>再点战场出牌":a==="attack"?"<b>拖动或点击</b>发光的单位，再选择目标":"没有可执行的操作了，点击<b>结束回合</b>";}
     m.innerHTML=t;m.className=foe?"foe":"";
   }
   function renderLog(){
@@ -633,51 +643,11 @@ const GameUI=(()=>{
     render(false);
     return r||{ok:false};
   }
-  function tryPlay(c){
-    const v=S.view;
-    if(!canAct())return;
-    const err=E.playError(c,v.me,v.foe);
-    if(err){gtoast(err);Audio2.sfx("error");clearSel();return;}
-    hidePreview();
-    const os=E.optionSpec(c);
-    if(os){openOption(os,c);return;}
-    const spec=E.targetSpec(c,v.me,v.foe);
-    if(spec){S.sel=null;S.cast={card:c,spec,picked:[]};Audio2.sfx("select");render(false);return;}
-    S.sel=null;send({type:"play",uid:c.uid});
-  }
-  function castToggle(uid){
-    const cs=S.cast;if(!cs||!cs.spec.eligible.includes(uid))return;
-    const i=cs.picked.indexOf(uid);
-    if(i>=0)cs.picked.splice(i,1);
-    else if(cs.picked.length<cs.spec.max){cs.picked.push(uid);Audio2.sfx("pick");}
-    else if(cs.spec.max===1)cs.picked=[uid];
-    else{gtoast(`最多选择 ${cs.spec.max} 个`);return;}
-    if(cs.spec.max===1&&cs.picked.length===1){commitCast();return;}
-    render(false);
-  }
-  function commitCast(){
-    const cs=S.cast;if(!cs)return;
-    if(cs.picked.length<cs.spec.min){gtoast(`至少选择 ${cs.spec.min} 个`);return;}
-    S.cast=null;send({type:"play",uid:cs.card.uid,targets:cs.picked.slice()});
-  }
-  function cancelCast(){if(S.cast){S.cast=null;Audio2.sfx("click");render(false);}}
   function openOption(os,c){
     $("#optTitle").textContent=os.label;
     $("#optBtns").innerHTML=os.options.map(o=>`<button data-id="${o.id}">${V.esc(o.label)}</button>`).join("");
     $("#option").hidden=false;
     $("#option")._card=c;
-  }
-  function tryAttack(u,targetUid){
-    const v=S.view;if(!canAttackNow(u))return;
-    const t=E.attackTargets(u,v.foe);
-    const ok=targetUid==null?t.hero:t.units.includes(targetUid);
-    if(!ok){
-      if(targetUid==null&&v.foe.heroImmune)gtoast("敌方英雄处于免疫状态");
-      else{const tu=targetUid!=null&&v.foe.board.find(x=>x.uid===targetUid);gtoast(tu&&tu.untargetable?"这个单位无法被攻击":"必须先攻击带嘲讽的单位");shakeTaunts();}
-      Audio2.sfx("error");return;
-    }
-    S.sel=null;$("#aim").hidden=true;aimHot(null);
-    send({type:"attack",uid:u.uid,target:targetUid});
   }
   function canAttackNow(u){
     if(!canAct())return false;
@@ -685,10 +655,10 @@ const GameUI=(()=>{
     return true;
   }
   function shakeTaunts(){document.querySelectorAll("#foeRow .unit.taunt .u").forEach(e=>e.animate([{transform:"translateX(0)"},{transform:"translateX(-6px)"},{transform:"translateX(6px)"},{transform:"translateX(0)"}],{duration:280}));}
-  function clearSel(){S.sel=null;hidePreview();$("#aim").hidden=true;aimHot(null);if(S.view)render(false);}
+  const clearSel=()=>GameInput.clearSel();
   function endTurn(){
     if(!canAct())return;
-    if(S.cast)cancelCast();
+    if(S.cast)GameInput.cancelCast();
     S.sel=null;hidePreview();Audio2.sfx("click");
     send({type:"end"});
   }
@@ -717,145 +687,13 @@ const GameUI=(()=>{
      输入：拖拽 / 点击 / 长按
      ============================================================ */
   function blocked(t){return!!t.closest(".overlay,#coach,#castBar,#sideR,#logPanel,#chatPanel");}
-  function onDown(e){
-    if(!S.view||e.button>0||S.press)return;
-    if(blocked(e.target))return;
-    Audio2.init();
-    const hc=e.target.closest(".hcard"),un=e.target.closest(".unit"),hero=e.target.closest(".portrait");
-    const el=hc||un||hero;
-    const pr={x:e.clientX,y:e.clientY,id:e.pointerId,moved:false,long:false,el,
-      kind:hc?"hand":un?"unit":hero?"hero":"bg",uid:el&&el.dataset.uid?+el.dataset.uid:null,side:un?un.dataset.side:(hero?hero.dataset.hero:null),touch:e.pointerType!=="mouse"};
-    S.press=pr;
-    if(el&&(hc||un)){
-      pr.timer=setTimeout(()=>{if(S.press!==pr||pr.moved)return;pr.long=true;showPreview(cardOf(el),el);},420);
-    }
-    addEventListener("pointermove",onMove);addEventListener("pointerup",onUp);addEventListener("pointercancel",onCancel);
-  }
-  function onMove(e){
-    const pr=S.press;if(!pr||pr.id!==e.pointerId)return;
-    const dx=e.clientX-pr.x,dy=e.clientY-pr.y;
-    if(!pr.moved){
-      if(Math.hypot(dx,dy)<9)return;
-      pr.moved=true;clearTimeout(pr.timer);
-      if(pr.long){hidePreview();return;}
-      if(S.cast)return;
-      if(pr.kind==="hand"&&canAct()){
-        const c=S.view.me.hand.find(x=>x.uid===pr.uid);
-        if(c){S.drag={uid:c.uid};S.sel={type:"hand",uid:c.uid};hidePreview();render(false);pr.el=document.querySelector(`.hcard[data-uid="${pr.uid}"]`);pr.drag="hand";}
-      }else if(pr.kind==="unit"&&pr.side==="me"&&canAct()){
-        const u=S.view.me.board.find(x=>x.uid===pr.uid);
-        if(u&&!E.canAttack(u)){S.sel={type:"unit",uid:u.uid};hidePreview();render(false);pr.el=unitEl(u.uid);pr.drag="aim";$("#aim").hidden=false;}
-        else if(u){gtoast(E.canAttack(u),true);}
-      }
-    }
-    if(pr.drag==="hand"){
-      const p=toStage(e.clientX,e.clientY);
-      pr.el.style.transform=`translate(${dx/S.scale}px,${dy/S.scale}px) scale(1.06)`;
-      const over=p.y<(S.mobile?354:492);
-      const c=S.view.me.hand.find(x=>x.uid===pr.uid),bad=c&&E.playError(c,S.view.me,S.view.foe);
-      const lane=$("#meLane");lane.classList.toggle("ready",over&&!bad);lane.classList.toggle("bad",over&&!!bad);
-      $("#dropHint").textContent=over?(bad||"松手出牌"):"向上拖到这里出牌";
-    }else if(pr.drag==="aim"){
-      const p=toStage(e.clientX,e.clientY);
-      drawAim(pr.el,p);
-      const t=targetAt(e.clientX,e.clientY);
-      const u=S.view.me.board.find(x=>x.uid===pr.uid);
-      aimHot(u&&t&&validTarget(u,t)?t:null);
-    }
-  }
-  function endPress(){
-    const pr=S.press;if(!pr)return null;
-    clearTimeout(pr.timer);S.press=null;
-    removeEventListener("pointermove",onMove);removeEventListener("pointerup",onUp);removeEventListener("pointercancel",onCancel);
-    return pr;
-  }
-  function onCancel(){
-    const pr=endPress();if(!pr)return;
-    if(pr.drag==="hand"&&pr.el)pr.el.style.transform="";
-    S.drag=null;$("#meLane").classList.remove("ready","bad");
-    clearSel();
-  }
-  function onUp(e){
-    const pr=endPress();if(!pr)return;
-    if(pr.long){if(pr.touch)setTimeout(hidePreview,1400);return;}
-    if(pr.drag==="hand"){
-      pr.el.style.transform="";
-      const p=toStage(e.clientX,e.clientY);
-      S.drag=null;$("#meLane").classList.remove("ready","bad");$("#dropHint").textContent="松手出牌";
-      const c=S.view.me.hand.find(x=>x.uid===pr.uid);
-      if(p.y<(S.mobile?354:492)&&c)tryPlay(c);else clearSel();
-      return;
-    }
-    if(pr.drag==="aim"){
-      $("#aim").hidden=true;
-      const t=targetAt(e.clientX,e.clientY);
-      const u=S.view.me.board.find(x=>x.uid===pr.uid);
-      aimHot(null);
-      if(u&&t)tryAttack(u,t.kind==="hero"?null:t.uid);else clearSel();
-      return;
-    }
-    if(!pr.moved)tap(pr,e);
-  }
-  function tap(pr,e){
-    const v=S.view;
-    if(S.cast){
-      if(pr.kind==="unit"&&pr.side===S.cast.spec.side)castToggle(pr.uid);
-      else if(pr.kind==="unit"){const c=cardOf(pr.el);if(c)showPreview(c,pr.el,1600);}
-      return;
-    }
-    if(pr.kind==="hand"){
-      const c=v.me.hand.find(x=>x.uid===pr.uid);if(!c)return;
-      if(!canAct()){showPreview(c,pr.el,1800);return;}
-      if(S.sel&&S.sel.type==="hand"&&S.sel.uid===c.uid){tryPlay(c);return;}
-      S.sel={type:"hand",uid:c.uid};Audio2.sfx("select");
-      const err=E.playError(c,v.me,v.foe);if(err)gtoast(err,true);
-      render(false);if(S.mobile)hidePreview();else showPreview(c,pr.el);
-      return;
-    }
-    if(pr.kind==="unit"&&pr.side==="me"){
-      const u=v.me.board.find(x=>x.uid===pr.uid);if(!u)return;
-      if(!canAct()){showPreview(u,pr.el,1800);return;}
-      if(S.sel&&S.sel.type==="unit"&&S.sel.uid===u.uid){clearSel();return;}
-      const ce=E.canAttack(u);
-      if(ce){gtoast(ce,true);showPreview(u,pr.el,1800);return;}
-      S.sel={type:"unit",uid:u.uid};Audio2.sfx("select");hidePreview();render(false);
-      return;
-    }
-    const selU=S.sel&&S.sel.type==="unit"?v.me.board.find(x=>x.uid===S.sel.uid):null;
-    if(pr.kind==="unit"&&pr.side==="foe"){
-      if(selU){tryAttack(selU,pr.uid);return;}
-      const u=v.foe.board.find(x=>x.uid===pr.uid);if(u)showPreview(u,pr.el,2200);
-      return;
-    }
-    if(pr.kind==="hero"&&pr.side==="foe"&&selU){tryAttack(selU,null);return;}
-    if(S.sel&&S.sel.type==="hand"&&e&&e.target.closest("#meLane")){const c=v.me.hand.find(x=>x.uid===S.sel.uid);if(c){tryPlay(c);return;}}
-    if(S.sel)clearSel();else hidePreview();
-  }
-  function targetAt(x,y){
-    const el=document.elementFromPoint(x,y);if(!el)return null;
-    const un=el.closest(".unit[data-side=foe]");
-    if(un&&!un._dying)return{kind:"unit",uid:+un.dataset.uid,el:un};
-    if(el.closest("#foeHero"))return{kind:"hero",el:heroEl("foe")};
-    return null;
-  }
-  function validTarget(u,t){const v=E.attackTargets(u,S.view.foe);return t.kind==="hero"?v.hero:v.units.includes(t.uid);}
-  function aimHot(t){
-    document.querySelectorAll("#foeRow .unit.hot").forEach(x=>{x.classList.remove("hot");});
-    heroEl("foe").classList.remove("hot");
-    if(t)t.el.classList.add("hot");
-  }
-  function drawAim(fromEl,p){
-    const a=FX.pos(fromEl);
-    const mx=(a.x+p.x)/2,my=Math.min(a.y,p.y)-80;
-    $("#aimPath").setAttribute("d",`M${a.x},${a.y} Q${mx},${my} ${p.x},${p.y}`);
-  }
 
   /* 桌面端：鼠标悬停查看大图 */
   function onOver(e){
-    if(e.pointerType!=="mouse"||S.press)return;
+    if(e.pointerType!=="mouse"||GameInput.isAiming())return;
     const el=e.target.closest(".unit,.hcard");if(!el)return;
     clearTimeout(S.hoverT);
-    S.hoverT=setTimeout(()=>{if(!S.press&&el.isConnected&&el.matches(":hover"))showPreview(cardOf(el),el);},el.classList.contains("hcard")?250:400);
+    S.hoverT=setTimeout(()=>{if(!GameInput.isAiming()&&!S.drag&&el.isConnected&&el.matches(":hover"))showPreview(cardOf(el),el);},el.classList.contains("hcard")?250:400);
   }
   function onOut(e){
     if(e.pointerType!=="mouse")return;
@@ -988,15 +826,28 @@ const GameUI=(()=>{
   /* ============================================================
      事件绑定（只绑定一次）
      ============================================================ */
+  /* 输入控制器（src/ui/input.ts）需要的宿主能力 */
+  function inputHost(){
+    return{
+      ui:S,stage:()=>$("#stage"),scale:()=>S.scale,view:()=>S.view,engine:()=>E,canAct,toStage,
+      pos:el=>FX.pos(el),unitEl,heroEl,
+      handEl:uid=>document.querySelector(`.hcard[data-uid="${uid}"]`),
+      laneLimitY:()=>S.mobile?354:492,
+      setLane(state,hint){const lane=$("#meLane");lane.classList.toggle("ready",state==="ready");lane.classList.toggle("bad",state==="bad");if(hint)$("#dropHint").textContent=hint;},
+      playCard(card,targets){send(targets?{type:"play",uid:card.uid,targets}:{type:"play",uid:card.uid});},
+      openOption(card){const os=E.optionSpec(card);if(os){openOption(os,card);return true;}return false;},
+      attack(u,target){send({type:"attack",uid:u.uid,target});},
+      toast:gtoast,sfx:n=>Audio2.sfx(n),render:()=>render(false),showPreview,hidePreview,shakeTaunts,cardOf,blocked,audioInit:()=>Audio2.init()
+    };
+  }
   function bind(){
     const st=$("#stage");
-    st.addEventListener("pointerdown",onDown);
+    GameInput.attach(inputHost());
     st.addEventListener("pointerover",onOver);
     st.addEventListener("pointerout",onOut);
-    st.addEventListener("contextmenu",e=>{e.preventDefault();if(S.cast)cancelCast();else clearSel();});
     $("#endBtn").addEventListener("click",endTurn);
-    $("#cbOk").addEventListener("click",commitCast);
-    $("#cbCancel").addEventListener("click",cancelCast);
+    $("#cbOk").addEventListener("click",()=>GameInput.commitCast());
+    $("#cbCancel").addEventListener("click",()=>GameInput.cancelCast());
     $("#mulCards").addEventListener("click",e=>{
       const b=e.target.closest(".oc");if(!b||b.disabled)return;
       const uid=+b.dataset.uid;if(S.mulOut.has(uid))S.mulOut.delete(uid);else S.mulOut.add(uid);
@@ -1026,7 +877,7 @@ const GameUI=(()=>{
       if(e.target.checked){S.chat.log=S.chat.log.filter(m=>m.who!=="foe");S.chat.unread=0;$("#stage").querySelectorAll(".emote-bubble.foe").forEach(x=>x.remove());}
       renderChat();});
     $("#gMenu").addEventListener("click",()=>{Audio2.sfx("click");openPause();});
-    $("#playBtn").addEventListener("click",()=>{const c=S.sel&&S.sel.type==="hand"&&S.view&&S.view.me.hand.find(x=>x.uid===S.sel.uid);if(c)tryPlay(c);});
+    $("#playBtn").addEventListener("click",()=>GameInput.playHeld());
     $("#pResume").addEventListener("click",()=>$("#pause").hidden=true);
     $("#pSfx").addEventListener("click",()=>{Audio2.setSfx(!Audio2.sfxOn);syncPause();});
     $("#pMusic").addEventListener("click",()=>{Audio2.setMusic(!Audio2.musicOn);syncPause();});
@@ -1041,11 +892,9 @@ const GameUI=(()=>{
         else if(chatOpen())toggleChat(false);
         else if(!$("#pause").hidden)$("#pause").hidden=true;
         else if(!$("#option").hidden)$("#option").hidden=true;
-        else if(S.cast)cancelCast();
-        else if(S.sel)clearSel();
-        else openPause();
-      }else if(e.key==="Enter"&&S.cast&&S.cast.spec.max>1)commitCast();
-      else if((e.key===" "||e.key==="e"||e.key==="E")&&$("#pause").hidden&&!S.cast){e.preventDefault();endTurn();}
+        else if(!GameInput.cancel())openPause();
+      }else if($("#pause").hidden&&$("#option").hidden&&!S.coach&&GameInput.onKey(e))e.preventDefault();
+      else if((e.key===" "||e.key==="e"||e.key==="E")&&$("#pause").hidden&&!S.cast&&!GameInput.isAiming()){e.preventDefault();endTurn();}
     });
     addEventListener("resize",fit);
     addEventListener("orientationchange",()=>setTimeout(fit,200));
