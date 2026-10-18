@@ -2,10 +2,21 @@
 (()=>{
 "use strict";
 const C=window.DuelCards,E=window.DuelEngine,A=window.DuelAI,V=CardView;
+const Diy=window.DuelDiy,DiyBuiltin=window.DuelDiyBuiltin;
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const HEROES=Object.keys(C.PROFILES);
+/* 内置示例角色（苍蓝）先注册，之后 HEROES 才是纯原版池 */
+if(Diy&&DiyBuiltin)for(const raw of DiyBuiltin.heroes||[]){
+  const v=Diy.validate(raw,{allowReplace:raw&&raw.name});
+  if(v.ok)Diy.register(v.def,{builtin:true,author:"官方示例"});
+  else console.warn("内置 DIY 角色不可用：",raw&&raw.name,(v.errors||[]).join("；"));
+}
+/* 原版池：单人练习 / 卡组 / 图鉴 / AI 随机对手都只用这一份 */
+const HEROES=Object.keys(C.PROFILES).filter(h=>!Diy.isDiy(h));
+const isDiyHero=h=>!!(Diy&&Diy.isDiy(h));
+/* 当前已注册的 DIY 角色（会随 diy:list 增加/减少） */
+const diyHeroes=()=>Diy.names().filter(h=>C.PROFILES[h]);
 const store={
   get(k,d){try{const v=localStorage.getItem("cd."+k);return v===null?d:v;}catch(e){return d;}},
   set(k,v){try{localStorage.setItem("cd."+k,v);}catch(e){}},
@@ -17,9 +28,9 @@ const store={
    ============================================================ */
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
-  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
   if(id==="#scrGame")GameUI.fit();
-  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign")Audio2.music("menu");
+  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
 }
 function openModal(id){$(id).hidden=false;}
 function closeModal(id){$(id).hidden=true;}
@@ -193,8 +204,9 @@ $("#bindGo").addEventListener("click",async()=>{
    主页
    ============================================================ */
 function heroTile(h,on){
-  const info=C.HERO_INFO[h],p=C.PROFILES[h];
-  return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}${crest(h)}<strong>${V.esc(h)}</strong><small>${V.esc(info.title)}</small><span class="stars" title="上手难度">${stars(info.difficulty)}</span></button>`;
+  const info=C.HERO_INFO[h]||{difficulty:2,title:"",tip:""},p=C.PROFILES[h]||{faction:"",style:""};
+  const diy=isDiyHero(h);
+  return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}${crest(h)}<strong>${V.esc(h)}${diy?' <i class="diy-tag">DIY</i>':''}</strong><small>${V.esc(info.title||p.faction)}</small><span class="stars" title="上手难度">${diy?"玩家自制":stars(info.difficulty)}</span></button>`;
 }
 function deckSelectHTML(h){
   const act=Decks.active(h).id;
@@ -204,9 +216,9 @@ function deckSelectHTML(h){
 function renderHome(){
   const cur=Me.hero;
   $("#heroGrid").innerHTML=HEROES.map(h=>heroTile(h,h===cur)).join("");
-  const p=C.PROFILES[cur],info=C.HERO_INFO[cur];
+  const p=C.PROFILES[cur],info=C.HERO_INFO[cur]||{difficulty:2,title:p?p.faction:"",tip:""};
   const d=$("#heroDetail");d.style.setProperty("--hcr",V.heroRgb(cur));
-  d.innerHTML=`${crest(cur)}<div><h3>${V.esc(cur)}<small>${V.esc(info.title)}</small></h3>
+  d.innerHTML=`${crest(cur)}<div><h3>${V.esc(cur)}${isDiyHero(cur)?' <i class="diy-tag">DIY</i>':''}<small>${V.esc(info.title)}</small></h3>
     <div class="meta"><span>阵营 <b>${V.esc(p.faction)}</b></span><span>风格 <b>${V.esc(p.style)}</b></span><span>生命 <b>${p.hp}</b></span><span>难度 <b style="color:var(--gold)">${stars(info.difficulty)}</b></span></div>
     <p class="tip">${V.esc(info.tip)}</p>
     <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div></div>`;
@@ -257,7 +269,7 @@ function openSolo(){
   const me=Me.hero;
   $("#soloMe").innerHTML=`${crest(me)}<span style="--hcr:${V.heroRgb(me)}">${V.esc(me)}<small class="muted" style="display:block;font:500 12px var(--sans)">卡组：${V.esc(Me.deckName(me))}</small></span><button class="btn" id="soloChange">更换</button>`;
   $("#soloMe").style.setProperty("--hcr",V.heroRgb(me));
-  $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();});
+  $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();},HEROES);
   if(Solo.opp===me)Solo.opp="";
   $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+HEROES.filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}</button>`).join("");
   /* 只有真正有多套预设的对手才给选择；只有一套的一律用默认卡组。 */
@@ -390,9 +402,17 @@ $("#pQuit").addEventListener("click",async()=>{
    选择卡牌师（弹窗）
    ============================================================ */
 let pickCb=null;
-function pickHero(cb){
+/* 选角池：只有当前房间是「允许 DIY」时才把 DIY 角色列出来 */
+function heroPickerList(){
+  if(!(Net&&Net.room&&Net.room.pool==="diy"))return HEROES.slice();
+  return HEROES.concat(diyHeroes().filter(h=>!HEROES.includes(h)));
+}
+function renderHeroPicker(list){
+  $("#heroGrid2").innerHTML=(list||heroPickerList()).map(h=>heroTile(h,h===Me.hero)).join("");
+}
+function pickHero(cb,list){
   pickCb=cb;
-  $("#heroGrid2").innerHTML=HEROES.map(h=>heroTile(h,h===Me.hero)).join("");
+  renderHeroPicker(list);
   openModal("#mHero");
 }
 $("#heroGrid2").addEventListener("click",e=>{const b=e.target.closest(".htile");if(!b)return;closeModal("#mHero");Audio2.sfx("select");const cb=pickCb;pickCb=null;cb&&cb(b.dataset.hero);});
@@ -426,11 +446,482 @@ function openDecks(hero,deckId){
 }
 
 /* ============================================================
+   DIY 工坊：角色编辑 / 实时预览 / 上传下载
+   - 角色定义由 shared/diy.js 校验与注册，这里只做界面
+   - 上传成功后会立刻注册进 DuelCards，建房选「允许 DIY」就能用
+   ============================================================ */
+/* 匿名 owner：服务端用它判断「这是不是你上传的」，存在 localStorage 里 */
+const DiyOwner={
+  get(){
+    let v=store.get("diyOwner","");
+    if(!/^[A-Za-z0-9_-]{8,64}$/.test(v)){
+      v=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9-]/g,"").slice(0,64);
+      store.set("diyOwner",v);
+    }
+    return v;
+  }
+};
+/* 本机上传过的角色名（服务端摘要里没有 owner 字段，只能本地记） */
+function diyMine(){
+  try{const a=JSON.parse(store.get("diyMine","[]"));return Array.isArray(a)?a:[];}catch(e){return[];}
+}
+function isMineDiy(name){return diyMine().includes(name);}
+function markMine(name){if(!name||isMineDiy(name))return;store.set("diyMine",JSON.stringify(diyMine().concat(name).slice(-200)));}
+function unmarkMine(name){store.set("diyMine",JSON.stringify(diyMine().filter(n=>n!==name)));}
+
+/* 校验并注册一份角色定义（返回是否成功） */
+function registerDiyDef(raw,meta){
+  if(!Diy)return false;
+  const v=Diy.validate(raw,{allowReplace:raw&&raw.name});
+  if(!v.ok){console.warn("DIY 角色校验失败：",raw&&raw.name,(v.errors||[]).join("；"));return false;}
+  const r=Diy.register(v.def,meta||{});
+  if(!r.ok){console.warn("DIY 角色注册失败：",v.def.name,r.error);return false;}
+  return true;
+}
+/* 摘要里没有卡表，缺定义的角色要靠 REST 补一份 */
+function fetchDiyHero(name){
+  fetch("/api/diy/heroes/"+encodeURIComponent(name),{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(d=>{
+      if(!d||!d.hero||C.PROFILES[name])return;
+      const meta=d.meta||{};
+      if(registerDiyDef(d.hero,{builtin:!!meta.builtin,author:meta.author,createdAt:meta.createdAt}))refreshAfterDiy();
+    })
+    .catch(()=>{});
+}
+/* diy:list / hello.diyHeroes / GET /api/diy/heroes 都走这里 */
+function applyDiySummaries(list){
+  if(!Array.isArray(list)||!Diy)return;
+  DiyUI.summaries=list.slice();
+  const builtinNames=new Set((DiyBuiltin&&DiyBuiltin.heroes||[]).map(h=>h&&h.name));
+  const alive=new Set();
+  for(const s of list){
+    const name=s&&s.name;
+    if(typeof name!=="string"||!name)continue;
+    alive.add(name);
+    if(C.PROFILES[name])continue;              // 已注册
+    const b=(DiyBuiltin&&DiyBuiltin.heroes||[]).find(h=>h&&h.name===name);
+    if(b){registerDiyDef(b,{builtin:true,author:"官方示例"});continue;}
+    fetchDiyHero(name);                        // 异步补全卡表
+  }
+  /* 服务端已经删掉的角色，本地同步注销（内置角色不动） */
+  for(const n of Diy.names()){
+    if(alive.has(n)||builtinNames.has(n))continue;
+    Diy.unregister(n);
+    unmarkMine(n);
+    if(Me.hero===n)Me.hero=HEROES[0];
+  }
+  refreshAfterDiy();
+}
+/* DIY 角色集合变了：刷新所有可能显示选角的地方 */
+function refreshAfterDiy(){
+  renderHome();
+  renderHeroPicker();
+  if(Net&&Net.inLobby)renderLobby();
+  if(Net&&Net.room)renderRoom();
+  if(!$("#scrDiy").hidden)DiyUI.renderHeroList();
+}
+
+const DiyUI={
+  def:null,catalog:null,limits:null,summaries:[],busy:false,loaded:false,current:"",
+
+  blank(){return{schema:1,name:"",faction:"",style:"",hp:30,color:"#5ab4ff",cards:[]};},
+  clone(v){return JSON.parse(JSON.stringify(v));},
+
+  /* ---------- 打开 / 数据加载 ---------- */
+  open(){
+    if(!this.def)this.def=this.blank();
+    show("#scrDiy");
+    if(!this.loaded){
+      this.loadCatalog().then(()=>{this.loaded=true;this.render();});
+    }else this.render();
+    this.loadSummaries();
+  },
+  async loadCatalog(){
+    try{
+      const r=await fetch("/api/diy/catalog",{cache:"no-store"});
+      const d=await r.json();
+      this.catalog=Array.isArray(d.catalog)?d.catalog:Diy.catalog();
+      this.limits=d.limits||Diy.LIMITS;
+    }catch(e){
+      this.catalog=Diy.catalog();
+      this.limits=Diy.LIMITS;
+    }
+  },
+  async loadSummaries(){
+    try{
+      const r=await fetch("/api/diy/heroes",{cache:"no-store"});
+      const d=await r.json();
+      if(Array.isArray(d.heroes))applyDiySummaries(d.heroes);
+    }catch(e){this.renderHeroList();}
+  },
+
+  /* ---------- 渲染 ---------- */
+  render(){
+    this.renderInfo();
+    this.renderList();
+    this.renderPreview();
+    this.renderHeroList();
+  },
+  renderInfo(){
+    const d=this.def;
+    $("#diyName").value=d.name||"";
+    $("#diyFaction").value=d.faction||"";
+    $("#diyStyle").value=d.style||"";
+    $("#diyHp").value=Number.isFinite(+d.hp)?+d.hp:30;
+    $("#diyColor").value=/^#[0-9a-f]{6}$/i.test(d.color||"")?d.color:"#5ab4ff";
+    this.renderStats();
+  },
+  renderStats(){
+    const cards=(this.def&&this.def.cards)||[];
+    const caps=cards.reduce((s,c)=>s+(Number.isFinite(+c.limit)?+c.limit:0),0);
+    const nsum=cards.reduce((s,c)=>s+(Number.isFinite(+c.n)?+c.n:0),0);
+    $("#diyStats").innerHTML=`<span>卡牌 <b>${cards.length}</b> 种</span><span>上限合计 <b class="${caps>=40?"ok":"bad"}">${caps}</b> / 40</span><span>默认合计 <b>${nsum}</b> 张</span>`;
+    $("#diyCardHint").textContent=`8~24 种 · 当前 ${cards.length}`;
+  },
+  num(v){return Number.isFinite(+v)?+v:"";},
+  cardRow(c,i){
+    const cat=this.catalog||[];
+    const kind=c.kind==="spell"?"spell":"unit";
+    const list=cat.filter(x=>x.kind===kind);
+    const opts=(kind==="spell"
+      ?`<option value=""${c.effect?"":" selected"} disabled>请选择机制</option>`
+      :`<option value=""${c.effect?"":" selected"}>无</option>`)+
+      list.map(x=>`<option value="${V.esc(x.id)}"${c.effect===x.id?" selected":""}>${V.esc(x.name)}</option>`).join("");
+    return `<div class="diy-card" data-i="${i}">
+      <div class="diy-card-h">
+        <span class="diy-idx">${i+1}</span>
+        <input class="diy-cn" data-k="name" maxlength="14" value="${V.esc(c.name||"")}" placeholder="卡名（1~14 字）" autocomplete="off">
+        <span class="diy-id" title="卡牌 id 自动生成">${V.esc(c.id||"")}</span>
+        <span class="diy-card-ops">
+          <button class="btn btn-ghost" data-op="up" title="上移">↑</button>
+          <button class="btn btn-ghost" data-op="down" title="下移">↓</button>
+          <button class="btn btn-ghost" data-op="del" title="删除这张卡">✕</button>
+        </span>
+      </div>
+      <div class="diy-card-fields">
+        <label>费<input type="number" inputmode="numeric" data-k="cost" min="0" max="10" value="${this.num(c.cost)}"></label>
+        <label>类型<select data-k="kind"><option value="unit"${kind==="unit"?" selected":""}>单位</option><option value="spell"${kind==="spell"?" selected":""}>法术</option></select></label>
+        <label class="${kind==="spell"?"off":""}">攻<input type="number" inputmode="numeric" data-k="atk" min="0" max="20" value="${this.num(c.atk)}"${kind==="spell"?" disabled":""}></label>
+        <label class="${kind==="spell"?"off":""}">血<input type="number" inputmode="numeric" data-k="hp" min="1" max="30" value="${this.num(c.hp)}"${kind==="spell"?" disabled":""}></label>
+        <label>张数<input type="number" inputmode="numeric" data-k="n" min="1" max="4" value="${this.num(c.n)}"></label>
+        <label>上限<input type="number" inputmode="numeric" data-k="limit" min="1" max="4" value="${this.num(c.limit)}"></label>
+        <label>角标<input data-k="art" maxlength="2" value="${V.esc(c.art||"")}" placeholder="◆" autocomplete="off"></label>
+      </div>
+      <div class="diy-card-fields2">
+        <label class="grow">机制<select data-k="effect">${opts}</select></label>
+        ${kind==="unit"?`<label class="kw"><input type="checkbox" data-k="charge"${c.charge?" checked":""}>冲锋</label>
+          <label class="kw"><input type="checkbox" data-k="taunt"${c.taunt?" checked":""}>嘲讽</label>
+          <label class="kw"><input type="checkbox" data-k="ignoreTaunt"${c.ignoreTaunt?" checked":""}>无视嘲讽</label>`:""}
+      </div>
+      <input class="diy-card-text" data-k="text" maxlength="90" value="${V.esc(c.text||"")}" placeholder="卡面描述（留空用机制默认文案）" autocomplete="off">
+    </div>`;
+  },
+  renderList(){
+    const box=$("#diyList");
+    const cards=(this.def&&this.def.cards)||[];
+    box.innerHTML=cards.length?cards.map((c,i)=>this.cardRow(c,i)).join(""):`<div class="empty">还没有卡牌<br>点右上角「加一张牌」开始</div>`;
+  },
+  /* 右侧：校验结果 + 卡面预览 */
+  renderPreview(){
+    const res=this.validate();
+    const box=$("#diyIssues");
+    if(res.ok)box.innerHTML=`<p class="ok">✔ 校验通过，可以上传</p>`;
+    else box.innerHTML=`<p class="bad">✘ 还有 ${res.errors.length} 处问题</p><ul>${res.errors.map(e=>`<li>${V.esc(e)}</li>`).join("")}</ul>`;
+    if(res.dup)box.innerHTML+=`<p class="warn">名字「${V.esc(this.def.name)}」已被占用：${isMineDiy(this.def.name)?"要更新自己的角色请先删除再上传，或换个名字":"换一个名字"}</p>`;
+    const faces=$("#diyFaces");
+    const color=/^#[0-9a-f]{6}$/i.test(this.def.color||"")?this.def.color:"#5ab4ff";
+    /* 预览卡面用主题色：CardView 从 C.COLORS 取色，按色值生成一个临时 key（不污染真实角色，旧 key 顺手删掉） */
+    const heroKey="diycolor"+color.slice(1).toLowerCase();
+    if(this._previewKey&&this._previewKey!==heroKey)delete C.COLORS[this._previewKey];
+    C.COLORS[heroKey]=color;
+    this._previewKey=heroKey;
+    faces.innerHTML=((this.def&&this.def.cards)||[]).map(c=>{
+      const cat=(this.catalog||[]).find(x=>x.id===c.effect);
+      const kind=c.kind==="spell"?"spell":"unit";
+      const limit=Number(c.limit)||4;
+      const rarity=limit>=4?"common":limit===3?"rare":limit===2?"special":"elite";
+      const card={id:c.id||"x",name:c.name||"未命名",cost:Number(c.cost)||0,kind,art:c.art||(kind==="unit"?"◆":"✧"),
+        text:c.text||(cat?cat.text:""),rarity,hero:heroKey};
+      if(kind==="unit"){card.atk=Number(c.atk)||0;card.hp=Number(c.hp)||1;}
+      if(c.charge)card.charge=true;
+      if(c.taunt)card.taunt=true;
+      if(c.ignoreTaunt)card.ignoreTaunt=true;
+      try{return `<div class="diy-face">${V.card(card)}</div>`;}catch(e){return `<div class="diy-face bad">卡面渲染失败</div>`;}
+    }).join("")||`<div class="empty">卡面预览</div>`;
+  },
+  renderHeroList(){
+    const box=$("#diyHeroList");
+    if(!box)return;
+    const list=this.summaries.slice().sort((a,b)=>(b.builtin?1:0)-(a.builtin?1:0)||((b.createdAt||0)-(a.createdAt||0)));
+    $("#diyCount").textContent="角色 "+list.length;
+    if(!list.length){box.innerHTML=`<div class="empty">还没有人上传 DIY 角色<br>做好之后点「上传」，全服玩家都能在 DIY 房间里用它</div>`;return;}
+    box.innerHTML=list.map(s=>{
+      const cnt=Array.isArray(s.cards)?s.cards.length:(Number(s.cards)||0);
+      const del=s.builtin?`<span class="tag">内置</span>`
+        :`<button class="btn btn-ghost diy-hero-del" data-del="${V.esc(s.name)}"${isMineDiy(s.name)?"":" disabled"} title="${isMineDiy(s.name)?"删除这个角色":"只能删除本机上传的角色"}">删除</button>`;
+      return `<div class="diy-hero" data-name="${V.esc(s.name)}" style="--hcr:${V.heroRgb(s.name)}">
+        <span class="crest">${crestArt(s.name)}</span>
+        <b>${V.esc(s.name)}</b>
+        <span class="muted small">${s.builtin?"官方示例":V.esc(s.author||"玩家")}</span>
+        <span class="diy-hero-n">${cnt} 张</span>
+        ${del}
+      </div>`;
+    }).join("");
+  },
+
+  /* ---------- 编辑操作 ---------- */
+  setField(k,v){this.def[k]=v;this.renderPreview();this.renderStats();},
+  setCard(i,k,el){
+    const c=this.def.cards[i];if(!c)return;
+    if(el.type==="checkbox")c[k]=!!el.checked;
+    else if(el.type==="number")c[k]=el.value===""?"":Number(el.value);
+    else c[k]=el.value;
+    this.renderPreview();
+    this.renderStats();
+  },
+  setKind(i,kind){
+    const c=this.def.cards[i];if(!c)return;
+    c.kind=kind==="spell"?"spell":"unit";
+    c.effect="";                       // 换了类型，机制必须重选
+    this.renderList();this.renderPreview();this.renderStats();
+  },
+  nextId(){
+    const used=new Set((this.def.cards||[]).map(c=>c.id).filter(Boolean));
+    let i=1;while(used.has("c"+i))i++;
+    return "c"+i;
+  },
+  add(){
+    if(!this.def)this.def=this.blank();
+    this.def.cards.push({id:this.nextId(),name:"",cost:2,kind:"unit",atk:2,hp:2,art:"◆",n:4,limit:4,text:""});
+    this.renderList();this.renderPreview();this.renderStats();
+    const rows=$$("#diyList .diy-card");const last=rows[rows.length-1];
+    if(last){last.scrollIntoView({block:"nearest"});const f=last.querySelector(".diy-cn");if(f)f.focus();}
+  },
+  move(i,dir){
+    const cards=this.def.cards,j=i+dir;
+    if(j<0||j>=cards.length)return;
+    const t=cards[i];cards[i]=cards[j];cards[j]=t;
+    this.renderList();this.renderPreview();
+  },
+  del(i){
+    if(!this.def.cards[i])return;
+    this.def.cards.splice(i,1);
+    this.renderList();this.renderPreview();this.renderStats();
+  },
+
+  /* ---------- 校验 / 上传 / 导入导出 ---------- */
+  validate(){
+    /* 结构校验用 allowReplace：编辑自己已上传的角色时不该因为重名报错 */
+    const v=Diy.validate(this.def,{allowReplace:this.def&&this.def.name});
+    const name=this.def&&this.def.name;
+    const dup=!!(name&&C.PROFILES[name]&&!isMineDiy(name));
+    return{ok:v.ok&&!dup,errors:v.errors||[],dup,def:v.def};
+  },
+  check(){
+    const res=this.validate();
+    this.renderPreview();
+    if(res.ok)toast("校验通过，可以上传",true);
+    else toast(res.errors[0]||(res.dup?"名字已被占用":"请先补全角色信息"),false,4000);
+  },
+  async upload(){
+    if(this.busy)return;
+    const v=Diy.validate(this.def);           // 真上传：重名也算错
+    if(!v.ok){
+      this.renderPreview();
+      this.showErrors(v.errors);
+      toast(v.errors[0]||"请先修正错误",false,4000);
+      return;
+    }
+    this.busy=true;
+    try{
+      const r=await fetch("/api/diy/heroes",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-diy-owner":DiyOwner.get()},
+        body:JSON.stringify({hero:v.def,author:Me.nick||""})
+      });
+      const d=await r.json().catch(()=>({ok:false,error:"服务器返回异常"}));
+      if(r.ok&&d.ok){
+        const name=d.name||v.def.name;
+        markMine(name);
+        registerDiyDef(v.def,{author:Me.nick||"玩家"});
+        toast(`上传成功：「${name}」，建房时选「允许 DIY」即可使用`,true,4000);
+        await this.loadSummaries();
+      }else{
+        const errs=(d&&Array.isArray(d.errors)&&d.errors)||[(d&&(d.error||d.msg))||"上传失败"];
+        this.showErrors(errs);
+        toast(errs[0],false,4500);
+      }
+    }catch(e){
+      toast("上传失败：网络错误",false,4000);
+    }
+    this.busy=false;
+  },
+  showErrors(errs){
+    const box=$("#diyIssues");
+    if(!box||!errs||!errs.length)return;
+    box.innerHTML=`<p class="bad">✘ 服务器拒绝（${errs.length} 条）</p><ul>${errs.map(e=>`<li>${V.esc(e)}</li>`).join("")}</ul>`;
+  },
+  async loadHero(name){
+    if(!name)return;
+    try{
+      const r=await fetch("/api/diy/heroes/"+encodeURIComponent(name),{cache:"no-store"});
+      const d=await r.json();
+      if(!r.ok||!d.hero){toast((d&&d.error)||"加载失败",false);return;}
+      this.def=this.clone(d.hero);
+      this.current=name;
+      this.render();
+      toast("已加载「"+name+"」，改完换个名字上传就是新角色",true,4000);
+    }catch(e){toast("加载失败：网络错误",false);}
+  },
+  async remove(name){
+    if(!isMineDiy(name)){toast("只能删除这台浏览器上传的角色",false);return;}
+    const ok=await confirmBox("删除 DIY 角色",`确定删除「${name}」？删除后所有玩家都不能再用它。`,"删除");
+    if(!ok)return;
+    try{
+      const r=await fetch("/api/diy/heroes/"+encodeURIComponent(name),{method:"DELETE",headers:{"x-diy-owner":DiyOwner.get()}});
+      const d=await r.json().catch(()=>({}));
+      if(r.ok&&d.ok){
+        unmarkMine(name);
+        Diy.unregister(name);
+        if(Me.hero===name)Me.hero=HEROES[0];
+        if(this.current===name){this.current="";this.def=this.blank();this.render();}
+        toast("已删除「"+name+"」",true);
+        await this.loadSummaries();
+      }else toast((d&&(d.error||d.msg))||"删除失败",false);
+    }catch(e){toast("删除失败：网络错误",false);}
+  },
+  exportJson(){
+    const def=this.def||this.blank();
+    const name=(def.name||"diy-hero").replace(/[\\/:*?"<>|\s]/g,"_");
+    try{
+      const blob=new Blob([JSON.stringify(def,null,2)],{type:"application/json"});
+      const a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=name+".json";
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+      toast("已导出 JSON",true);
+    }catch(e){toast("导出失败："+e.message,false);}
+  },
+  importJson(file){
+    if(!file)return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      try{
+        const raw=JSON.parse(String(rd.result||""));
+        const hero=raw&&raw.hero?raw.hero:raw;
+        if(!hero||typeof hero!=="object"||Array.isArray(hero))throw new Error("不是有效的角色 JSON");
+        this.def=this.clone(hero);
+        if(!Array.isArray(this.def.cards))this.def.cards=[];
+        this.current="";
+        this.render();
+        toast("已导入，检查无误后点「上传」",true,4000);
+      }catch(e){toast("导入失败："+e.message,false,4000);}
+    };
+    rd.onerror=()=>toast("读取文件失败",false);
+    rd.readAsText(file);
+  },
+
+  /* ---------- 说明书 ---------- */
+  renderHelp(){
+    const cat=this.catalog||Diy.catalog();
+    const L=this.limits||Diy.LIMITS;
+    const rows=cat.map(c=>`<tr><td><code>${V.esc(c.id)}</code></td><td>${c.kind==="spell"?"法术":"单位"}</td><td>${V.esc(c.text||"")}</td></tr>`).join("");
+    const rng=(k)=>Array.isArray(L[k])?L[k].join("~"):L[k];
+    $("#diyHelpBody").innerHTML=`<div class="diy-help-body">
+      <p class="muted"><b>DIY 角色和原版池完全分开</b>：DIY 角色只能进「允许 DIY」的房间，原版房间一律拒绝；原版角色两边都能用。服务端会硬校验，不是前端藏起来。</p>
+      <div class="diy-help-cols">
+        <section>
+          <h3>角色字段</h3>
+          <ul class="diy-help-list">
+            <li>名字：${rng("name")} 字，全服唯一，不能和原版角色重名</li>
+            <li>血量：${rng("hp")}（原版多在 30~35）</li>
+            <li>阵营：${rng("faction")} 字 · 风格：${rng("style")} 字</li>
+            <li>主题色：<code>#RRGGBB</code>，卡面边框与徽章用它</li>
+            <li>卡牌种类：${rng("cards")} 种，携带上限合计必须 ≥ ${L.deckSize} 张</li>
+          </ul>
+        </section>
+        <section>
+          <h3>卡牌字段</h3>
+          <ul class="diy-help-list">
+            <li>卡名 ${rng("cardName")} 字 · 文本 ${rng("text")} 字 · 角标 ${rng("art")} 字</li>
+            <li>费用 ${rng("cost")} · 攻击 ${rng("atk")} · 生命 ${rng("unitHp")}</li>
+            <li>默认张数 ${rng("n")} · 携带上限 ${rng("limit")}（稀有度按上限推导：4 普通 / 3 稀有 / 2 特殊 / 1 精英）</li>
+            <li>法术必须选机制；单位可以只带关键词（冲锋/嘲讽/无视嘲讽）</li>
+            <li>全服最多保存 ${L.heroes} 个 DIY 角色，每个 IP 每分钟最多上传 5 次</li>
+          </ul>
+        </section>
+      </div>
+      <h3>可用机制（${cat.length} 项，全部来自现有引擎，不能写脚本）</h3>
+      <div class="diy-help-table"><table><thead><tr><th>id</th><th>类型</th><th>效果</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="muted small">完整文档：<code>docs/diy-heroes.md</code>（角色 JSON 格式、接口、机制说明、平衡建议都在里面）。</p>
+    </div>`;
+  }
+};
+
+/* ---------- DIY 工坊事件 ---------- */
+[["#diyName","name"],["#diyFaction","faction"],["#diyStyle","style"],["#diyHp","hp"],["#diyColor","color"]].forEach(([sel,k])=>{
+  const el=$(sel);if(!el)return;
+  el.addEventListener("input",()=>{
+    const v=el.value;
+    DiyUI.setField(k,k==="hp"?(v===""?0:Number(v)):v);
+  });
+});
+$("#diyList").addEventListener("input",e=>{
+  const row=e.target.closest(".diy-card"),k=e.target.dataset.k;
+  if(!row||!k||e.target.tagName==="SELECT")return;
+  DiyUI.setCard(+row.dataset.i,k,e.target);
+});
+$("#diyList").addEventListener("change",e=>{
+  const row=e.target.closest(".diy-card"),k=e.target.dataset.k;
+  if(!row||!k)return;
+  const i=+row.dataset.i;
+  if(k==="kind")DiyUI.setKind(i,e.target.value);
+  else DiyUI.setCard(i,k,e.target);
+});
+$("#diyList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-op]");
+  if(!b)return;
+  const i=+b.closest(".diy-card").dataset.i;
+  if(b.dataset.op==="up")DiyUI.move(i,-1);
+  else if(b.dataset.op==="down")DiyUI.move(i,1);
+  else DiyUI.del(i);
+});
+$("#diyAddCard").addEventListener("click",()=>DiyUI.add());
+$("#diyCheck").addEventListener("click",()=>DiyUI.check());
+$("#diyUpload").addEventListener("click",()=>DiyUI.upload());
+$("#diyExport").addEventListener("click",()=>DiyUI.exportJson());
+$("#diyImport").addEventListener("click",()=>$("#diyImportFile").click());
+$("#diyImportFile").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];
+  DiyUI.importJson(f);
+  e.target.value="";
+});
+$("#diyHelp").addEventListener("click",()=>{DiyUI.renderHelp();openModal("#mDiyHelp");});
+$("#diyHeroList").addEventListener("click",e=>{
+  const del=e.target.closest("[data-del]");
+  if(del){DiyUI.remove(del.dataset.del);return;}
+  const row=e.target.closest(".diy-hero");
+  if(row)DiyUI.loadHero(row.dataset.name);
+});
+$("#diyBack").addEventListener("click",()=>{
+  if(Net.inLobby){if(Net.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}}
+  else{show("#scrHome");renderHome();}
+});
+function openDiy(){
+  if(!Diy){toast("DIY 模块没有加载成功，请刷新页面",false);return;}
+  DiyUI.open();
+}
+$("#btnDiy").addEventListener("click",openDiy);
+$("#lobbyDiy").addEventListener("click",openDiy);
+
+/* ============================================================
    联机
    ============================================================ */
 const Net={
   socket:null,inLobby:false,room:null,lobby:null,myId:null,searching:false,searchSince:0,gameOn:false,pendingJoin:null,
-  seq:null,hbTimer:null,hbMiss:0,wasDown:false,
+  seq:null,hbTimer:null,hbMiss:0,wasDown:false,diyHeroBack:null,
   connect(){
     if(this.socket)return;
     if(typeof io!=="function"){toast("无法连接服务器（联机功能需要通过服务器访问）");return false;}
@@ -438,7 +929,16 @@ const Net={
     s.on("connect",()=>{
       $("#netDot").classList.add("on");$("#connBanner").hidden=true;
       s.emit("hello",{clientId:Me.cid,token:Account.token||"",nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)},r=>{
-        if(!r||!r.ok){if(r&&r.banned)toast(r.error||"账号已封禁",false,5000);return;}this.myId=r.id;
+        if(!r||!r.ok){
+          if(r&&r.banned)toast(r.error||"账号已封禁",false,5000);
+          else if(r&&r.error)toast(r.error,false,5000);
+          /* 服务端拒绝多半是「DIY 角色进原版房间」：切回原版角色让玩家能继续 */
+          if(r&&/DIY/.test(r.error||"")&&isDiyHero(Me.hero)){Me.hero=HEROES[0];renderHome();}
+          return;
+        }
+        this.myId=r.id;
+        /* hello 回包里也带 DIY 摘要（另一种下发方式，和 diy:list 都要兼容） */
+        if(r.diyHeroes)applyDiySummaries(r.diyHeroes);
         if(this.wasDown&&this.gameOn){GameUI.notice("已重新连接",true);}
         this.wasDown=false;this.hbMiss=0;
         Live.checkBuild(r.build);Live.setMaint(r.maintenance);
@@ -446,6 +946,7 @@ const Net={
         if(this.pendingJoin){const c=this.pendingJoin;this.pendingJoin=null;this.joinRoom({code:c});}
       });
     });
+    s.on("diy:list",d=>applyDiySummaries(d&&d.heroes));
     s.on("disconnect",()=>{
       $("#netDot").classList.remove("on");if(this.inLobby||this.room)$("#connBanner").hidden=false;
       if(this.gameOn){this.wasDown=true;GameUI.notice("网络连接中断，正在自动重连…（对局会为你保留一段时间）",false);}
@@ -476,11 +977,19 @@ const Net={
   profile(){if(this.socket&&this.socket.connected)this.socket.emit("profile",{nick:Me.nick,hero:Me.hero,deck:Me.deck(Me.hero)});},
   enterLobby(){
     if(this.connect()===false)return;
+    /* 大厅默认还是原版池：带着 DIY 角色连上去会被服务端直接拒绝，先切回原版；
+       记住这个 DIY 角色，进到「允许 DIY」的房间时再自动换回来（刷新页面重连也能恢复） */
+    if(isDiyHero(Me.hero)){
+      this.diyHeroBack=Me.hero;
+      Me.hero=HEROES[0];renderHome();
+      toast("DIY 角色只能在「允许 DIY」的房间里使用，已切回原版角色",false,4500);
+    }
     this.inLobby=true;store.set("online","1");
     if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
   },
   leaveAll(){
-    this.inLobby=false;store.del("online");this.room=null;this.gameOn=false;
+    this.inLobby=false;store.del("online");this.room=null;this.gameOn=false;this.diyHeroBack=null;
+    if(isDiyHero(Me.hero))Me.hero=HEROES[0];
     if(this.socket){this.socket.disconnect();this.socket=null;}
     closeModal("#mMatch");$("#connBanner").hidden=true;
     if(GameUI.active&&GameUI.mode==="online")GameUI.stop();
@@ -500,6 +1009,13 @@ const Net={
   },
   onRoom(r){
     const had=this.room;this.room=r;
+    /* 房间信息里可能带一个我们还没注册的 DIY 角色（对手的自制角色）：先补一份定义 */
+    if(r&&Array.isArray(r.seats))for(const s of r.seats){if(s&&s.hero&&!C.PROFILES[s.hero])fetchDiyHero(s.hero);}
+    /* 进了允许 DIY 的房间：把刚才为了连大厅而临时换掉的角色换回来 */
+    if(r&&r.pool==="diy"&&this.diyHeroBack&&C.PROFILES[this.diyHeroBack]&&!isDiyHero(Me.hero)){
+      Me.hero=this.diyHeroBack;this.diyHeroBack=null;this.profile();renderHome();
+      toast("已换回 DIY 角色："+Me.hero,true);
+    }else if(r&&r.pool!=="diy")this.diyHeroBack=null;
     if(r){closeModal("#mMatch");this.searching=false;}
     if(!this.inLobby)return;
     if(this.gameOn){
@@ -514,7 +1030,15 @@ const Net={
       return;
     }
     if(r){if(!had)Audio2.sfx("match");show("#scrRoom");renderRoom();}
-    else{show("#scrLobby");renderLobby();}
+    else{
+      /* 离开房间：DIY 角色只在 DIY 房间里有效，回到大厅前先切回原版 */
+      this.diyHeroBack=null;
+      if(isDiyHero(Me.hero)){
+        Me.hero=HEROES[0];renderHome();this.profile();
+        toast("已切回原版角色：DIY 角色只能在「允许 DIY」的房间里使用",false,4000);
+      }
+      show("#scrLobby");renderLobby();
+    }
   },
   /* 对局序号：发现中间丢了更新，就请求一次完整同步 */
   trackSeq(u){
@@ -620,7 +1144,7 @@ $("#reportSend").addEventListener("click",()=>{
 function renderLobby(){
   const me=Me.hero;
   const mc=$("#lobbyMe");mc.style.setProperty("--hcr",V.heroRgb(me));
-  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)} · ${V.esc(C.HERO_INFO[me].title)} · 卡组：${V.esc(Me.deckName(me))}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
+  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)} · ${V.esc((C.HERO_INFO[me]||{}).title||"")} · 卡组：${V.esc(Me.deckName(me))}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
   $("#lobbyHero").onclick=()=>pickHero(h=>{Me.hero=h;Net.profile();renderLobby();renderHome();});
   $("#lobbyDeck").onclick=()=>openDecks(Me.hero);
   const L=Net.lobby;
@@ -631,7 +1155,7 @@ function renderLobby(){
   box.innerHTML=L.rooms.map(r=>{
     const full=r.players.length>=2,playing=r.status!=="waiting";
     const can=!full&&!playing;
-    return`<div class="room-card"><div class="rc-top"><span class="rc-name">${r.locked?"[私] ":""}${V.esc(r.name)}</span><span class="rc-code">#${V.esc(r.code)}</span><span class="tag ${playing?"play":"wait"}">${playing?"对局中":full?"已满":"等待中"}</span></div>
+    return`<div class="room-card"><div class="rc-top"><span class="rc-name">${r.locked?"[私] ":""}${V.esc(r.name)}</span><span class="rc-code">#${V.esc(r.code)}</span>${r.pool==="diy"?'<span class="tag diy">DIY</span>':""}<span class="tag ${playing?"play":"wait"}">${playing?"对局中":full?"已满":"等待中"}</span></div>
       <div class="rc-players">${r.players.map(p=>`<span style="--hcr:${V.heroRgb(p.hero)}"><i>${V.esc(p.hero)}</i><b class="reportable-name" data-report-id="${V.esc(p.id)}" data-report-name="${V.esc(p.nick)}" title="点击举报">${V.esc(p.nick)}</b></span>`).join("")}${r.players.length<2?`<span class="muted">空位</span>`:""}</div>
       ${can?`<button class="btn btn-primary" data-join="${V.esc(r.id)}">加入</button>`:""}</div>`;
   }).join("");
@@ -641,9 +1165,24 @@ $("#lobbyBack").addEventListener("click",()=>Net.leaveAll());
 $("#btnQuick").addEventListener("click",()=>{if(Net.socket){Net.socket.emit("match:quick");}});
 $("#matchCancel").addEventListener("click",()=>{Net.socket&&Net.socket.emit("match:cancel");closeModal("#mMatch");});
 setInterval(()=>{if(Net.searching)$("#matchTime").textContent=`已等待 ${Math.floor((Date.now()-Net.searchSince)/1000)} 秒`;},500);
-$("#btnCreate").addEventListener("click",()=>{$("#crName").value="";$("#crPass").value="";openModal("#mCreate");setTimeout(()=>$("#crName").focus(),50);});
+/* 建房：房间类型（pool）默认原版，DIY 房间才允许 DIY 角色 */
+let createPool="vanilla";
+$("#crPool").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  createPool=b.dataset.v;
+  $$("#crPool button").forEach(x=>x.classList.toggle("on",x===b));
+});
+$("#btnCreate").addEventListener("click",()=>{
+  $("#crName").value="";$("#crPass").value="";
+  createPool="vanilla";$$("#crPool button").forEach(x=>x.classList.toggle("on",x.dataset.v==="vanilla"));
+  openModal("#mCreate");setTimeout(()=>$("#crName").focus(),50);
+});
 $("#crGo").addEventListener("click",()=>{
-  Net.socket.emit("room:create",{name:$("#crName").value,password:$("#crPass").value},r=>{if(r&&r.ok)closeModal("#mCreate");else toast((r&&r.error)||"创建失败");});
+  if(!Net.socket){toast("与服务器的连接已断开");return;}
+  Net.socket.emit("room:create",{name:$("#crName").value,password:$("#crPass").value,pool:createPool},r=>{
+    if(r&&r.ok)closeModal("#mCreate");
+    else toast((r&&r.error)||"创建失败",false,3500);
+  });
 });
 $("#joinCodeForm").addEventListener("submit",e=>{e.preventDefault();const c=$("#joinCode").value.trim();if(!c)return;Net.joinRoom({code:c});});
 $("#lobbyChatForm").addEventListener("submit",e=>{e.preventDefault();const t=$("#lobbyChatIn").value.trim();if(!t||!Net.socket)return;Net.socket.emit("lobby:chat",t,r=>{if(r&&r.ok)$("#lobbyChatIn").value="";else toast((r&&r.error)||"消息未发送");});});
@@ -653,11 +1192,17 @@ let roomTick=null;
 function renderRoom(){
   const r=Net.room;if(!r)return;
   $("#roomTitle").textContent=r.name;$("#roomCode").textContent=r.code;
+  const pool=$("#roomPool");
+  if(pool){
+    pool.textContent=r.pool==="diy"?"允许 DIY":"原版房间";
+    pool.title=r.pool==="diy"?"这是 DIY 房间：可选 DIY 角色，也可选原版角色":"这是原版房间：只能选原版角色";
+    pool.classList.toggle("on",r.pool==="diy");
+  }
   r.seats.forEach((s,i)=>{
     const el=$("#seat"+i);
     if(!s){el.className="seat empty-seat";el.style.removeProperty("--hcr");el.innerHTML=`<div style="font-size:30px">＋</div><div>等待对手加入…</div><div class="small">把房间号 <b style="color:var(--gold2)">${V.esc(r.code)}</b> 发给朋友</div>`;return;}
     el.className="seat";el.style.setProperty("--hcr",V.heroRgb(s.hero));
-    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)} · ${V.esc(C.HERO_INFO[s.hero].title)}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
+    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)}${isDiyHero(s.hero)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[s.hero]||{}).title||(C.PROFILES[s.hero]||{}).faction||"")}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
   });
   const me=r.seats[r.you];
   const both=r.seats.every(Boolean);
@@ -1115,7 +1660,7 @@ $("#upGo").addEventListener("click",async()=>{
 $("#rewardBack").addEventListener("click",()=>{closeModal("#mReward");exitCampaign();});
 $("#rewardAgain").addEventListener("click",()=>{closeModal("#mReward");const s=window.__cd.campSession;if(s)startCampaign(s.hero,s.slot);});
 $("#rewardUpgrade").addEventListener("click",()=>{closeModal("#mReward");openUpgrade();});
-window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;},Account,Campaign,renderGold,onCampaignEvent};
+window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;},Account,Campaign,renderGold,onCampaignEvent,DiyUI,Diy,diyHeroes,pickHero,applyDiySummaries};
 })();
 
 
