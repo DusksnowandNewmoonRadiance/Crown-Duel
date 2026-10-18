@@ -812,11 +812,13 @@ io.on("connection",socket=>{
     io.to("room:"+r.id).emit("room:chat",m);reply(cb,{ok:true});
   });
 
-  socket.on("match:quick",d=>{
-    const u=userOf(socket);if(!u)return;
+  socket.on("match:quick",(d,cb)=>{
+    const u=userOf(socket);
+    if(!u)return reply(cb,{ok:false,error:"未登录"});
     const want=d&&typeof d==="object"&&d.pool!==undefined?poolOf(d.pool):"vanilla";
-    if(!want)return send(u,"toast",{text:"匹配类型无效，只能是 vanilla 或 diy"});
+    if(!want){send(u,"toast",{text:"匹配类型无效，只能是 vanilla 或 diy"});return reply(cb,{ok:false,error:"pool"});}
     enqueue(u,want);
+    reply(cb,{ok:true,queued:true});
   });
   socket.on("match:cancel",()=>{const u=userOf(socket);if(u)dequeue(u);});
 

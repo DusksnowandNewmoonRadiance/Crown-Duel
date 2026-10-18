@@ -175,7 +175,7 @@ function scoreCard(s,o,c,lethal,stage){
     else if(e==="costRaise")sc+=o.handCount!==undefined?(o.handCount>=3?4:-100):(o.hand.length>=3?4:-100);
     else if(/^(unitDamageHero|finish)/.test(e))sc+=myN?myN*1.5:-100;
     else if(/^(filterSuperman|tutorSuperman|scry|foresee)/.test(e))sc+=4;
-    else if(/^decay/.test(e))sc+=3+(o.decay||0)*(e==="decayDouble"?1.5:1)+(e==="decay2draw"?1.5:0)-(s.hp<=8?3:0);
+    else if(/^decay/.test(e))sc+=3+(o.decay||0)*(e==="decayDouble"?1.5:1)+(/decay\d*draw/.test(e||"")?1.5:0)-(s.hp<=8?3:0);
     else if(/^lock(Cap|Spell)/.test(e))sc+=((o.handCount!==undefined?o.handCount:o.hand.length)>=3?3.5:-2)+(e==="lockCap1"?1.5:0);
     else if(e==="energyDown2")sc+=o.maxEnergy>=4?3:-3;
     else if(e==="revengeDeath")sc+=myN?myN*1.6:-100;
@@ -437,7 +437,7 @@ class AIPlayer{
           /* 需要场面的牌（整编/燃烧弹/策反/AOE）：先让己方单位攻击，避免浪费攻击次数 */
           if(PRE_ATTACK.has(best.effect)&&!lethal&&s.board.some(u=>!canAttack(u)&&u.attack>0)){
             const mv=this.chooseAttack(s,o)||this.forceAttack(s,o);
-            if(mv)return mv;
+            if(mv)return{type:"attack",uid:mv.unit.uid,target:mv.target?mv.target.uid:null};   /* 必须转标准动作：联机端只认 {type,uid,target} */
           }
           this.plays++;
           return{type:"play",uid:best.uid,targets:this.aiTargets(best,s,o),option:autoOption(best,s,o)};
