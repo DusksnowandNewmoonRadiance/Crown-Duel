@@ -279,6 +279,7 @@
       faction: def.faction, style: def.style, hp: def.hp, cards,
       diy: true, color: def.color,
     };
+    for(const card of cards)card.code=C.cardCode(def.name,card.id);
     if (Array.isArray(def.deck) && def.deck.length === C.DECK_SIZE && !C.deckError(def.name, def.deck)) {
       C.DECK_PRESETS[def.name] = { "官方推荐": def.deck.slice() };
     }

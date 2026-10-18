@@ -383,6 +383,9 @@
   gap:14px 10px;align-content:start;justify-items:center;padding:6px 4px 14px;
 }
 .dc{display:flex;flex-direction:column;align-items:center;gap:6px}
+.dc-code,.dk-card-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--text-2);background:var(--surface-2);border:1px solid var(--line-2);border-radius:4px;padding:1px 5px}
+.dc-code{margin-top:-3px}
+.dk-card-code{flex:none}
 .dc-ctrl{display:flex;align-items:center;gap:5px}
 .dc-ctrl button{
   width:26px;height:26px;border-radius:var(--r-1);border:1px solid var(--line-2);

@@ -13,6 +13,10 @@ const Decks=(()=>{
   const isDiyHero=h=>{const d=DiyApi();return !!(d&&h&&d.isDiy(h));};
   const vanillaHeroes=()=>allHeroes().filter(h=>!isDiyHero(h));
   const MAX_DECKS=30,NAME_MAX=16,KEY="cd.decks.v2";
+  const b64=s=>btoa(unescape(encodeURIComponent(s))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  const unb64=s=>{if(!/^[A-Za-z0-9_-]+$/.test(s))throw new Error("卡组代码已损坏");let b=s.replace(/-/g,"+").replace(/_/g,"/");while(b.length%4)b+="=";return decodeURIComponent(escape(atob(b)));};
+  const alphabet="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const checksum=s=>{let n=0;for(let i=0;i<s.length;i++)n=(n*33+s.charCodeAt(i))%3844;return alphabet[Math.floor(n/62)]+alphabet[n%62];};
 
   /* ============================================================
      存储
@@ -189,29 +193,49 @@ const Decks=(()=>{
       if(data.active[d.hero]===id)delete data.active[d.hero];
       persist();scheduleSync();
     },
-    /* 导出 / 导入：CD1.<base64url(json)> */
+    /* CD2：元信息 + 每张卡固定两位编号 + 两位校验码。CD1 仍可导入。 */
     encode(d){
-      const json=JSON.stringify({h:d.hero,n:d.name,c:d.cards});
-      return"CD1."+btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+      if(!C.PROFILES[d.hero]||!Array.isArray(d.cards))throw new Error("卡组格式错误");
+      const used=new Map();
+      const pairs=d.cards.map(id=>{
+        const code=C.cardCode(d.hero,id);
+        if(!code)throw new Error("卡组包含已不存在的卡牌，请先移除再导出");
+        used.set(code,id);return code;
+      }).join("");
+      const meta={h:d.hero,n:cleanName(d.name)};
+      if(C.PROFILES[d.hero].diy)meta.m=[...used].map(([code,id])=>[code,id]);
+      const body=b64(JSON.stringify(meta))+"."+pairs;
+      return"CD2."+body+"."+checksum(body);
     },
     /* 只取英雄名：用于导入前判断「本机还没有这个 DIY 角色」 */
     peekHero(code){
       try{
         let b=String(code||"").trim();
-        if(!b.startsWith("CD1."))return null;
-        b=b.slice(4).replace(/-/g,"+").replace(/_/g,"/");while(b.length%4)b+="=";
-        const o=JSON.parse(decodeURIComponent(escape(atob(b))));
+        if(!/^CD[12]\./.test(b))return null;
+        const meta=b.startsWith("CD2.")?b.slice(4).split(".")[0]:b.slice(4);
+        const o=JSON.parse(unb64(meta));
         return o&&typeof o.h==="string"?o.h:null;
       }catch(e){return null;}
     },
     decode(code){
       code=String(code||"").trim();
+      if(code.startsWith("CD2.")){
+        const parts=code.slice(4).split(".");
+        if(parts.length!==3||parts[1].length%2||!/^[A-Za-z0-9]*$/.test(parts[1])||parts[2]!==checksum(parts[0]+"."+parts[1]))throw new Error("卡组代码已损坏");
+        let o;try{o=JSON.parse(unb64(parts[0]));}catch(e){throw new Error("卡组代码已损坏");}
+        if(!o||typeof o.h!=="string"||!C.PROFILES[o.h]||typeof o.n!=="string")throw new Error("卡组代码已损坏");
+        const diyMap=new Map(C.PROFILES[o.h].diy&&Array.isArray(o.m)?o.m.filter(x=>Array.isArray(x)&&x.length===2&&typeof x[0]==="string"&&typeof x[1]==="string"):[]);
+        const knownIds=new Set(C.PROFILES[o.h].cards.map(c=>c.id));
+        const cards=[],length=parts[1].length/2;
+        for(let i=0;i<length;i++){
+          const pair=parts[1].slice(i*2,i*2+2);
+          const id=diyMap.get(pair)||C.cardFromCode(o.h,pair);
+          if(id&&knownIds.has(id))cards.push(id);
+        }
+        return{hero:o.h,name:cleanName(o.n)||"导入的卡组",cards:cards.slice(0,C.DECK_SIZE),dropped:length-cards.length};
+      }
       if(!code.startsWith("CD1."))throw new Error("不是有效的卡组代码");
-      let o;
-      try{
-        let b=code.slice(4).replace(/-/g,"+").replace(/_/g,"/");while(b.length%4)b+="=";
-        o=JSON.parse(decodeURIComponent(escape(atob(b))));
-      }catch(e){throw new Error("卡组代码已损坏");}
+      let o;try{o=JSON.parse(unb64(code.slice(4)));}catch(e){throw new Error("卡组代码已损坏");}
       if(!o||!C.PROFILES[o.h]||!Array.isArray(o.c))throw new Error("卡组代码已损坏");
       const known=o.c.filter(id=>C.PROFILES[o.h].cards.some(c=>c.id===id));
       return{hero:o.h,name:cleanName(o.n)||"导入的卡组",cards:known.slice(0,C.DECK_SIZE),dropped:o.c.length-known.length};
@@ -304,7 +328,7 @@ const Decks=(()=>{
       if(kind!=="all"&&c.kind!==kind)return false;
       if(cost!=="all"&&(cost==="6"?c.cost<6:c.cost!==+cost))return false;
       if(rar!=="all"&&c.rarity!==rar)return false;
-      if(q&&!(c.name.toLowerCase().includes(q)||String(c.text||"").toLowerCase().includes(q)||String(c.flavor||"").toLowerCase().includes(q)))return false;
+      if(q&&!(c.name.toLowerCase().includes(q)||String(c.text||"").toLowerCase().includes(q)||String(c.flavor||"").toLowerCase().includes(q)||String(C.cardCode(hero,c.id)||"").toLowerCase()===q))return false;
       return true;
     }).sort((a,b)=>a.cost-b.cost||(a.kind<b.kind?1:-1)||a.name.localeCompare(b.name,"zh"));
   }
@@ -316,7 +340,7 @@ const Decks=(()=>{
     const full=W.cards.length>=C.DECK_SIZE;
     $("#dkCards").innerHTML=list.length?list.map(c=>{
       const n=countOf(c.id),atLimit=n>=c.limit;
-      return`<div class="dc${n?"":" zero"}" data-id="${V.esc(c.id)}">${V.card(Object.assign({hero},c))}
+      return`<div class="dc${n?"":" zero"}" data-id="${V.esc(c.id)}">${V.card(Object.assign({hero},c))}<span class="dc-code" title="卡牌编号">${V.esc(C.cardCode(hero,c.id)||"")}</span>
         <div class="dc-ctrl"><button data-a="-" ${n<=0?"disabled":""} aria-label="减少">−</button><span>${n}<small> / ${c.limit}</small></span><button data-a="+" ${atLimit||full?"disabled":""} aria-label="增加">＋</button></div></div>`;
     }).join(""):`<div class="empty" style="grid-column:1/-1">没有符合条件的卡牌</div>`;
   }
@@ -341,7 +365,7 @@ const Decks=(()=>{
     const cnt={};W.cards.forEach(id=>cnt[id]=(cnt[id]||0)+1);
     const rows=Object.keys(cnt).map(id=>cards.find(c=>c.id===id)).filter(Boolean).sort((a,b)=>a.cost-b.cost||a.name.localeCompare(b.name,"zh"));
     $("#dkItems").innerHTML=rows.length?rows.map(c=>`<div class="dk-row" data-id="${V.esc(c.id)}" title="${V.esc(c.text||c.flavor||"")}">
-      <i class="cost">${c.cost}</i><span class="nm r-${c.rarity}">${V.esc(c.name)}</span><b>×${cnt[c.id]}</b>
+      <i class="cost">${c.cost}</i><span class="nm r-${c.rarity}">${V.esc(c.name)}</span><code class="dk-card-code">${V.esc(C.cardCode(W.hero,c.id)||"")}</code><b>×${cnt[c.id]}</b>
       <button data-a="-" aria-label="减少">−</button><button data-a="+" ${cnt[c.id]>=c.limit||W.cards.length>=C.DECK_SIZE?"disabled":""} aria-label="增加">＋</button></div>`).join("")
       :`<div class="muted small" style="padding:14px 4px;text-align:center">还没有卡牌，点击中间的卡牌添加</div>`;
     // 按钮状态
