@@ -61,14 +61,31 @@
   --sans:var(--font-ui);
   --mono:var(--font-mono);
 
-  /* ---------- 字号 ---------- */
-  --fs-display:40px;
+  /* ---------- 字号 ----------
+     核心手法：极小的标注字 × 极大的标题字，中间不设过渡级，
+     用尺度反差而不是装饰来制造「气势」。 */
+  --fs-mega:clamp(46px,5.6vw,84px);   /* 首页主标题 */
+  --fs-1:30px;
+  --fs-2:21px;
+  --fs-display:44px;
   --fs-h1:24px;
   --fs-h2:19px;
   --fs-h3:15px;
   --fs-body:14px;
   --fs-sm:12.5px;
   --fs-xs:11px;
+  --fs-caps:10px;                     /* 全大写标注 */
+  --fs-num:26px;                      /* 大号数据 */
+
+  /* ---------- 字距 ---------- */
+  --tr-mega:-.045em;                  /* 大标题收紧 */
+  --tr-tight:-.012em;
+  --tr-caps:.2em;                     /* 标注拉开 */
+  --tr-wide:.08em;
+
+  /* ---------- 字重 ---------- */
+  --fw-mega:700;
+  --fw-med:500;
 
   /* ---------- 圆角（小、统一） ---------- */
   --r-1:6px;
@@ -104,9 +121,18 @@
   --e-out:cubic-bezier(.2,.7,.3,1);
   --e-in-out:cubic-bezier(.4,0,.2,1);
   --e-spring:cubic-bezier(.2,.8,.3,1);
+  --e-reveal:cubic-bezier(.16,.84,.28,1);
   --t-fast:.12s;
   --t-mid:.18s;
   --t-slow:.24s;
+  --t-long:.5s;
+
+  /* ---------- 打光：全站只有一种方向的光 ----------
+     顶部偏下的一点微光，用来区分「牌桌/画框」与「纸面」，
+     不是发光特效，透明度控制在 6% 以内。 */
+  --light-top:radial-gradient(120% 90% at 50% -22%,rgba(255,255,255,.055),rgba(255,255,255,0) 62%);
+  --veil-b:linear-gradient(to top,rgba(7,7,9,.88) 0%,rgba(7,7,9,.5) 34%,rgba(7,7,9,0) 72%);
+  --veil-t:linear-gradient(to bottom,rgba(7,7,9,.9) 0%,rgba(7,7,9,.45) 55%,rgba(7,7,9,0) 100%);
 
   /* ---------- 层级 ---------- */
   --z-hand:1;

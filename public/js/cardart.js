@@ -47,14 +47,14 @@ const CardArt=(()=>{
     const base=(C.COLORS&&C.COLORS[hero])||"#9aa0a6";
     const {r,g,b}=hexToRgb(base);
     const {h,s}=rgbToHsl(r,g,b);
-    const sat=clamp(s,6,30);                 // 压低饱和度：这是「不花哨」的关键
+    const sat=clamp(s,10,40);                // 压低饱和度：不花哨，但要看得出来
     const p={
       key:base,
-      bg:hslToHex(h,sat*.55,10),
-      bgHi:hslToHex(h,sat*.7,15),
-      line:hslToHex(h,sat*.95,64),
-      lineDim:hslToHex(h,sat*.8,42),
-      fill:hslToHex(h,sat*.85,26),
+      bg:hslToHex(h,sat*.55,11),
+      bgHi:hslToHex(h,sat*.74,19),
+      line:hslToHex(h,sat,70),
+      lineDim:hslToHex(h,sat*.85,50),
+      fill:hslToHex(h,sat*.92,31),
     };
     cache[hero]=p;
     return p;
@@ -142,25 +142,55 @@ const CardArt=(()=>{
     <circle r="2" fill="${p.line}" stroke="none"/>`;
 
   function motif(hero,p){
-    return `<g fill="none" stroke="${p.line}" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round">
+    return `<g fill="none" stroke="${p.line}" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
       ${(MOTIF[hero]||FALLBACK)(p)}
     </g>`;
   }
 
-  /* ---------------- 造景：单色底 +（单位）一条地平线 ---------------- */
-  function frame(id,w,h,p,opts){
-    const kind=(opts&&opts.kind)||"unit";
-    const horizon=h*0.78;
-    return `
+  /* ---------------- 造景 ----------------
+     一张图 = 底色 + 一束顶光 + 一枚「压在地平线上的圆盘」 + 四角取景刻度。
+     圆盘只铺一点点色（.42），保证纹章线的对比；刻度是取景痕迹，不是装饰。
+     返回值带 motif 的落点，避免两处各算一套坐标。
+  ---------------------------------------- */
+  function scene(id,w,h,p,kind){
+    const portrait=kind==="portrait", spell=kind==="spell";
+    /* 同一卡牌师会出很多张牌，靠构图微差让手牌不至于「一张脸重复十次」；
+       差值由卡牌 id 决定，因此同一张牌每次渲染完全一致。 */
+    const v=portrait?0:hash(id)%3;
+    const cx=w/2+(v===1?-w*.115:v===2?w*.115:0);
+    const base=h*(portrait?.74:.80);
+    const r=Math.min(w*(portrait?.27:.215),h*(portrait?.32:.44));
+    const cy=base-r*.62;
+    const jitter=portrait?1:1+((hash(id+"s")%5)-2)*.045;
+    const scale=Math.max(.55,Math.min(1.45,r/19.5*jitter));
+    const sw=(w/100*1.05).toFixed(2);
+    const disc=`<circle cx="${cx}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}"/>`;
+    const inset=Math.max(3.2,w*.045), tick=Math.max(3,w*.052);
+    const marks=[[inset,inset,1,1],[w-inset,inset,-1,1],[inset,h-inset,1,-1],[w-inset,h-inset,-1,-1]]
+      .map(([x,y,sx,sy])=>`<path d="M${(x+sx*tick).toFixed(1)} ${y.toFixed(1)} L${x.toFixed(1)} ${y.toFixed(1)} L${x.toFixed(1)} ${(y+sy*tick).toFixed(1)}"/>`).join("");
+    const svg=`
       <defs>
-        <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="${p.bgHi}"/>
-          <stop offset="1" stop-color="${p.bg}"/>
+        <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${p.bgHi}"/><stop offset="1" stop-color="${p.bg}"/>
+        </linearGradient>
+        <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff" stop-opacity=".085"/>
+          <stop offset=".62" stop-color="#ffffff" stop-opacity="0"/>
         </linearGradient>
       </defs>
-      <rect width="${w}" height="${h}" fill="url(#${id})"/>
-      ${kind==="spell"?"":`<path d="M0 ${horizon.toFixed(1)} L${w} ${horizon.toFixed(1)}" stroke="${p.lineDim}" stroke-width=".7" opacity=".32"/>`}
-    `;
+      <rect width="${w}" height="${h}" fill="url(#${id}a)"/>
+      <g fill="${p.fill}" fill-opacity=".42" stroke="${p.lineDim}" stroke-width="${sw}" stroke-opacity=".62">${disc}</g>
+      ${spell?"":`<rect y="${base.toFixed(1)}" width="${w}" height="${(h-base).toFixed(1)}" fill="#07070a" opacity=".22"/>
+      <path d="M0 ${base.toFixed(1)} H${w}" stroke="${p.lineDim}" stroke-width="${sw}" opacity=".5"/>`}
+      <g fill="none" stroke="${p.lineDim}" stroke-width="${sw}" opacity=".3" stroke-linecap="square">${marks}</g>
+      <rect width="${w}" height="${h}" fill="url(#${id}b)"/>`;
+    return {svg,cx,cy,scale};
+  }
+
+  function compose(id,w,h,p,kind,hero){
+    const s=scene(id,w,h,p,kind);
+    return `${s.svg}
+      <g transform="translate(${s.cx} ${s.cy.toFixed(1)}) scale(${s.scale.toFixed(3)})">${motif(hero,p)}</g>`;
   }
 
   /* ---------------- 卡面插画 ---------------- */
@@ -170,10 +200,8 @@ const CardArt=(()=>{
     const p=palette(hero);
     const id="a"+hash(String((c&&c.id)||"x")+hero+kind).toString(36);
     const w=100,h=43;
-    const scale=kind==="spell"?1.02:1.14;
     return `<svg class="artimg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      ${frame(id,w,h,p,{kind})}
-      <g transform="translate(${w/2} ${(h*0.46).toFixed(1)}) scale(${scale})">${motif(hero,p)}</g>
+      ${compose(id,w,h,p,kind,hero)}
     </svg>`;
   }
 
@@ -184,8 +212,7 @@ const CardArt=(()=>{
     const id="u"+hash(String((c&&c.id)||"u")+hero).toString(36);
     const w=100,h=62;
     return `<svg class="artimg unitimg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      ${frame(id,w,h,p,{kind:"unit"})}
-      <g transform="translate(${w/2} ${(h*0.44).toFixed(1)}) scale(1.08)">${motif(hero,p)}</g>
+      ${compose(id,w,h,p,"unit",hero)}
     </svg>`;
   }
 
@@ -205,13 +232,47 @@ const CardArt=(()=>{
   function portrait(hero){
     const p=palette(hero);
     const id="p"+hash("por"+hero).toString(36);
-    return `<svg class="artimg porimg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-      ${frame(id,100,100,p,{kind:"spell"})}
-      <g transform="translate(50 50) scale(1.5)">${motif(hero,p)}</g>
+    const w=100,h=100;
+    return `<svg class="artimg porimg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      ${compose(id,w,h,p,"portrait",hero)}
     </svg>`;
   }
 
-  return {art,unitArt,back,portrait,palette,hash};
+  /* ---------------- 竖版封面（剧情模式 4:9） ----------------
+     和卡面同一套语言：底色 + 顶光 + 徽记 + 地平线 + 取景刻度，
+     只是画幅是竖的，所以徽记按画幅中心重新排一次。
+  ------------------------------------------------------------ */
+  function cover(hero){
+    const p=palette(hero);
+    const id="c"+hash("cov"+hero).toString(36);
+    const w=100,h=225;
+    const cx=w/2, cy=h*.42, r=w*.34;
+    const base=h*.68;
+    const scale=r/21;
+    const inset=4, tick=6;
+    const marks=[[inset,inset,1,1],[w-inset,inset,-1,1],[inset,h-inset,1,-1],[w-inset,h-inset,-1,-1]]
+      .map(([x,y,sx,sy])=>`<path d="M${x+sx*tick} ${y} L${x} ${y} L${x} ${y+sy*tick}"/>`).join("");
+    return `<svg class="artimg covimg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="${id}a" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="${p.bgHi}"/><stop offset=".55" stop-color="${p.bg}"/><stop offset="1" stop-color="${p.bg}"/>
+        </linearGradient>
+        <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffffff" stop-opacity=".09"/>
+          <stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <rect width="${w}" height="${h}" fill="url(#${id}a)"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${p.fill}" fill-opacity=".34" stroke="${p.lineDim}" stroke-width="1" stroke-opacity=".5"/>
+      <rect y="${base}" width="${w}" height="${h-base}" fill="#07070a" opacity=".28"/>
+      <path d="M0 ${base} H${w}" stroke="${p.lineDim}" stroke-width="1" opacity=".4"/>
+      <g fill="none" stroke="${p.lineDim}" stroke-width="1" opacity=".28" stroke-linecap="square">${marks}</g>
+      <rect width="${w}" height="${h}" fill="url(#${id}b)"/>
+      <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})">${motif(hero,p)}</g>
+    </svg>`;
+  }
+
+  return {art,unitArt,back,portrait,cover,palette,hash};
 })();
 /* 顶层 const 只活在脚本词法作用域里，挂到 window 供其它模块取用 */
 window.CardArt=CardArt;

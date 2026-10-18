@@ -206,7 +206,8 @@ $("#bindGo").addEventListener("click",async()=>{
 function heroTile(h,on){
   const info=C.HERO_INFO[h]||{difficulty:2,title:"",tip:""},p=C.PROFILES[h]||{faction:"",style:""};
   const diy=isDiyHero(h);
-  return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}${crest(h)}<strong>${V.esc(h)}${diy?' <i class="diy-tag">DIY</i>':''}</strong><small>${V.esc(info.title||p.faction)}</small><span class="stars" title="上手难度">${diy?"玩家自制":stars(info.difficulty)}</span></button>`;
+  const idx=diy?"":String(HEROES.indexOf(h)+1).padStart(2,"0");
+  return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}"><span class="htile-art">${crest(h)}</span><span class="htile-veil"></span>${idx?`<span class="htile-no">${idx}</span>`:""}${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}<span class="htile-tx"><strong>${V.esc(h)}${diy?' <i class="diy-tag">DIY</i>':''}</strong><small>${V.esc(info.title||p.faction)}</small><span class="stars" title="上手难度">${diy?"玩家自制":stars(info.difficulty)}</span></span></button>`;
 }
 function deckSelectHTML(h){
   const act=Decks.active(h).id;
@@ -216,12 +217,11 @@ function deckSelectHTML(h){
 function renderHome(){
   const cur=Me.hero;
   $("#heroGrid").innerHTML=HEROES.map(h=>heroTile(h,h===cur)).join("");
-  const p=C.PROFILES[cur],info=C.HERO_INFO[cur]||{difficulty:2,title:p?p.faction:"",tip:""};
+  const p=C.PROFILES[cur]||{faction:"",style:"",hp:"-"},info=C.HERO_INFO[cur]||{difficulty:2,title:p.faction||"",tip:""};
   const d=$("#heroDetail");d.style.setProperty("--hcr",V.heroRgb(cur));
-  d.innerHTML=`${crest(cur)}<div><h3>${V.esc(cur)}${isDiyHero(cur)?' <i class="diy-tag">DIY</i>':''}<small>${V.esc(info.title)}</small></h3>
-    <div class="meta"><span>阵营 <b>${V.esc(p.faction)}</b></span><span>风格 <b>${V.esc(p.style)}</b></span><span>生命 <b>${p.hp}</b></span><span>难度 <b style="color:var(--gold)">${stars(info.difficulty)}</b></span></div>
+  d.innerHTML=`<div class="hd-top">${crest(cur)}<div class="hd-id"><div class="hd-k">${V.esc(p.faction)} · ${V.esc(p.style)}</div><h3>${V.esc(cur)}${isDiyHero(cur)?' <i class="diy-tag">DIY</i>':''}<small>${V.esc(info.title)}</small></h3></div><div class="hd-nums"><div class="hd-n"><b>${p.hp}</b><span>生命</span></div><div class="hd-n"><b class="st">${stars(info.difficulty)}</b><span>难度</span></div></div></div>
     <p class="tip">${V.esc(info.tip)}</p>
-    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div></div>`;
+    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div>`;
   $("#homeNickTxt").textContent=Me.nick||"设置昵称";
   $("#homeSound").classList.toggle("off",!Audio2.musicOn&&!Audio2.sfxOn);
 }
@@ -1433,17 +1433,19 @@ function renderCampaign(){
   $("#campPrev").hidden=Campaign.page===0;
   $("#campNext").hidden=start+per>=HEROES.length;
   $("#campPage").textContent=`${Campaign.page+1} / ${Math.ceil(HEROES.length/per)}`;
-  /* 竖长条 4:9：图片区在上（预留 img 接口，暂无图片时用徽记+角色介绍顶替），文字在下 */
+  /* 竖长条 4:9：整幅封面（CardArt.cover）在上，姓名在下的窄条 */
   list.innerHTML=slice.map(h=>{
-    const info=C.HERO_INFO[h],cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
+    const cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
     const unlocked=cam&&cam.unlocked;
-    return`<button class="camp-bar ${unlocked?"":"locked"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
+    /* 目前只有部分角色写了剧情章节，没写的不要显示成「已解锁」让人点进去 */
+    const story=!!C.campaignOf(h);
+    const sub=!story?"剧情未开放":(unlocked?"★ 已解锁":"未解锁");
+    return`<button class="camp-bar ${story?(unlocked?"":"locked"):"locked nostory"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
       <div class="camp-img" style="--hcr:${V.heroRgb(h)}">
         <img class="camp-photo" alt="" hidden data-hero-img="${V.esc(h)}">
-        <span class="crest" style="--hcr:${V.heroRgb(h)}">${crestArt(h)}</span>
-        <span class="camp-photo-fallback">${V.esc(info.title)}</span>
+        <span class="crest camp-crest" style="--hcr:${V.heroRgb(h)}">${window.CardArt&&CardArt.cover?CardArt.cover(h):crestArt(h)}</span>
       </div>
-      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${unlocked?"★ 已解锁":"未解锁"}</span></div>
+      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${sub}</span></div>
     </button>`;
   }).join("");
   /* 预留图片接口：img.camp-photo 有 src 时自动替换徽记（后续接角色立绘） */
@@ -1455,12 +1457,24 @@ function renderCampaign(){
 }
 $("#campHeroList").addEventListener("click",e=>{
   const b=e.target.closest("button[data-hero]");if(!b)return;
-  const cam=Account.me&&Account.me.campaign&&Account.me.campaign[b.dataset.hero];
+  const hero=b.dataset.hero;
+  /* 没写章节的角色直接拦在外面：以前是先藏列表再渲染，一抛错整页就白了 */
+  if(!C.campaignOf(hero)){toast("该角色的剧情章节还没开放",false);return;}
+  const cam=Account.me&&Account.me.campaign&&Account.me.campaign[hero];
   if(!cam||!cam.unlocked){toast("先用该角色赢得一场普通对局解锁剧情",false);return;}
-  Campaign.hero=b.dataset.hero;
+  Campaign.hero=hero;
   const list=$("#campHeroList");list.classList.remove("out-l","out-r","in-l","in-r");Campaign._busy=false;
-  $("#campListWrap").hidden=true;
-  renderCampaignDetail();$("#campDetail").hidden=false;
+  try{
+    renderCampaignDetail();
+    $("#campListWrap").hidden=true;
+    $("#campDetail").hidden=false;
+  }catch(err){
+    /* 渲染失败就退回列表，绝不留一块空白 */
+    console.warn("[campaign]",err);
+    $("#campDetail").hidden=true;
+    $("#campListWrap").hidden=false;
+    toast("剧情数据读取失败，请刷新页面重试",false);
+  }
 });
 /* 翻页：点击按钮，带滑入/滑出动画 */
 function flipCampaign(dir){
@@ -1480,8 +1494,10 @@ $("#campNext").addEventListener("click",()=>flipCampaign(1));
 $("#campDetailBack").addEventListener("click",()=>{$("#campDetail").hidden=true;$("#campListWrap").hidden=false;renderCampaign();});
 function renderCampaignDetail(){
   const cam=C.campaignOf(Campaign.hero);
+  if(!cam||!cam.chapters||!cam.chapters.ch1)return;
   const ch=cam.chapters.ch1;
-  const data=Account.me.campaign[Campaign.hero];
+  const data=(Account.me.campaign&&Account.me.campaign[Campaign.hero])||{slots:[]};
+  if(!data.slots||!data.slots.length)data.slots=[{},{},{}];
   $("#campChapter").innerHTML=`<h2>${V.esc(ch.title)}</h2>
     <p class="muted">${V.esc((cam.intro||[])[0]||"")}</p>
     <p>胜利条件：撑过 <b>${ch.survive[0]}</b> 回合（1★）· <b>${ch.survive[1]}</b>（2★）· <b>${ch.survive[2]}</b>（3★）</p>
@@ -1509,8 +1525,8 @@ let campGame=null;
 function startCampaign(hero,slot){
   if(campGame)campGame.dispose();
   const cam=C.campaignOf(hero),ch=cam.chapters.ch1;
-  const data=Account.me.campaign[hero],s=data.slots[slot];
-  const deck=s.deck.slice();
+  const data=Account.me.campaign[hero],s=(data.slots&&data.slots[slot])||{};
+  const deck=(s.deck||[]).slice();
   /* 若不足 30 张，用该角色初始弱卡补足，保证可玩 */
   const base=C.campaignInitialDeck(hero,slot);
   for(const id of base){if(deck.length>=30)break;deck.push(id);}
