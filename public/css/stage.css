@@ -13,7 +13,7 @@
   user-select:none;-webkit-user-select:none;touch-action:none;
 }
 #stage.shake{animation:shake .3s}
-@keyframes shake{0%,100%{translate:0 0}20%{translate:-4px 2px}40%{translate:4px -2px}60%{translate:-3px -1px}80%{translate:2px 1px}}
+@keyframes shake{0%,100%{translate:0 0}16%{translate:-2.5px 1.5px}36%{translate:2.5px -1px}58%{translate:-1.5px .5px}78%{translate:1px .5px}}
 
 /* ---------- 牌桌 ---------- */
 .table-bg{position:absolute;inset:0;background:var(--ink-950)}
@@ -416,7 +416,7 @@
 /* ============================================================================
    特效层
    ============================================================================ */
-#fx{position:absolute;inset:0;pointer-events:none;z-index:72}
+#fx{position:absolute;inset:0;pointer-events:none;z-index:92}
 .card-event{
   position:absolute;z-index:95;width:242px;height:339px;pointer-events:none;perspective:500px;
 }
@@ -439,20 +439,35 @@
 @keyframes cardChar{0%{filter:brightness(1)}55%{filter:sepia(1) saturate(3) brightness(.75)}100%{filter:brightness(0) opacity(0)}}
 @keyframes cardFlame{0%{opacity:0;transform:translateY(30px) scale(.7)}30%{opacity:1}100%{opacity:0;transform:translateY(-65px) scale(1.3)}}
 
+/* 数值飘字：弹一下再升起，不做光晕 */
 .float{
   position:absolute;transform:translate(-50%,-50%);
-  font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;
-  text-shadow:0 2px 8px rgba(0,0,0,.9),0 0 12px rgba(0,0,0,.8);
-  animation:floatUp 1s ease-out forwards;white-space:nowrap;z-index:5;
+  font:600 21px/1 var(--font-ui);letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  color:var(--ink-0);
+  text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 20px rgba(0,0,0,.75);
+  animation:floatUp .95s var(--e-out) forwards;white-space:nowrap;z-index:5;
 }
-.float.dmg{color:#f07a68}.float.heal{color:#79c79c}
-.float.gold{color:var(--accent);font-size:18px}.float.armor{color:#c9d6dc;font-size:17px}
-.float.buff{color:var(--accent-hi);font-size:17px}
-.float.mana{color:#8fc0e8;font-size:16px}.float.manadown{color:#b3a0d6;font-size:16px}
-.float.decay{color:#b3a0d6;font-size:18px}
-@keyframes floatUp{0%{transform:translate(-50%,-20%) scale(.9);opacity:0}18%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{transform:translate(-50%,-160%) scale(1);opacity:0}}
-.ring{position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;border:2px solid var(--rc,#fff);animation:ringA .45s ease-out forwards}
-@keyframes ringA{to{transform:scale(4);opacity:0}}
+.float.dmg{color:#f08b7d}
+.float.heal{color:#8ed3b0}
+.float.gold{color:var(--accent);font-size:19px}
+.float.armor{color:#cfdae0;font-size:18px}
+.float.buff{color:var(--accent-hi);font-size:18px}
+.float.mana{color:#9cc6e2;font-size:17px}
+.float.manadown{color:#bda9d8;font-size:17px}
+.float.decay{color:#bda9d8;font-size:18px}
+@keyframes floatUp{
+  0%{transform:translate(-50%,-38%) scale(.88);opacity:0}
+  16%{opacity:1;transform:translate(-50%,-50%) scale(1.07)}
+  28%{transform:translate(-50%,-56%) scale(1)}
+  100%{transform:translate(-50%,-165%) scale(1);opacity:0}
+}
+/* 细环：1.5px，小、快、不发光 */
+.ring{
+  position:absolute;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;
+  border:1.5px solid var(--rc,#fff);
+  animation:ringA .42s var(--e-out) forwards;
+}
+@keyframes ringA{0%{transform:scale(.55);opacity:1}100%{transform:scale(3.4);opacity:0}}
 @keyframes satWave{0%{transform:scale(.2);opacity:1}100%{transform:scale(6);opacity:0}}
 @keyframes burst{0%{transform:scale(1);opacity:1}100%{transform:scale(18);opacity:0}}
 @keyframes bigText{0%{transform:translate(-50%,-50%) scale(.9);opacity:0}15%{opacity:1;transform:translate(-50%,-50%) scale(1)}80%{opacity:1}100%{transform:translate(-50%,-80%) scale(1);opacity:0}}
