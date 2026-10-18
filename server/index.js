@@ -15,6 +15,7 @@ const adminRouter=require("./admin.js");
 const Diy=require("../shared/diy.js");
 const Rank=require("../shared/rank.js");
 const DiyServer=require("./diy.js");
+const Friends=require("./friends.js");
 const VERSION=require("../package.json").version;
 
 const PORT=+process.env.PORT||3000;
@@ -64,7 +65,11 @@ const SHOP=[
   {id:"villageHorn",name:"渔村号角",desc:"剧情卡：3费法术，召唤 2 个 2/1 冲锋起义者（剧情专属，加入剧情牌库）",price:600,kind:"card",card:"villageHorn"},
   {id:"militiaCaptain",name:"民兵队长",desc:"剧情卡：4费 3/3 嘲讽，部署：你的单位 +1 攻击力（剧情专属，加入剧情牌库）",price:700,kind:"card",card:"militiaCaptain"},
   {id:"campaignPack",name:"剧情卡包",desc:"随机获得 1 张剧情专属卡（加入剧情牌库）",price:500,kind:"pack"},
-  {id:"upgradeToken",name:"升级券",desc:"将剧情牌库中的一张卡升级一阶（+1/+1→冲锋→嘲讽→部署抽牌）",price:350,kind:"token"}
+  {id:"upgradeToken",name:"升级券",desc:"将剧情牌库中的一张卡升级一阶（+1/+1→冲锋→嘲讽→部署抽牌）",price:350,kind:"token"},
+  /* ---- 配饰 ---- */
+  {id:"title_recruit",name:"皇冠新兵",desc:"头衔：昵称旁显示绿色「皇冠新兵」",price:20,kind:"title",titleColor:"#6fbf73"},
+  {id:"title_general",name:"皇冠将军",desc:"头衔：昵称旁显示紫色「皇冠将军」",price:100,kind:"title",titleColor:"#a98fd9"},
+  {id:"chest_color",name:"名字颜色宝箱",desc:"随机开出 7 种名字颜色之一；重复颜色返还 25 金币",price:100,kind:"chest"}
 ];
 function tok(req){return(req.body&&req.body.token)||req.query.token;}
 function needUser(req,res){
@@ -147,7 +152,21 @@ app.put("/api/decks",(req,res)=>{
   Store.saveDecks(u.uid,d);
   res.json({ok:true,updatedAt:d.updatedAt});
 });
-app.get("/api/shop",(req,res)=>res.json({ok:true,items:SHOP}));
+app.get("/api/shop",(req,res)=>res.json({ok:true,items:SHOP,nameColors:Store.NAME_COLORS}));
+/* 配饰：购买 / 装备 */
+app.post("/api/cosmetics/buy",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const item=SHOP.find(x=>x.id===String(req.body.id||""));
+  if(!item||!["title","chest"].includes(item.kind))return res.json({ok:false,msg:"商品不存在"});
+  const r=Store.buyCosmetic(u.uid,item);
+  res.json(Object.assign({ok:r.ok,msg:r.msg||""},r));
+});
+app.post("/api/cosmetics/equip",(req,res)=>{
+  const u=needUser(req,res);if(!u)return;
+  const kind=String(req.body.kind||""),value=req.body.value?String(req.body.value):"";
+  const r=Store.equipCosmetic(u.uid,kind,value);
+  res.json(Object.assign({ok:r.ok,msg:r.msg||""},r));
+});
 app.post("/api/shop/buy",(req,res)=>{
   const u=needUser(req,res);if(!u)return;
   const item=SHOP.find(x=>x.id===req.body.id);
@@ -371,9 +390,35 @@ function lobbySnapshot(){
   }))};
 }
 
+/* ---------- 观战：公开视图（不含双方手牌明细） ---------- */
+function specView(g){
+  const a=g.viewFor(0),b=g.viewFor(1);
+  a.me=b.foe;                 // 玩家 0 的隐藏手牌版本（hand 只剩 back 卡）
+  a.you=0;a.myTurn=false;a.pending=null;a.mulligan=null;a.spectate=true;
+  return a;
+}
+
+/* ---------- 好友：在线状态与列表 ---------- */
+function friendPresence(u,online){
+  if(!u||!u.uid)return;
+  Friends.friendUids(u.uid).forEach(uid=>{
+    const f=users.get("acct_"+uid);
+    if(f&&f.connected)send(f,"friend:presence",{uid:u.uid,online:!!online});
+  });
+}
+function friendListPayload(u){
+  if(!u||!u.uid)return{friends:[],requests:[]};
+  const wrap=x=>{
+    const ou=users.get("acct_"+x.uid);
+    return Object.assign({},x,{online:!!(ou&&ou.connected),hero:ou?ou.hero:null,rank:ou?ou.rank:null});
+  };
+  return{friends:Friends.list(u.uid).map(wrap),requests:Friends.requests(u.uid).map(wrap)};
+}
+
 /* ---------- 房间 ---------- */
 function roomView(r,forId){
   return{id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,hostId:r.hostId,status:r.status,pool:roomPool(r),
+    spectators:(r.spectators||[]).length,spectate:!!(r.spectators||[]).includes(forId),
     you:r.seats.indexOf(forId),countdown:r.countdownAt?Math.max(0,r.countdownAt-now()):0,
     seats:r.seats.map((id,i)=>{if(!id)return null;const u=users.get(id);if(!u)return null;
       return{id,nick:u.nick,hero:u.hero,ready:r.ready[i],connected:u.connected,host:id===r.hostId};})};
@@ -385,7 +430,7 @@ function roomChanged(r){
 function createRoom(host,name,password,quick,pool){
   const r={id:crypto.randomUUID(),code:randomCode(),name:clean(name,16)||`${host.nick}的房间`,password:clean(password,16),
     hostId:host.id,seats:[null,null],ready:[false,false],status:"waiting",match:null,quick:!!quick,pool:roomPool({pool}),
-    chat:[],createdAt:now(),countdownT:null,countdownAt:0};
+    spectators:[],chat:[],createdAt:now(),countdownT:null,countdownAt:0};
   rooms.set(r.id,r);return r;
 }
 function joinRoom(u,r){
@@ -400,6 +445,10 @@ function joinRoom(u,r){
 }
 function leaveRoom(u,silent){
   const r=u.roomId&&rooms.get(u.roomId);
+  if(u.spectating){
+    u.spectating=false;
+    if(r&&Array.isArray(r.spectators))r.spectators=r.spectators.filter(x=>x!==u.id);
+  }
   u.roomId=null;
   if(u.socket){u.socket.join("lobby");if(r)u.socket.leave("room:"+r.id);}
   if(!r)return;
@@ -476,7 +525,7 @@ function enqueue(u,pool){
 class Match{
   constructor(room){
     this.room=room;this.seats=room.seats.slice();this.over=false;this.timer=null;this.deadline=0;this.timerKey="";
-    this.seq=0;this.afk=[0,0];
+    this.seq=0;this.afk=[0,0];this.specBuf=[];
     const ps=this.seats.map(id=>{const u=users.get(id);return{name:u.nick,hero:u.hero,deck:u.deck};});
     this.game=new E.Game({players:ps});
     this.startedAt=now();
@@ -565,7 +614,31 @@ class Match{
       send(u,"game",{view:g.viewFor(i),events:full?[]:g.eventsFor(events,i),timer:this.timerInfo(),full:!!full,
         foeOnline:!!(users.get(this.seats[1-i])||{}).connected,foeId:this.seats[1-i],seq:this.seq});
     });
+    this.pushSpec(g,full);
     if(g.phase==="over"&&!this.over)this.finish();
+  }
+  /* ---------- 观战：延迟 2 回合，只发公开视图 ---------- */
+  pushSpec(g,full){
+    const snap={view:specView(g),seq:this.seq,phase:g.phase,turn:g.turn,timer:this.timerInfo(),full:!!full,spectate:true};
+    this.specBuf.push(snap);
+    if(this.specBuf.length>60)this.specBuf.shift();
+    this.flushSpec(false);
+  }
+  flushSpec(force){
+    const r=this.room,ids=(r&&r.spectators)||[];
+    if(!ids.length){if(force)this.specBuf.length=0;return;}
+    const g=this.game;
+    while(this.specBuf.length){
+      const head=this.specBuf[0];
+      if(!force&&g.phase!=="over"&&g.turn-head.turn<2)break;
+      this.specBuf.shift();
+      ids.forEach(id=>send(users.get(id),"game",head));
+    }
+  }
+  sendSpecTo(id){
+    const u=users.get(id);if(!u)return;
+    const snap=this.specBuf.length?this.specBuf[0]:{view:specView(this.game),seq:this.seq,phase:this.game.phase,turn:this.game.turn,timer:this.timerInfo(),full:true};
+    send(u,"game",Object.assign({},snap,{full:true,spectate:true}));
   }
   sendTo(id){
     const i=this.seatOf(id);if(i<0)return;
@@ -589,11 +662,22 @@ class Match{
         const u=su[i];
         try{
           const res=Store.applyRank(u.uid,g.winner===i);
-          if(res)send(u,"rank:update",{rank:res.rank,delta:res.delta,from:res.from,to:res.to,promoted:res.promoted,demoted:res.demoted,capped:res.capped});
+          if(res){
+            send(u,"rank:update",{rank:res.rank,delta:res.delta,from:res.from,to:res.to,promoted:res.promoted,demoted:res.demoted,capped:res.capped});
+            /* 升段一次性金币奖励：金额由 rank.js 的 rewardFor 计算，Store 里已加进 gold；
+               这里只负责通知客户端，避免和 grantRankReward 重复发放 */
+            if(res.promoted&&res.reward>0)send(u,"rank:reward",{gold:res.reward,reward:res.reward,seg:res.to});
+          }
+          /* 每日首胜 +10（只算真人快速匹配的胜场） */
+          if(g.winner===i){
+            const dr=Store.claimDailyWin(u.uid);
+            if(dr&&dr.ok)send(u,"daily:reward",dr);
+          }
         }catch(e){console.error("[rank] 段位结算失败",e);}
       });
     }
     roomSys(r,g.winner==="draw"?"对局结束：平局":`对局结束：${g.players[g.winner].name} 获胜`);
+    try{this.flushSpec(true);(r.spectators||[]).forEach(id=>send(users.get(id),"game:notice",{text:"对局已结束，感谢观战",ok:true}));}catch(e){}
     roomChanged(r);
   }
   dispose(){this.clearTimer();this.over=true;}
@@ -615,6 +699,7 @@ io.on("connection",socket=>{
     let u=users.get(cid);
     if(u&&u.socket&&u.socket!==socket&&u.connected){u.socket.emit("kicked",{reason:"你在另一个窗口打开了游戏"});u.socket.disconnect(true);}
     if(!u){u={id:cid,nick:"",hero:"苏苏",deck:null,roomId:null};users.set(cid,u);}
+    u.uid=account?account.uid:null;
     u.nick=mod.forcedName||clean(d.nick,12)||u.nick||("玩家"+crypto.randomInt(1000,9999));
     const r=u.roomId&&rooms.get(u.roomId);   // 重连回房间时，选角要先按房间池校验
     if(d.hero&&C.PROFILES[d.hero]){
@@ -641,6 +726,7 @@ io.on("connection",socket=>{
     send(u,"lobby",lobbySnapshot());
     send(u,"lobby:chatlog",lobbyChat);
     send(u,"diy:list",{heroes:DiyServer.list()});
+    if(u.uid){send(u,"friend:list",friendListPayload(u));friendPresence(u,true);}
     lobbyChanged();
   });
 
@@ -722,6 +808,7 @@ io.on("connection",socket=>{
 
   socket.on("game:action",(a,cb)=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
+    if(u&&u.spectating)return reply(cb,{ok:false,error:"观战者不能操作"});
     if(!r||!r.match)return reply(cb,{ok:false,error:"当前不在对局中"});
     const seat=r.match.seatOf(u.id);if(seat<0)return reply(cb,{ok:false,error:"你不在这局对战中"});
     let res;
@@ -740,13 +827,15 @@ io.on("connection",socket=>{
   /* 局内聊天：同时记入房间聊天记录，对局结束回到房间后还能看到 */
   socket.on("game:chat",(text,cb)=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
-    if(!r||!r.match||!r.seats.includes(u.id))return reply(cb,{ok:false,error:"当前不在对局中"});
+    const isSpec=!!(u&&u.spectating);
+    if(!r||!r.match||(!r.seats.includes(u.id)&&!isSpec))return reply(cb,{ok:false,error:"当前不在对局中"});
     if(Store.moderationState(u.id).mute)return reply(cb,{ok:false,error:"你已被管理员禁言"});
     const t=clean(text,60);if(!t)return reply(cb,{ok:false,error:"消息不能为空"});
     if(limited(u,"_gc",1200))return reply(cb,{ok:false,error:"发言太快了，稍等一下"});
-    const m={id:u.id,nick:u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();archiveChat(m,"game",r.id);
+    const m={id:u.id,nick:(isSpec?"[观战] ":"")+u.nick,text:t,ts:now()};r.chat.push(m);if(r.chat.length>40)r.chat.shift();archiveChat(m,"game",r.id);
     io.to("room:"+r.id).emit("room:chat",m);
-    r.seats.forEach(sid=>{if(sid)send(users.get(sid),"game:chat",{who:sid===u.id?"me":"foe",nick:u.nick,text:t,ts:m.ts});});
+    r.seats.forEach(sid=>{if(sid)send(users.get(sid),"game:chat",{who:sid===u.id?"me":"foe",nick:m.nick,text:t,ts:m.ts});});
+    (r.spectators||[]).forEach(sid=>{if(sid!==u.id)send(users.get(sid),"game:chat",{who:"foe",nick:m.nick,text:t,ts:m.ts});});
     reply(cb,{ok:true});
   });
 
@@ -766,9 +855,107 @@ io.on("connection",socket=>{
     reply(cb,{ok:true,id:report.id});
   });
 
+  /* ---------- 好友 ---------- */
+  socket.on("friend:list",(d,cb)=>{
+    const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    reply(cb,Object.assign({ok:true},friendListPayload(u)));
+  });
+  socket.on("friend:request",(d,cb)=>{
+    const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    if(!u.uid)return reply(cb,{ok:false,error:"请先登录账号再添加好友"});
+    if(limited(u,"_fr",1500))return reply(cb,{ok:false,error:"操作太快了"});
+    const r=Friends.request(u.uid,(d||{}).name);
+    if(r.ok&&r.target){
+      const t=users.get("acct_"+r.target.uid);
+      if(t){send(t,"friend:request-in",{from:r.from});send(t,"friend:list",friendListPayload(t));}
+    }
+    reply(cb,{ok:r.ok,msg:r.msg});
+  });
+  socket.on("friend:accept",(d,cb)=>{
+    const u=userOf(socket);if(!u||!u.uid)return reply(cb,{ok:false,error:"未登录"});
+    const r=Friends.accept(u.uid,String((d||{}).uid||""));
+    if(r.ok){
+      const other=users.get("acct_"+((d||{}).uid||""));
+      if(other){send(other,"friend:list",friendListPayload(other));send(other,"toast",{text:`${u.nick} 接受了你的好友申请`});}
+      send(u,"friend:list",friendListPayload(u));
+    }
+    reply(cb,{ok:r.ok,msg:r.msg});
+  });
+  socket.on("friend:reject",(d,cb)=>{
+    const u=userOf(socket);if(!u||!u.uid)return reply(cb,{ok:false,error:"未登录"});
+    const r=Friends.reject(u.uid,String((d||{}).uid||""));
+    if(r.ok)send(u,"friend:list",friendListPayload(u));
+    reply(cb,{ok:r.ok,msg:r.msg});
+  });
+  socket.on("friend:remove",(d,cb)=>{
+    const u=userOf(socket);if(!u||!u.uid)return reply(cb,{ok:false,error:"未登录"});
+    const otherUid=String((d||{}).uid||"");
+    const r=Friends.remove(u.uid,otherUid);
+    if(r.ok){
+      send(u,"friend:list",friendListPayload(u));
+      const other=users.get("acct_"+otherUid);
+      if(other)send(other,"friend:list",friendListPayload(other));
+    }
+    reply(cb,{ok:r.ok,msg:r.msg});
+  });
+  /* ---------- 邀请好友进房 ---------- */
+  /* 邀请好友进「我」的房间：对方收到 room:invite-in（前端弹 toast + 加入按钮） */
+  socket.on("room:invite",(d,cb)=>{
+    const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    const target=users.get("acct_"+String((d||{}).uid||""));
+    if(!target||!target.connected)return reply(cb,{ok:false,error:"对方不在线"});
+    const r=u.roomId&&rooms.get(u.roomId);
+    if(!r)return reply(cb,{ok:false,error:"先进入一个房间再邀请好友"});
+    if(!r.seats.includes(null))return reply(cb,{ok:false,error:"房间已满"});
+    if(r.seats.includes(target.id))return reply(cb,{ok:false,error:"对方已经在这个房间里"});
+    send(target,"room:invite-in",{code:r.code,name:r.name,from:u.nick});
+    reply(cb,{ok:true,msg:"邀请已发送"});
+  });
+  /* ---------- 观战 ---------- */
+  socket.on("room:spectate",(d,cb)=>{
+    const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    d=d||{};
+    const r=d.id?rooms.get(String(d.id)):[...rooms.values()].find(x=>x.code===clean(d.code,10));
+    if(!r)return reply(cb,{ok:false,error:"房间不存在或已关闭"});
+    if(r.seats.includes(u.id))return reply(cb,{ok:false,error:"你在座位上，不能观战"});
+    if(!r.match||r.match.over||r.status!=="playing")return reply(cb,{ok:false,error:"对局还没开始或已经结束"});
+    if((r.spectators||[]).includes(u.id))return reply(cb,{ok:true});
+    if((r.spectators||[]).length>=2)return reply(cb,{ok:false,error:"观战人数已满"});
+    if(r.password&&clean(d.password,16)!==r.password)return reply(cb,{ok:false,error:"密码错误",needPassword:true});
+    leaveRoom(u,true);dequeue(u);
+    r.spectators=r.spectators||[];r.spectators.push(u.id);
+    u.roomId=r.id;u.spectating=true;
+    if(u.socket){u.socket.leave("lobby");u.socket.join("room:"+r.id);}
+    send(u,"room",roomView(r,u.id));
+    send(u,"room:chatlog",r.chat);
+    r.match.sendSpecTo(u.id);
+    roomSys(r,`${u.nick} 进入观战`);
+    roomChanged(r);
+    reply(cb,{ok:true});
+  });
+  socket.on("room:stopSpectate",()=>{
+    const u=userOf(socket);if(!u||!u.spectating)return;
+    leaveRoom(u);send(u,"room",null);
+  });
+  socket.on("room:kickSpectator",(d,cb)=>{
+    const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
+    if(!u||!r)return reply(cb,{ok:false,error:"不在房间里"});
+    if(r.hostId!==u.id)return reply(cb,{ok:false,error:"只有房主可以请离观战者"});
+    const targetId=String((d||{}).uid||"");
+    if(!(r.spectators||[]).includes(targetId))return reply(cb,{ok:false,error:"这个人不在观战"});
+    const target=users.get(targetId);
+    r.spectators=r.spectators.filter(x=>x!==targetId);
+    if(target){target.spectating=false;target.roomId=null;if(target.socket)target.socket.join("lobby");send(target,"kicked",{reason:"房主结束了你的观战"});send(target,"room",null);send(target,"lobby",lobbySnapshot());}
+    roomSys(r,"房主请离了一位观战者");
+    roomChanged(r);
+    reply(cb,{ok:true});
+  });
+
   socket.on("disconnect",()=>{
     const u=userOf(socket);if(!u||u.socket!==socket)return;
     u.connected=false;u.socket=null;
+    if(u.uid)friendPresence(u,false);
+    if(u.spectating){u.spectating=false;const sr=u.roomId&&rooms.get(u.roomId);if(sr&&Array.isArray(sr.spectators))sr.spectators=sr.spectators.filter(x=>x!==u.id);}
     dequeue(u);
     const r=u.roomId&&rooms.get(u.roomId);
     if(r){

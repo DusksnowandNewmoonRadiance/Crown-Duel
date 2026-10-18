@@ -123,6 +123,12 @@
         <form class="join-code" id="joinCodeForm"><input id="joinCode" inputmode="numeric" maxlength="8" placeholder="输入房间号"><button class="btn" type="submit">加入</button></form>
       </div>
       <div class="room-list" id="roomList"></div>
+      <div class="friends-box" id="friendsBox">
+        <div class="chat-head">好友 <small>加好友 · 邀请进房 · 观战</small></div>
+        <form class="join-code" id="friendForm"><input id="friendName" maxlength="12" placeholder="对方昵称" autocomplete="off"><button class="btn" type="submit">加好友</button></form>
+        <div class="friends-req" id="friendsReq"></div>
+        <div class="friends-list" id="friendsList"></div>
+      </div>
     </div>
     <aside class="chat-box">
       <div class="chat-head">大厅聊天 <small>点击玩家昵称可举报</small></div>
@@ -146,6 +152,7 @@
       <div class="seat" id="seat1"></div>
     </div>
     <div class="room-status" id="roomStatus"></div>
+    <div class="room-spectate" id="roomSpectate" hidden></div>
     <div class="room-actions">
       <button class="btn" id="roomHero">更换卡牌师</button>
       <button class="btn" id="roomDeck">卡组</button>
@@ -355,6 +362,7 @@
 
 <!-- ======================= 对局 ======================= -->
 <section class="screen" id="scrGame" hidden>
+  <div id="specBanner" hidden>观战中 · 延迟 2 回合 · 手牌与操作已隐藏</div>
   <div id="rotate"><div class="phone"></div><h2>请横屏游玩</h2><p>旋转手机后自动继续</p><button class="btn btn-gold" id="rotFull" hidden>进入全屏</button><p class="small" id="rotIos" hidden>iPhone：点浏览器的「分享」→「添加到主屏幕」，从桌面图标打开即可全屏。</p></div>
   <div id="stageWrap"><div id="stage">
     <!-- 剧情模式：局内对话窗口（右上角） -->

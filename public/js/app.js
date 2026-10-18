@@ -222,7 +222,7 @@ function renderHome(){
   d.innerHTML=`<div class="hd-top">${crest(cur)}<div class="hd-id"><div class="hd-k">${V.esc(p.faction)} · ${V.esc(p.style)}</div><h3>${V.esc(cur)}${isDiyHero(cur)?' <i class="diy-tag">DIY</i>':''}<small>${V.esc(info.title)}</small></h3></div><div class="hd-nums"><div class="hd-n"><b>${p.hp}</b><span>生命</span></div><div class="hd-n"><b class="st">${stars(info.difficulty)}</b><span>难度</span></div></div></div>
     <p class="tip">${V.esc(info.tip)}</p>
     <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div>`;
-  $("#homeNickTxt").textContent=Me.nick||"设置昵称";
+  $("#homeNickTxt").innerHTML=Cosmetics.nameHTML(Me.nick||"设置昵称",Account.me);
   $("#homeSound").classList.toggle("off",!Audio2.musicOn&&!Audio2.sfxOn);
 }
 $("#heroGrid").addEventListener("click",e=>{const b=e.target.closest(".htile");if(!b)return;Me.hero=b.dataset.hero;Audio2.sfx("select");renderHome();});
@@ -970,7 +970,7 @@ $("#lobbyDiy").addEventListener("click",openDiy);
    ============================================================ */
 const Net={
   socket:null,inLobby:false,room:null,lobby:null,myId:null,searching:false,searchSince:0,gameOn:false,pendingJoin:null,
-  seq:null,hbTimer:null,hbMiss:0,wasDown:false,diyHeroBack:null,
+  seq:null,hbTimer:null,hbMiss:0,wasDown:false,diyHeroBack:null,friends:null,spectating:false,
   connect(){
     if(this.socket)return;
     if(typeof io!=="function"){toast("无法连接服务器（联机功能需要通过服务器访问）");return false;}
@@ -1015,6 +1015,8 @@ const Net={
       toast(head+(st?`  · 当前 ${st.label}`:""),!d.demoted);
       renderHome();if(Net.inLobby&&!Net.room)renderLobby();
     });
+    s.on("rank:reward",d=>{if(!d)return;if(Account.me&&typeof d.gold==="number")Account.me.gold=d.gold;renderGold();flyCoin(d.awarded||0);toast(`升段奖励 +${d.awarded} 金币`,true);});
+    s.on("daily:reward",d=>{if(!d)return;if(Account.me&&typeof d.gold==="number")Account.me.gold=d.gold;renderGold();flyCoin(d.awarded||0);toast(`每日首胜 +${d.awarded} 金币`,true);});
     s.on("lobby:chatlog",list=>{$("#lobbyChatLog").innerHTML="";list.forEach(m=>chatLine("#lobbyChatLog",m));});
     s.on("lobby:chat",m=>chatLine("#lobbyChatLog",m));
     s.on("room",r=>this.onRoom(r));
@@ -1025,6 +1027,24 @@ const Net={
     s.on("game:chat",d=>GameUI.showChat(d.who,d.text,d.nick));
     s.on("game:notice",d=>GameUI.notice(d.text,d.ok));
     s.on("toast",d=>toast(d.text,true,3500));
+    /* 好友 */
+    s.on("friend:list",d=>renderFriends(d));
+    s.on("friend:request-in",d=>{
+      toast(`${(d&&d.from&&d.from.nick)||"有人"} 申请加你为好友`,true,4500);
+      if(this.socket&&this.socket.connected)this.socket.emit("friend:list",{},r=>renderFriends(r));
+    });
+    s.on("friend:presence",d=>{
+      if(!this.friends||!Array.isArray(this.friends.friends))return;
+      const f=this.friends.friends.find(x=>x.uid===d.uid);
+      if(f){f.online=!!d.online;renderFriends(this.friends);}
+    });
+    /* 好友邀请进房 */
+    s.on("room:invite-in",d=>{
+      if(!d)return;
+      toast(`${d.from||"好友"} 邀请你加入房间 #${d.code}`,true,8000);
+      this.pendingInvite=d;
+      if(Net.inLobby&&!Net.room)renderLobby();
+    });
     s.on("announce",d=>Live.onAnnounce(d));
     s.on("broadcast",d=>sysMsg("bc",d.text,{ms:15000}));
     s.on("maintenance",m=>Live.setMaint(m));
@@ -1052,6 +1072,14 @@ const Net={
     closeModal("#mMatch");$("#connBanner").hidden=true;
     if(GameUI.active&&GameUI.mode==="online")GameUI.stop();
     show("#scrHome");renderHome();
+  },
+  /* 观战：进入只读视角（服务端延迟 2 回合） */
+  startSpectate(d){
+    if(!this.socket||!this.socket.connected){toast("与服务器的连接已断开");return;}
+    this.socket.emit("room:spectate",d,r=>{
+      if(r&&r.ok){this.spectating=true;toast("已进入观战（延迟 2 回合）",true);}
+      else toast((r&&r.error)||"观战失败",false,3500);
+    });
   },
   joinRoom(d){
     this.socket.emit("room:join",d,r=>{
@@ -1140,9 +1168,19 @@ const Net={
       show("#scrGame");
       GameUI.start(this.ctl,"online",{tutorial:store.get("coach","")!=="1",opponentId:u.foeId,opponentName:u.view&&u.view.foe&&u.view.foe.name,onReport:(id,name)=>openReport(id,name,"game"),onAgain:()=>this.backToRoomAfterGame(),onExit:()=>this.backToLobbyAfterGame()});
     }
+    if(u.spectate){
+      Net.spectating=true;
+      const sc=$("#scrGame");if(sc)sc.classList.add("spectating");
+      const sb=$("#specBanner");if(sb)sb.hidden=false;
+    }
     if(u.foeId)GameUI.opts.opponentId=u.foeId;
     if(u.view&&u.view.foe)GameUI.opts.opponentName=u.view.foe.name;
     GameUI.push(u);
+  },
+  clearSpectate(){
+    this.spectating=false;
+    const sc=$("#scrGame");if(sc)sc.classList.remove("spectating");
+    const sb=$("#specBanner");if(sb)sb.hidden=true;
   },
   act(a){
     return new Promise(res=>{
@@ -1157,11 +1195,13 @@ const Net={
     Net.socket.emit("game:chat",text,r=>{clearTimeout(t);res(r||{ok:false});});
   })},
   backToRoomAfterGame(){
-    this.gameOn=false;this.seq=null;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
+    this.gameOn=false;this.seq=null;GameUI.stop();
+    this.clearSpectate();setTimeout(()=>Live.afterGame(),0);
     if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
   },
   backToLobbyAfterGame(){
-    this.gameOn=false;this.seq=null;GameUI.stop();setTimeout(()=>Live.afterGame(),0);
+    this.gameOn=false;this.seq=null;GameUI.stop();
+    this.clearSpectate();setTimeout(()=>Live.afterGame(),0);
     if(this.room)this.socket.emit("room:leave");
     show("#scrLobby");renderLobby();
   }
@@ -1207,10 +1247,11 @@ function rankLabel(){
 function renderLobby(){
   const me=Me.hero;
   const mc=$("#lobbyMe");mc.style.setProperty("--hcr",V.heroRgb(me));
-  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)}${isDiyHero(me)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[me]||{}).title||(C.PROFILES[me]||{}).faction||"")} · 卡组：${V.esc(Me.deckName(me))} · ${rankLabel()}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
+  mc.innerHTML=`${crest(me)}<div class="who"><b>${Cosmetics.nameHTML(Me.nick,Account.me)}</b><div>${V.esc(me)}${isDiyHero(me)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[me]||{}).title||(C.PROFILES[me]||{}).faction||"")} · 卡组：${V.esc(Me.deckName(me))} · ${rankLabel()}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
   $("#lobbyHero").onclick=()=>pickHero(h=>{Me.hero=h;Net.profile();renderLobby();renderHome();});
   $("#lobbyDeck").onclick=()=>openDecks(Me.hero);
   const L=Net.lobby;
+  renderFriends();
   $("#lobbyOnline").textContent=L?`在线 ${L.online}${L.queue?` · 匹配中 ${L.queue}`:""}`:"连接中…";
   const box=$("#roomList");
   if(!L){box.innerHTML=`<div class="empty">正在连接服务器…</div>`;return;}
@@ -1220,10 +1261,51 @@ function renderLobby(){
     const can=!full&&!playing;
     return`<div class="room-card"><div class="rc-top"><span class="rc-name">${r.locked?"[私] ":""}${V.esc(r.name)}</span><span class="rc-code">#${V.esc(r.code)}</span>${r.pool==="diy"?'<span class="tag diy">DIY</span>':""}<span class="tag ${playing?"play":"wait"}">${playing?"对局中":full?"已满":"等待中"}</span></div>
       <div class="rc-players">${r.players.map(p=>`<span style="--hcr:${V.heroRgb(p.hero)}"><i>${V.esc(p.hero)}</i><b class="reportable-name" data-report-id="${V.esc(p.id)}" data-report-name="${V.esc(p.nick)}" title="点击举报">${V.esc(p.nick)}</b></span>`).join("")}${r.players.length<2?`<span class="muted">空位</span>`:""}</div>
-      ${can?`<button class="btn btn-primary" data-join="${V.esc(r.id)}">加入</button>`:""}</div>`;
+      ${can?`<button class="btn btn-primary" data-join="${V.esc(r.id)}">加入</button>`:""}${r.status==="playing"?`<button class="btn" data-spectate="${V.esc(r.id)}">观战</button>`:""}</div>`;
   }).join("");
 }
-$("#roomList").addEventListener("click",e=>{const b=e.target.closest("[data-join]");if(b)Net.joinRoom({id:b.dataset.join});});
+$("#roomList").addEventListener("click",e=>{
+  const j=e.target.closest("[data-join]");if(j){Net.joinRoom({id:j.dataset.join});return;}
+  const sp=e.target.closest("[data-spectate]");if(sp)Net.startSpectate({id:sp.dataset.spectate});
+});
+/* ---------- 好友面板 ---------- */
+function renderFriends(d){
+  if(d&&Array.isArray(d.friends))Net.friends=d;
+  const box=$("#friendsList"),reqBox=$("#friendsReq");
+  if(!box||!reqBox)return;
+  const data=Net.friends||{friends:[],requests:[]};
+  if(!Account.me){box.innerHTML=`<div class="friends-empty">登录账号后可以加好友、邀请进房和观战</div>`;reqBox.innerHTML="";return;}
+  const row=(f,kind)=>{
+    const rank=(window.DuelRank&&f.rank)?window.DuelRank.summary(f.rank).label:"";
+    const meta=[f.hero||"",rank].filter(Boolean).join(" · ");
+    if(kind==="req")return`<div class="friend-row req"><span class="fn">${V.esc(f.nick)}${meta?` <span class="muted small">${V.esc(meta)}</span>`:""}</span><button class="btn btn-gold" data-facc="${V.esc(f.uid)}">同意</button><button class="btn" data-frej="${V.esc(f.uid)}">忽略</button></div>`;
+    return`<div class="friend-row"><span class="dot${f.online?" on":""}"></span><span class="fn">${V.esc(f.nick)}${meta?` <span class="muted small">${V.esc(meta)}</span>`:""}</span><button class="btn" data-finv="${V.esc(f.uid)}"${f.online?"":" disabled"}>邀请</button><button class="btn" data-fdel="${V.esc(f.uid)}">删除</button></div>`;
+  };
+  const reqs=(data.requests||[]).map(f=>row(f,"req")).join("");
+  reqBox.innerHTML=reqs?`<div class="small muted" style="padding:2px 0">待处理申请</div>${reqs}`:"";
+  const list=(data.friends||[]).map(f=>row(f,"friend")).join("");
+  const inv=Net.pendingInvite?`<div class="friend-row req"><span class="fn">邀请：#${V.esc(Net.pendingInvite.code)} ${V.esc(Net.pendingInvite.name||"")}</span><button class="btn btn-gold" data-joininv="1">加入</button></div>`:"";
+  box.innerHTML=(inv+list)||`<div class="friends-empty">还没有好友。输入对方昵称加一个吧。</div>`;
+}
+const friendsBox=$("#friendsBox");
+if(friendsBox)friendsBox.addEventListener("click",e=>{
+  const t=e.target.closest("button");if(!t||!Net.socket)return;
+  const emit=(ev,d)=>Net.socket.emit(ev,d,r=>{if(r&&r.ok===false)toast(r.msg||r.error||"操作失败",false);});
+  if(t.dataset.facc)emit("friend:accept",{uid:t.dataset.facc});
+  else if(t.dataset.frej)emit("friend:reject",{uid:t.dataset.frej});
+  else if(t.dataset.fdel){if(confirm("删除这个好友？"))emit("friend:remove",{uid:t.dataset.fdel});}
+  else if(t.dataset.finv)emit("room:invite",{uid:t.dataset.finv});
+  else if(t.dataset.joininv){const inv=Net.pendingInvite;Net.pendingInvite=null;Net.joinRoom({code:inv.code});renderFriends();}
+});
+const friendForm=$("#friendForm");
+if(friendForm)friendForm.addEventListener("submit",e=>{
+  e.preventDefault();
+  const name=$("#friendName").value.trim();if(!name||!Net.socket)return;
+  Net.socket.emit("friend:request",{name},r=>{
+    if(r&&r.ok){toast(r.msg||"申请已发送",true);$("#friendName").value="";}
+    else toast((r&&(r.msg||r.error))||"添加失败",false,3500);
+  });
+});
 $("#lobbyBack").addEventListener("click",()=>Net.leaveAll());
 $("#btnQuick").addEventListener("click",()=>{if(Net.socket){Net.socket.emit("match:quick");}});
 $("#matchCancel").addEventListener("click",()=>{Net.socket&&Net.socket.emit("match:cancel");closeModal("#mMatch");});
@@ -1255,6 +1337,16 @@ let roomTick=null;
 function renderRoom(){
   const r=Net.room;if(!r)return;
   $("#roomTitle").textContent=r.name;$("#roomCode").textContent=r.code;
+  const spBox=$("#roomSpectate");
+  if(spBox){
+    if(r.spectate){
+      spBox.hidden=false;
+      spBox.innerHTML=`观战中 · 延迟 2 回合 · <button class="btn" id="specQuit">结束观战</button>`;
+      const q=$("#specQuit");if(q)q.onclick=()=>{Net.socket&&Net.socket.emit("room:stopSpectate");};
+    }else if(r.spectators>0){
+      spBox.hidden=false;spBox.innerHTML=`观战 ${r.spectators} 人`;
+    }else{spBox.hidden=true;spBox.innerHTML="";}
+  }
   const pool=$("#roomPool");
   if(pool){
     pool.textContent=r.pool==="diy"?"允许 DIY":"原版房间";
@@ -1410,27 +1502,103 @@ window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;}};
 /* ============================================================
    商店
    ============================================================ */
+/* ============================================================
+   配饰（头衔 / 名字颜色）与金币动画
+   ============================================================ */
+const Cosmetics={
+  titles:{title_recruit:{name:"皇冠新兵",color:"#6fbf73"},title_general:{name:"皇冠将军",color:"#a98fd9"}},
+  colors:{red:"#e0664f",orange:"#e08a4f",yellow:"#d9c05a",green:"#6fbf73",cyan:"#4fb8b0",blue:"#5b9bd5",purple:"#a98fd9"},
+  of(me){return (me&&me.cosmetics)||{titles:[],colors:[],equip:{title:null,color:null}};},
+  nameHTML(nick,me){
+    const c=Cosmetics.of(me),eq=c.equip||{},t=eq.title&&Cosmetics.titles[eq.title];
+    const col=eq.color&&Cosmetics.colors[eq.color];
+    return (t?`<i class="cos-title" style="color:${t.color}">${V.esc(t.name)}</i>`:"")+`<b${col?` style="color:${col}"`:""}>${V.esc(nick||"")}</b>`;
+  }
+};
+function reducedMotion(){try{return matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){return false;}}
+function flyCoin(n){
+  if(reducedMotion())return;
+  const target=document.querySelector("#homeGold")||document.querySelector("#shopGold");
+  if(!target)return;
+  const r=target.getBoundingClientRect();
+  const el=document.createElement("div");
+  el.className="coin-fly";el.textContent="+"+n;
+  el.style.left=(innerWidth/2)+"px";el.style.top=(innerHeight*0.45)+"px";
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>{el.style.transform=`translate(${r.left+r.width/2-innerWidth/2}px,${r.top+r.height/2-innerHeight*0.45}px) scale(.7)`;el.style.opacity="0";});
+  setTimeout(()=>el.remove(),650);
+}
+function flashEl(el){if(!el)return;el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");}
+function shakeEl(el){if(!el)return;el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake");}
+
 async function renderShop(){
   const r=await Account.api("/shop");
   if(!r.ok||!r.items){toast("商店加载失败",false);return;}
+  const coin=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg>`;
   const inv=Account.me.inv||[];
-  $("#shopList").innerHTML=r.items.map(it=>{
+  const cos=Cosmetics.of(Account.me),eq=cos.equip||{};
+  const basics=r.items.filter(it=>!["title","chest"].includes(it.kind));
+  const decos=r.items.filter(it=>["title","chest"].includes(it.kind));
+  $("#shopList").innerHTML=basics.map(it=>{
     const owned=(inv.find(x=>x.id===it.id)||{}).qty||0;
     return`<div class="shop-item">
       <div class="shop-card" style="--hcr:#e2b467">
         <div class="shop-name">${V.esc(it.name)}</div>
         <div class="shop-kind">${it.kind==="card"?"剧情卡":it.kind==="pack"?"卡包":"升级券"}</div>
         <div class="shop-desc">${V.esc(it.desc)}</div>
-        <div class="shop-price"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg>${it.price}</div>
+        <div class="shop-price">${coin}${it.price}</div>
         <button class="btn btn-gold" data-id="${V.esc(it.id)}" ${Account.gold<it.price?"disabled":""}>购买${owned?"（拥有 "+owned+"）":""}</button>
       </div>
     </div>`;
   }).join("");
-}
+  let box=$("#shopCos");
+  if(!box){box=document.createElement("div");box.id="shopCos";box.className="shop-cos";$("#shopList").parentNode.insertBefore(box,$("#shopList"));}
+  const ownedT=cos.titles||[],ownedC=cos.colors||[];
+  box.innerHTML=`<h3 class="shop-sub">配饰</h3><div class="shop-grid">`+decos.map(it=>{
+    const owned=it.kind==="title"&&ownedT.includes(it.id);
+    const isEq=it.kind==="title"&&eq.title===it.id;
+    return`<div class="shop-item"><div class="shop-card" style="--hcr:${it.titleColor||"#e2b467"}">
+      <div class="shop-name">${V.esc(it.name)}</div>
+      <div class="shop-kind">${it.kind==="title"?"头衔":"宝箱"}</div>
+      <div class="shop-desc">${V.esc(it.desc)}</div>
+      <div class="shop-price">${coin}${it.price}</div>
+      <button class="btn ${owned?"":"btn-gold"}" data-cos="${V.esc(it.id)}" ${(!owned&&Account.gold<it.price)?"disabled":""}>${isEq?"装备中":owned?"装备":"购买"}</button>
+    </div></div>`;
+  }).join("")+`</div>
+  <h3 class="shop-sub">我的配饰</h3><div class="cos-owned">${
+    (ownedT.length||ownedC.length)?[
+      ...ownedT.map(id=>`<button class="cos-chip ${eq.title===id?"on":""}" data-equip="title:${id}">${V.esc((Cosmetics.titles[id]||{}).name||id)}</button>`),
+      ...(eq.title?`<button class="cos-chip" data-equip="title:">卸下头衔</button>`:""),
+      ...ownedC.map(id=>`<button class="cos-chip ${eq.color===id?"on":""}" style="--c:${Cosmetics.colors[id]}" data-equip="color:${id}">${V.esc(id)}</button>`),
+      ...(eq.color?`<button class="cos-chip" data-equip="color:">卸下颜色</button>`:"")
+    ].join(""):`<span class="muted small">还没有配饰，先买个宝箱试试</span>`
+  }</div>`;
+}$("#shopCos")?.addEventListener("click",async e=>{
+  const cosBtn=e.target.closest("button[data-cos]"),eqBtn=e.target.closest("button[data-equip]");
+  if(cosBtn){
+    const card=cosBtn.closest(".shop-card");
+    const item=cosBtn.dataset.cos;
+    const r=await Account.api("/cosmetics/buy",{id:item});
+    if(r.ok){
+      if(r.cosmetics&&Account.me)Account.me.cosmetics=r.cosmetics;
+      if(typeof r.gold==="number"&&Account.me)Account.me.gold=r.gold;
+      renderGold();renderShop();
+      if(item==="chest_color"){shakeEl(card);setTimeout(()=>{if(r.refund){toast(r.msg||`返还 ${r.refund} 金币`,true);flyCoin(r.refund);}else{toast(`开出「${(r.item&&r.item.name)||"新颜色"}」`,true);}},320);}
+      else{flashEl(card);toast("购买成功",true);}
+    }else toast(r.msg||"购买失败",false);
+    return;
+  }
+  if(eqBtn){
+    const [kind,value]=eqBtn.dataset.equip.split(":");
+    const r=await Account.api("/cosmetics/equip",{kind,value});
+    if(r.ok){if(r.cosmetics&&Account.me)Account.me.cosmetics=r.cosmetics;renderGold();renderShop();toast(value?"已装备":"已卸下",true);}
+    else toast(r.msg||"操作失败",false);
+  }
+});
 $("#shopList").addEventListener("click",async e=>{
   const b=e.target.closest("button[data-id]");if(!b)return;
   const r=await Account.api("/shop/buy",{id:b.dataset.id});
-  if(r.ok){Account.me=Object.assign({},Account.me,{gold:r.gold,inv:r.inv});renderGold();renderShop();toast("购买成功",true);}
+  if(r.ok){Account.me=Object.assign({},Account.me,{gold:r.gold,inv:r.inv});renderGold();renderShop();toast("购买成功",true);flashEl(b.closest(".shop-card"));}
   else toast(r.msg||"购买失败",false);
 });
 

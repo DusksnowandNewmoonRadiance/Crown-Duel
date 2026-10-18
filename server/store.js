@@ -7,6 +7,15 @@ const Rank=require("../shared/rank.js");
 
 const DATA_DIR=process.env.DATA_DIR||path.join(__dirname,"..","data");
 fs.mkdirSync(DATA_DIR,{recursive:true});
+/* 配饰：7 种名字颜色（宝箱随机开出） */
+const NAME_COLORS=[
+  {id:"red",name:"红",color:"#e0664f"},{id:"orange",name:"橙",color:"#e08a4f"},
+  {id:"yellow",name:"黄",color:"#d9c05a"},{id:"green",name:"绿",color:"#6fbf73"},
+  {id:"cyan",name:"青",color:"#4fb8b0"},{id:"blue",name:"蓝",color:"#5b9bd5"},
+  {id:"purple",name:"紫",color:"#a98fd9"}
+];
+/* 段位一次性奖励：key = 跨入的分段起点 */
+const RANK_REWARDS={"25":30,"20":60,"15":100,"10":150,"5":250,"2":500};
 
 function read(name,fallback){
   try{return JSON.parse(fs.readFileSync(path.join(DATA_DIR,name),"utf8"));}
@@ -42,8 +51,11 @@ function hashPass(pass,salt){return crypto.createHash("sha256").update(salt+"::"
 function newUser(user,pass,nick,email){
   const salt=crypto.randomBytes(8).toString("hex");
   const uid="u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,email:email||"",gold:0,
+  return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,email:email||"",gold:20,
     rank:{seg:25,points:0,streak:0,wins:0,losses:0,lossStreak:0},   // 段位（见 shared/rank.js）
+    cosmetics:{titles:[],colors:[],equip:{title:null,color:null}},  // 配饰：头衔 / 名字颜色
+    daily:{lastWinDate:""},    // 每日首胜（YYYY-MM-DD）
+    rankRewards:[],            // 已领过的段位奖励（分段 key）
     inv:[],                    // 仓库 [{id,qty}]
     campaign:{},               // [hero]:{unlocked,slots:[{deck,ch1,upgrades},×3]}
     decks:null,                // 云端卡组 {v:2,list:[{id,hero,name,cards,updatedAt}],active:{hero:deckId}}
@@ -54,6 +66,7 @@ function newUser(user,pass,nick,email){
 /* 用户安全视图（不含密码/盐） */
 function pubUser(u){
   return{uid:u.uid,user:u.user,nick:u.nick,email:u.email||"",gold:u.gold,inv:u.inv,campaign:u.campaign,
+    cosmetics:u.cosmetics||{titles:[],colors:[],equip:{title:null,color:null}},
     rank:u.rank||{seg:25,points:0,streak:0,wins:0,losses:0,lossStreak:0}};
 }
 function findUser(field,val){for(const k in users)if(users[k][field]===val)return users[k];return null;}
@@ -170,6 +183,9 @@ const Store={
     return null;
   },
   logout(token){const u=this.byToken(token);if(u){u.token="";write("users.json",users);}return!!u;},
+  /* 好友系统（server/friends.js）用的最小访问器：拿用户表 / 落盘 */
+  usersMap(){return users;},
+  persistUsers(){write("users.json",users);},
   /* ---------- 卡组云端同步（跟着账号走） ---------- */
   decks(uid){const u=users[uid];return u?(u.decks||null):null;},
   saveDecks(uid,decks){
@@ -178,6 +194,68 @@ const Store={
   },
   /* ---------- 金币与仓库 ---------- */
   addGold(uid,n){const u=users[uid];if(!u)return 0;u.gold=Math.max(0,u.gold+n);write("users.json",users);return u.gold;},
+  /* ---------- 配饰（头衔 / 名字颜色） ---------- */
+  NAME_COLORS,
+  /* 买配饰：头衔直接入库；宝箱随机开 7 色之一，重复返还 25 金币 */
+  buyCosmetic(uid,item){
+    const u=users[uid];if(!u)return{ok:false,msg:"未登录"};
+    if(!u.cosmetics)u.cosmetics={titles:[],colors:[],equip:{title:null,color:null}};
+    const cos=u.cosmetics;
+    if(item.kind==="title"){
+      if(cos.titles.includes(item.id))return{ok:false,msg:"已拥有这个头衔"};
+      if(u.gold<item.price)return{ok:false,msg:"金币不足"};
+      u.gold-=item.price;cos.titles.push(item.id);
+      write("users.json",users);
+      return{ok:true,gold:u.gold,cosmetics:cos,item:{kind:"title",id:item.id}};
+    }
+    if(item.kind==="chest"){
+      if(u.gold<item.price)return{ok:false,msg:"金币不足"};
+      u.gold-=item.price;
+      const pool=NAME_COLORS.filter(c=>!cos.colors.includes(c.id));
+      if(!pool.length){u.gold+=25;write("users.json",users);return{ok:true,gold:u.gold,cosmetics:cos,refund:25,msg:"颜色已全部拥有，返还 25 金币"};}
+      const got=pool[Math.floor(Math.random()*pool.length)];
+      cos.colors.push(got.id);
+      write("users.json",users);
+      return{ok:true,gold:u.gold,cosmetics:cos,item:{kind:"color",id:got.id,name:got.name,color:got.color}};
+    }
+    return{ok:false,msg:"未知商品类型"};
+  },
+  /* 装备 / 卸下（value 为空表示卸下） */
+  equipCosmetic(uid,kind,value){
+    const u=users[uid];if(!u)return{ok:false,msg:"未登录"};
+    if(!u.cosmetics)u.cosmetics={titles:[],colors:[],equip:{title:null,color:null}};
+    const cos=u.cosmetics;
+    if(kind==="title"){
+      if(value&&!cos.titles.includes(value))return{ok:false,msg:"还没有这个头衔"};
+      cos.equip.title=value||null;
+    }else if(kind==="color"){
+      if(value&&!cos.colors.includes(value))return{ok:false,msg:"还没有这个颜色"};
+      cos.equip.color=value||null;
+    }else return{ok:false,msg:"未知配饰类型"};
+    write("users.json",users);
+    return{ok:true,cosmetics:cos};
+  },
+  /* 每日首胜：同一自然日只发一次 */
+  claimDailyWin(uid){
+    const u=users[uid];if(!u)return{ok:false};
+    const today=new Date().toISOString().slice(0,10);
+    if(!u.daily)u.daily={lastWinDate:""};
+    if(u.daily.lastWinDate===today)return{ok:false,msg:"今天已经领过了"};
+    u.daily.lastWinDate=today;u.gold+=10;
+    write("users.json",users);
+    return{ok:true,gold:u.gold,awarded:10};
+  },
+  /* 段位一次性奖励：同一分段只发一次（seg 是升段后的段位） */
+  grantRankReward(uid,seg){
+    const u=users[uid];if(!u)return null;
+    const key=String(seg>20?25:seg>15?20:seg>10?15:seg>5?10:seg>2?5:2);
+    if(!u.rankRewards)u.rankRewards=[];
+    if(u.rankRewards.includes(key))return null;
+    u.rankRewards.push(key);
+    const gold=RANK_REWARDS[key]||0;
+    u.gold+=gold;write("users.json",users);
+    return{ok:true,seg:key,gold:u.gold,awarded:gold};
+  },
   /* 商品由 server 侧的 SHOP 定义；buy(item) 返回 {ok,msg} */
   buy(uid,item){
     const u=users[uid];if(!u)return{ok:false,msg:"未登录"};
@@ -225,10 +303,13 @@ const Store={
     return{best:ch.best,first};
   },
   /* 段位结算：只用于快速匹配；未登录 / 非账号对局由调用方跳过 */
-  applyRank(uid,win){
+  recordResult(uid,win){
     const u=findUser("uid",uid);if(!u)return null;
-    const res=Rank.applyResult(u.rank,win);u.rank=res.rank;write("users.json",users);return res;
+    const res=Rank.recordResult(u.rank,win);u.rank=res.rank;
+    if(res.reward>0)u.gold=(u.gold||0)+res.reward;   // 升段奖励
+    write("users.json",users);return res;
   },
+  rankOf(uid){const u=findUser("uid",uid);return u?Rank.normalize(u.rank):null;},
   announcements(){return announcements.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt);},
   upsertAnnouncement(a){
     const now=Date.now();

@@ -1182,3 +1182,36 @@
 /* DIY 工坊：出现「覆盖更新」时按钮排 3 列（追加规则，不改既有） */
 .diy-info-btns.has-update{grid-template-columns:repeat(3,minmax(0,1fr))}
 .diy-info-btns.has-update .btn{padding:8px 2px;font-size:12px}
+/* ---------- 配饰与金币动画 ---------- */
+.shop-sub{margin:18px 0 8px;font-size:var(--fs-sm);color:var(--text-3);letter-spacing:.04em}
+.cos-owned{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.cos-chip{border:1px solid var(--line-2);background:var(--surface-2);border-radius:999px;padding:6px 12px;font-size:12px;color:var(--text-2);cursor:pointer}
+.cos-chip.on{border-color:var(--gold);color:var(--gold)}
+.cos-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c,transparent);display:inline-block;margin-right:6px;vertical-align:1px}
+.cos-title{font-style:normal;font-size:11px;margin-right:6px;padding:1px 6px;border:1px solid currentColor;border-radius:999px;opacity:.9}
+.coin-fly{position:fixed;z-index:9999;font:700 16px var(--font-ui);color:var(--gold);pointer-events:none;text-shadow:0 0 10px rgba(226,180,103,.6);transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s}
+.shop-card.flash{animation:shopFlash .5s ease-out}
+@keyframes shopFlash{0%{box-shadow:0 0 0 0 rgba(226,180,103,.7)}100%{box-shadow:0 0 0 14px rgba(226,180,103,0)}}
+.shop-card.shake{animation:chestShake .3s ease-in-out}
+@keyframes chestShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px) rotate(-1deg)}75%{transform:translateX(5px) rotate(1deg)}}
+@media (prefers-reduced-motion:reduce){.shop-card.flash,.shop-card.shake,.coin-fly{animation:none!important;transition:none!important}}
+/* ---------- 好友面板 ---------- */
+.friends-box{border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.friends-box .join-code{margin:0;display:flex;gap:6px}
+.friends-box .join-code input{flex:1;min-width:0}
+.friends-list{display:flex;flex-direction:column;gap:4px;max-height:180px;overflow:auto}
+.friend-row{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line);font-size:13px}
+.friend-row:last-child{border-bottom:none}
+.friend-row .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-500);flex:none}
+.friend-row .dot.on{background:var(--positive)}
+.friend-row .fn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.friend-row .btn{padding:4px 9px;font-size:12px}
+.friend-row.req{background:rgba(91,143,199,.08);border-radius:6px;padding:6px}
+.friends-req:empty,.friends-list:empty{display:none}
+.friends-empty{color:var(--text-3);font-size:12px;padding:4px 0}
+/* ---------- 观战 ---------- */
+.room-spectate{margin-top:8px;font-size:13px;color:var(--text-2);display:flex;align-items:center;gap:8px;justify-content:center}
+#specBanner{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:96;padding:5px 14px;border-radius:999px;
+  background:rgba(9,9,11,.72);border:1px solid var(--line-3);color:var(--text-2);font-size:12px;letter-spacing:.04em;pointer-events:none}
+#scrGame.spectating #hand,#scrGame.spectating #endBtn,#scrGame.spectating #playBtn,#scrGame.spectating #dropHint{display:none!important}
+#scrGame.spectating #meLane .row{opacity:.9}
