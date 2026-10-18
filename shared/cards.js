@@ -41,7 +41,20 @@ const PROFILES={
     {id:"winter",name:"冬将军",cost:4,kind:"spell",art:"❄",text:"使所有敌方单位的攻击力 -2。",effect:"enemyAtkDown",n:1,limit:1,rarity:"elite"},
     {id:"reddawn",name:"赤色黎明",cost:4,kind:"spell",art:"✹",text:"对所有敌方单位造成 2 点伤害。你每控制 1 个【俄布】，伤害 +1。",effect:"redDawn",n:1,limit:1,rarity:"elite"},
     {id:"peoplearmy",name:"人民军",cost:8,kind:"spell",art:"☭",text:"用【俄布】填满你的手牌和战场。",effect:"fillRed",n:1,limit:1,rarity:"elite"},
-    {id:"awaSwap",name:"终局突袭",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"}
+    {id:"awaSwap",name:"终局突袭",cost:0,kind:"unit",art:"?",atk:20,hp:20,text:"",charge:true,effect:"hero99",awaSwap:true,n:0,limit:1,rarity:"elite"},
+    /* ============ 白俄罗斯铁壁（第二套卡组专用：极防 + 拖时间，不吃俄布体系） ============ */
+    /* 单位：廉价嘲讽墙，铺满前期 */
+    {id:"blrConscript",name:"白俄罗斯民兵",cost:1,kind:"unit",art:"▤",atk:1,hp:2,text:"嘲讽。亡语：获得 2 点护甲。",flavor:"明斯克郊外的防线，从民兵开始。",taunt:true,effect:"blrDeathArmor",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrTrench",name:"战壕",cost:2,kind:"unit",art:"▥",atk:0,hp:5,text:"嘲讽。",flavor:"一条战壕能拖住一个师。",taunt:true,rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrGarrison",name:"明斯克卫戍军",cost:2,kind:"unit",art:"⛨",atk:2,hp:4,text:"嘲讽。部署：获得 2 点护甲。",taunt:true,effect:"blrGarrison",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrBastion",name:"边防哨所",cost:3,kind:"unit",art:"▥",atk:0,hp:6,text:"嘲讽。你的回合结束时，若你控制至少 1 个嘲讽单位，获得 1 点护甲。",flavor:"哨所还在，防线就没断。",taunt:true,effect:"blrBastion",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrRailway",name:"装甲列车",cost:5,kind:"unit",art:"▦",atk:4,hp:6,text:"嘲讽。部署：获得 3 点护甲。",taunt:true,effect:"blrRailway",rep:"blr",n:0,limit:2,rarity:"special"},
+    /* 法术：叠甲 / 加固 / 清场 */
+    {id:"blrRepair",name:"抢修列车",cost:3,kind:"spell",art:"⚒",text:"获得 3 点护甲，抽 1 张牌。",flavor:"铁轨通了，防线就还在。",effect:"armor3draw",rep:"blr",n:0,limit:4,rarity:"common"},
+    {id:"blrFortify",name:"筑垒令",cost:2,kind:"spell",art:"⛨",text:"获得 2 点护甲 × 你的嘲讽单位数。",flavor:"每一条街都要变成工事。",effect:"blrFortify",rep:"blr",n:0,limit:3,rarity:"rare"},
+    {id:"blrArmorWall",name:"铁壁",cost:3,kind:"spell",art:"▨",text:"使你的所有嘲讽单位获得 +1/+1，获得 2 点护甲。",effect:"blrArmorWall",rep:"blr",n:0,limit:3,rarity:"rare"},
+    /* 终端：10 费永久状态，此后每个自己的回合开始固定产出 1 张【红军坦克】 */
+    {id:"blrSteelTide",name:"钢铁洪流",cost:10,kind:"spell",art:"✹",text:"本局永久生效：你的每个回合开始时，将 1 张【红军坦克】加入你的手牌。",flavor:"铁轨修好了，洪流就停不下来。",effect:"blrSteelTide",rep:"blr",n:0,limit:1,rarity:"elite"}
   ]},
   "字母":{faction:"鸭子系 · 联合政府",style:"新式战法 · 超模铺场 · 直伤突破",hp:30,cards:[
     {id:"sentry",name:"卫戍哨兵",cost:1,kind:"unit",art:"盾",atk:1,hp:3,text:"嘲讽。",taunt:true,n:2,limit:3,rarity:"rare"},
@@ -69,7 +82,7 @@ const PROFILES={
     {id:"remove",name:"消除限制",cost:4,kind:"spell",art:"⊘",text:"所有敌方单位失去嘲讽，敌方英雄失去免疫，对敌方英雄造成 3 点伤害。",effect:"removeRestrict",n:1,limit:1,rarity:"elite"}
   ]},
   "七星":{faction:"彗星国 · 架子班",style:"法力压制 · 出牌封锁 · 慢节奏斩杀",hp:34,cards:[
-    {id:"cometWatcher",name:"彗星观察者",cost:2,kind:"unit",art:"👁",atk:1,hp:3,text:"每当你获得 1 张手牌，恢复 2 点生命。",effect:"drawHeal",n:2,limit:3,rarity:"rare"},
+    {id:"cometWatcher",name:"彗星观察者",cost:2,kind:"unit",art:"👁",atk:1,hp:3,text:"每当你获得 1 张手牌，恢复 1 点生命。",effect:"drawHeal",n:2,limit:3,rarity:"rare"},
     {id:"sentinel",name:"星轨哨兵",cost:2,kind:"unit",art:"盾",atk:1,hp:3,text:"嘲讽。部署：获得 2 点护甲。",taunt:true,effect:"armor2",n:2,limit:3,rarity:"rare"},
     {id:"messenger",name:"彗星信使",cost:2,kind:"unit",art:"◇",atk:2,hp:3,text:"部署：抽 1 张牌，恢复 1 点生命。",effect:"drawHeal1",n:2,limit:3,rarity:"rare"},
     {id:"bulwark",name:"星尘壁垒",cost:3,kind:"unit",art:"▥",atk:2,hp:6,text:"嘲讽。部署：恢复 2 点生命。",taunt:true,effect:"heal2",n:1,limit:2,rarity:"special",fx:"sp_guard"},
@@ -256,7 +269,7 @@ const PROFILES={
     {id:"neutral",name:"中立宣言",cost:3,kind:"spell",art:"⚐",text:"所有单位眩晕 1 回合，你获得 4 点护甲。",flavor:"小怪兽宣布中立。",effect:"neutral",n:1,limit:1,rarity:"elite"},
     {id:"crown",name:"复制皇冠",cost:5,kind:"spell",art:"♛",text:"弃掉手牌中所有【废料】（至少 2 张），每 2 张获得 1 张随机的精英牌（至多 3 张）。",effect:"crownCopy",n:1,limit:1,rarity:"elite"}
   ]},
-  白猫:{faction:"彗星国 · 架子班",style:"销毁敌牌 · 疲劳审判",hp:48,cards:[
+  白猫:{faction:"彗星国 · 架子班",style:"销毁敌牌 · 疲劳审判",hp:38,cards:[
     {id:"kitten",name:"勘误猫",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"部署：消灭一名攻击力不超过 2 的敌方单位（优先攻击力最低者），计入已销毁卡牌。",effect:"whiteProof",n:3,limit:4,rarity:"common"},
     {id:"sentinel",name:"卷宗守卫",cost:2,kind:"unit",art:"◈",atk:2,hp:3,text:"嘲讽。每当你销毁一张敌方卡牌，获得 +1/+1。",taunt:true,effect:"whiteSentinel",n:2,limit:4,rarity:"common"},
     {id:"courier",name:"书页窃贼",cost:2,kind:"unit",art:"✦",atk:2,hp:2,text:"部署：销毁敌方牌库顶的 2 张牌。",effect:"whiteDeck1",n:2,limit:3,rarity:"rare"},
@@ -272,11 +285,11 @@ const PROFILES={
     {id:"sovereign",name:"白猫·空白终章",cost:6,kind:"unit",art:"♛",atk:6,hp:6,text:"部署：对敌方英雄造成 4 点伤害；本局每销毁 1 张敌方卡牌，伤害 +1（至多 18 点）。",effect:"whiteFinal",n:1,limit:1,rarity:"elite"},
     {id:"spark",name:"撕掉一页",cost:1,kind:"spell",art:"✦",text:"销毁敌方牌库顶的 2 张牌，抽 1 张牌。",effect:"whiteDeckDraw",n:4,limit:4,rarity:"common"},
     {id:"surge",name:"强制翻页",cost:2,kind:"spell",art:"⇧",text:"销毁敌方牌库顶的 2 张牌，再强制对手抽 1 张并销毁抽到的牌；牌库为空则触发疲劳。",effect:"whiteForce1",n:2,limit:3,rarity:"rare"},
-    {id:"insight",name:"没收手稿",cost:2,kind:"spell",art:"◎",text:"随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 2 张牌。抽 1 张牌。",effect:"whiteConfiscate",n:1,limit:2,rarity:"special"},
+    {id:"insight",name:"没收手稿",cost:3,kind:"spell",art:"◎",text:"随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 2 张牌。抽 1 张牌。",effect:"whiteConfiscate",n:1,limit:2,rarity:"special"},
     {id:"rally",name:"末页催读",cost:3,kind:"spell",art:"✧",text:"强制对手抽 2 张牌并销毁抽到的牌；牌库为空时每次抽牌触发疲劳。你获得 3 点护甲。",effect:"whiteForce2",n:1,limit:3,rarity:"rare"},
     {id:"shelter",name:"缺页追击",cost:4,kind:"spell",art:"◈",text:"对敌方英雄造成 3 点伤害；本局每销毁 2 张敌方卡牌，伤害 +1（至多 10 点）。",effect:"whiteBurst",n:1,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"pollute",name:"废稿雨",cost:4,kind:"spell",art:"☣",text:"随机将敌方牌库中的 2 张非垃圾牌变成【垃圾】。",effect:"whiteCorruptDeck",n:2,limit:2,rarity:"special"},
-    {id:"mend",name:"修补书脊",cost:3,kind:"spell",art:"✥",text:"你的英雄恢复 6 点生命，并获得 2 点护甲。",effect:"whiteMend",n:2,limit:2,rarity:"rare"},
+    {id:"mend",name:"修补书脊",cost:3,kind:"spell",art:"✥",text:"你的英雄恢复 6 点生命，并获得 2 点护甲。",effect:"whiteMend",n:2,limit:2,rarity:"special"},
     {id:"shredstorm",name:"碎稿风暴",cost:4,kind:"spell",art:"❖",text:"对所有敌方单位造成 3 点伤害；因此被消灭的单位计入已销毁卡牌。",effect:"whiteAoe",n:2,limit:2,rarity:"special",fx:"sp_storm"},
     {id:"flood",name:"垃圾洪流",cost:6,kind:"spell",art:"▧",text:"敌方抽 5 张牌，将成功进入手牌的牌全部变成【垃圾】；手牌已满时，新抽到的牌直接销毁。牌库为空则触发疲劳。",effect:"whiteDrawJunk5",n:1,limit:2,rarity:"special"},
     {id:"night",name:"全卷焚尽",cost:6,kind:"spell",art:"♨",text:"随机销毁敌方手牌的 1 张牌，再销毁其牌库顶的 4 张牌；每销毁一张，额外造成 1 点伤害。",effect:"whiteNight",n:1,limit:1,rarity:"elite"}
@@ -285,8 +298,12 @@ const PROFILES={
 
 /* 衍生物：不属于任何卡组 */
 const TOKENS={
+  /* DIY 白名单·神罚：抽到时自动施放（自伤 1 + 抽 1），由「神罚共鸣」洗入牌库 */
+  diyPunish:{id:"diyPunish",name:"神罚",cost:0,kind:"spell",art:"⚡",text:"抽到时自动施放：你的英雄受到 1 点伤害，抽 1 张牌。",effect:"diyPunishCast",onDraw:true,owner:"DIY",rarity:"common"},
   awaBand:{id:"awaBand",name:"爵士乐队",cost:3,kind:"unit",art:"♪",atk:0,hp:4,owner:"awa",untargetable:true,text:"无法被敌方单位攻击。你的单位和法术对敌方造成的伤害 +1（可叠加）。"},
   redGuard:{id:"redGuard",name:"近卫红军",cost:0,kind:"unit",art:"★",atk:0,hp:1,charge:true,rep:"rus",text:"冲锋。整编的产物：属性等于被整编的【俄布】之和。"},
+  /* 钢铁洪流的产物：只存在于手牌，不进任何卡池 / 默认卡组 */
+  redTank:{id:"redTank",name:"红军坦克",cost:2,kind:"unit",art:"▰",atk:5,hp:4,charge:true,rep:"blr",text:"冲锋。"},
   second:{id:"second",name:"苏二世",cost:4,kind:"unit",art:"Ⅱ",atk:3,hp:5,effect:"secondDeploy",transfer:"third",text:"部署：选择一个政体，并使攻击力最高的敌方单位眩晕 1 回合。引渡：被消灭时，把【苏三世】置入你的手牌。",flavor:"自行引渡至德德，逐渐正常化。",rep:"rus"},
   third:{id:"third",name:"苏三世",cost:6,kind:"unit",art:"Ⅲ",atk:6,hp:6,charge:true,effect:"thirdDeploy",text:"冲锋。部署：本回合三种政体的加成同时生效（代价不生效）。",flavor:"人脉威望达到顶峰。",rep:"rus"},
   scrap:{id:"scrap",name:"碎纸",cost:0,kind:"spell",art:"▫",text:"废料。没有任何效果。",scrap:true},
@@ -312,7 +329,7 @@ const COLORS={绘梨衣:"#a8c97a",苏苏:"#e0664f",字母:"#6fb6dc",七星:"#a98
 /* 新手引导信息：难度 1~3 */
 const HERO_INFO={
   绘梨衣:{difficulty:3,title:"小怪兽国 · 架子班",tip:"每个回合开始你会得到一张【碎纸】——它们是废料，也是原料。前期靠废料单位撑住，攒够废料后用【变废为宝】【回炉重造】换成真正的好牌，或者一口气打成伤害和生命。手牌上限只有 10 张，别让废料把手牌塞满。"},
-  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"开局自动打出【苏维埃社会主义共和国联盟】，选择一个政体成为它——俄布海通常选【俄罗斯】（新单位部署即可攻击）。铺满【俄布】后用【整编令】【红军集结】和增益一波推进，靠【战时共产主义】补牌。怕群伤清场，注意别一次铺太满。"},
+  苏苏:{difficulty:2,title:"架子班 · 彗星高层",tip:"开局自动打出【苏维埃社会主义共和国联盟】，选择一个政体成为它——俄布海通常选【俄罗斯】（新单位部署即可攻击）。铺满【俄布】后用【整编令】【红军集结】和增益一波推进，靠【战时共产主义】补牌。也可以走白俄罗斯铁壁：嘲讽站场、回合末叠甲，再用【钢铁洪流】把护甲换成清场。怕群伤清场，注意别一次铺太满。"},
   字母:{difficulty:2,title:"新式战法领袖",tip:"超模单位压场，用【消除限制】撕掉嘲讽和免疫后直伤突破；关键时刻策反对手最强的单位。"},
   七星:{difficulty:3,title:"彗星国领袖",tip:"不急着赢：压低对手的费用上限、封锁出牌，再用【衰减】一层一层磨死对手。"},
   核弹:{difficulty:2,title:"凹槽皇帝",tip:"卡组很薄，靠防御和逃跑撑住，找到【超人】后一击决胜——它每回合攻击两次，但只存在到你的下个回合开始。"},
@@ -385,8 +402,11 @@ function defaultDeck(hero){
   return list;
 }
 
-/* ---- 多套预设卡组：AI 随机选一套；单人模式可选敌方卡组 ---- */
+/* ---- 预设卡组：只有七星保留两套（衰减流 / 星联邦流），其余卡牌师只保留官方推荐那一套 ---- */
 /* 第二套卡组优先装入主题牌，再按官方推荐卡组补足 40 张，始终遵守携带上限。 */
+/* 其余卡牌师的第二套预设（政委整编 / 策反突破 / 皇冠潜行 / 金库控制 / 火船炮击 /
+   情报开发 / 覆盖轰炸 / 回收巨像 / 污染审判）实测 35%~46%，尚未成型，已撤下。
+   本函数目前无人调用，保留给以后重新设计第二套卡组时使用。 */
 function focusedDeck(hero,focus){
   const pool=PROFILES[hero].cards,list=[],count={};
   const add=id=>{
@@ -405,13 +425,25 @@ function focusedDeck(hero,focus){
 }
 const DECK_PRESETS={
   "苏苏":{
+    /* 原体系：俄布海（吃俄罗斯政体的冲锋 + 整编 + 俄布增益） */
     "俄布海":defaultDeck("苏苏"),
-    "政委整编":focusedDeck("苏苏",["consolidate","red","redcharge","mobilize","vanguard","october","rally","forward","warcom","redOfficer","peoplearmy","kazakh","reddawn"])
+    /* 第二套：白俄罗斯铁壁——极防 + 拖时间，几乎全是 blr 组件，只有极少数不吃俄布的通用牌。
+       不打俄布体系（没有 red / redguard / redcharge / 整编 / 俄布增益），
+       唯一制胜点是 10 费【钢铁洪流】：此后每个自己的回合开始固定产 1 张【红军坦克】。 */
+    "白俄罗斯铁壁":[
+      "blrConscript","blrConscript","blrConscript","blrConscript",
+      "blrTrench","blrTrench","blrTrench","blrTrench",
+      "blrGarrison","blrGarrison","blrGarrison","blrGarrison",
+      "blrBastion","blrBastion","blrBastion","blrBastion",
+      "blrRailway","blrRailway",
+      "blrRepair","blrRepair","blrRepair","blrRepair",
+      "blrFortify","blrFortify","blrFortify",
+      "blrArmorWall","blrArmorWall","blrArmorWall",
+      "blrSteelTide",
+      "forward","forward","winter","intel","intel","intelSteal","intelSteal","supply","supply","redheavy","redheavy"
+    ]
   },
-  "字母":{
-    "新式铺场":defaultDeck("字母"),
-    "策反突破":focusedDeck("字母",["rebelWeakest","rebelLowest","rebel","takeover","break","order","tacticsquad","commando","shadow","evasion","disruption","armored","heavytank","remove"])
-  },
+  "字母":{"新式铺场":defaultDeck("字母")},
   "七星":{
     "衰减流":defaultDeck("七星"),
     "星联邦流":[
@@ -421,37 +453,16 @@ const DECK_PRESETS={
       "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
       "stasisfield","cometStrike","starlightPray","starlock","cometShackle",
       "cometTrail","starlightEcho","stardustBeacon",
-      "cometTutor","cometTutor","tune","tune"
+      "cometTutor","cometTutor","cometWatcher","tune"
     ]
   },
-  "核弹":{
-    "禁忌召唤":defaultDeck("核弹"),
-    "皇冠潜行":focusedDeck("核弹",["superman","ritual","filter","whisper","tea","escape","retreat","forbiddenknowledge","revenge","airstrike","vanish","gaze","resonance","barrier"])
-  },
-  "猪瘟鱼":{
-    "偷钱逃跑":defaultDeck("猪瘟鱼"),
-    "金库控制":focusedDeck("猪瘟鱼",["vaultguard","vault","vaultgate","bribelord","taxman","steal","greyincome","fakebooks","count","escape","vaultfill","accountant","transfer"])
-  },
-  "八幡":{
-    "海盗速攻":defaultDeck("八幡"),
-    "火船炮击":focusedDeck("八幡",["firebomb","fireship","revengepirate","gunner","rum","raider","stalker","intimidate","boarding","finish","king","wallbreaker","raid"])
-  },
-  "045":{
-    "架子班召集":defaultDeck("045"),
-    "情报开发":focusedDeck("045",["develop","adapt","network","handoff","intel","advisor","cardmaker","blueprint","copycrown","meeting","upgrade","summoncall","namecardsummon","taojin","qixing","baimao","highcommand"])
-  },
-  "下水":{
-    "火炮阵地":defaultDeck("下水"),
-    "覆盖轰炸":focusedDeck("下水",["cover","volley","prepfire","saturation","bombardcmd","recon","resupply","ammo","smallcannon","cannon","battery","commander","howitzer","emplacement"])
-  },
-  "绘梨衣":{
-    "废料转化":defaultDeck("绘梨衣"),
-    "回收巨像":focusedDeck("绘梨衣",["colossus","fortress","corner","shredder","station","recycle","sweep","rummage","trade","upcycle","remelt","stocktake","eriyi","crown","guard"])
-  },
-  "白猫":{
-    "毁稿疲劳":defaultDeck("白猫"),
-    "污染审判":focusedDeck("白猫",["editor","pollute","flood","guardian","rally","surge","engine","reserve","night","inspector","medic","mend","shredstorm","sovereign","sentinel"])
-  }
+  "核弹":{"禁忌召唤":defaultDeck("核弹")},
+  "猪瘟鱼":{"偷钱逃跑":defaultDeck("猪瘟鱼")},
+  "八幡":{"海盗速攻":defaultDeck("八幡")},
+  "045":{"架子班召集":defaultDeck("045")},
+  "下水":{"火炮阵地":defaultDeck("下水")},
+  "绘梨衣":{"废料转化":defaultDeck("绘梨衣")},
+  "白猫":{"毁稿疲劳":defaultDeck("白猫")}
 };
 /* 该卡牌师的预设卡组列表 */
 function presets(hero){return DECK_PRESETS[hero]||null;}
@@ -628,8 +639,9 @@ function checkOverrides(map){
   }
   for(const h in PROFILES){
     let sum=0;PROFILES[h].cards.forEach(c=>{
-      const o=map[h+":"+c.id]||{},base=BASE[h+":"+c.id];
-      sum+=o.limit!==undefined?o.limit:(RARITY[o.rarity]?RARITY[o.rarity].limit:base.limit);
+      // DIY 角色不在 BASE 里（BASE 只收录原版卡），这里要兜底，否则后台热更新会 500
+      const o=map[h+":"+c.id]||{},base=BASE[h+":"+c.id]||{};
+      sum+=o.limit!==undefined?o.limit:(RARITY[o.rarity]?RARITY[o.rarity].limit:(base.limit!==undefined?base.limit:c.limit));
     });
     if(sum<DECK_SIZE)errs.push(`${h}：所有卡牌的携带上限加起来只有 ${sum}，不足 ${DECK_SIZE} 张`);
   }

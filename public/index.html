@@ -47,6 +47,7 @@
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 7.6V12l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
   <symbol id="i-flagline" viewBox="0 0 24 24"><path d="M6 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 5h11l-2 3 2 3H6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arw" viewBox="0 0 24 24"><path d="M4 12h15M13.4 6.1 19.5 12l-6.1 5.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </defs></svg>
 
 <!-- ======================= 主页 ======================= -->
@@ -64,27 +65,36 @@
   </header>
   <main class="home">
     <div class="home-left">
-      <div class="brand">
-        <div class="eyebrow">TACTICAL CARD DUEL</div>
+      <div class="brand rise" style="--d:.02s">
+        <div class="eyebrow">Tactical Card Duel</div>
         <h1>皇冠对决</h1>
-        <p class="tagline">10 位风格迥异的卡牌师 · 一局 10 分钟的快节奏对决</p>
+        <p class="tagline">10 位风格迥异的卡牌师<br>一局 10 分钟的快节奏对决</p>
       </div>
-      <div class="home-actions">
-        <button class="btn btn-gold btn-xl" id="btnOnline"><span class="bi"><svg class="ic" viewBox="0 0 24 24"><use href="#i-swords"/></svg></span><span><b>联机对战</b><small>进入大厅，与真人对决</small></span></button>
-        <button class="btn btn-primary btn-xl" id="btnSolo"><span class="bi"><svg class="ic" viewBox="0 0 24 24"><use href="#i-board"/></svg></span><span><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span></button>
-        <div class="home-actions-row">
-          <button class="btn" id="btnDeck"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cards"/></svg> 编辑卡组</button>
-          <button class="btn" id="btnCodex"><svg class="ic" viewBox="0 0 24 24"><use href="#i-book"/></svg> 图鉴</button>
-          <button class="btn" id="btnCampaign"><svg class="ic" viewBox="0 0 24 24"><use href="#i-flag"/></svg> 剧情模式</button>
-          <button class="btn" id="btnShop"><svg class="ic" viewBox="0 0 24 24"><use href="#i-shop"/></svg> 商店</button>
-          <button class="btn" id="btnVault"><svg class="ic" viewBox="0 0 24 24"><use href="#i-vault"/></svg> 仓库</button>
-          <button class="btn" id="btnRules"><svg class="ic" viewBox="0 0 24 24"><use href="#i-scroll"/></svg> 玩法说明</button>
+      <div class="home-actions rise" style="--d:.10s">
+        <button class="act act-main" id="btnOnline">
+          <span class="act-no">01</span>
+          <span class="act-b"><b>联机对战</b><small>进入大厅，与真人对决</small></span>
+          <span class="act-go"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></span>
+        </button>
+        <button class="act" id="btnSolo">
+          <span class="act-no">02</span>
+          <span class="act-b"><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span>
+          <span class="act-go"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></span>
+        </button>
+        <div class="act-list">
+          <button class="act-row" id="btnDeck">编辑卡组<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnCodex">图鉴<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnDiy">DIY 工坊<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnCampaign">剧情模式<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnShop">商店<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnVault">仓库<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnRules">玩法说明<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
         </div>
         <div class="ver" id="verLabel"></div>
       </div>
     </div>
-    <div class="home-right">
-      <div class="section-label">选择你的卡牌师</div>
+    <div class="home-right rise" style="--d:.16s">
+      <div class="section-label"><span>卡牌师</span><em>10 Masters</em></div>
       <div class="hero-grid" id="heroGrid"></div>
       <div class="hero-detail" id="heroDetail"></div>
     </div>
@@ -109,6 +119,7 @@
       <div class="lobby-tools">
         <button class="btn btn-gold" id="btnQuick"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bolt"/></svg> 快速匹配</button>
         <button class="btn btn-primary" id="btnCreate"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg> 创建房间</button>
+        <button class="btn" id="lobbyDiy"><svg class="ic" viewBox="0 0 24 24"><use href="#i-edit"/></svg> DIY 工坊</button>
         <form class="join-code" id="joinCodeForm"><input id="joinCode" inputmode="numeric" maxlength="8" placeholder="输入房间号"><button class="btn" type="submit">加入</button></form>
       </div>
       <div class="room-list" id="roomList"></div>
@@ -126,7 +137,7 @@
   <header class="topbar">
     <button class="btn btn-ghost" id="roomLeave">‹ 离开房间</button>
     <div class="brand-mini" id="roomTitle">房间</div>
-    <div class="topbar-r"><button class="chip" id="roomCodeBtn" title="复制邀请链接">房间号 <b id="roomCode">------</b> ⧉</button></div>
+    <div class="topbar-r"><span class="chip" id="roomPool" title="房间类型">原版房间</span><button class="chip" id="roomCodeBtn" title="复制邀请链接">房间号 <b id="roomCode">------</b> ⧉</button></div>
   </header>
   <main class="room">
     <div class="seats">
@@ -288,6 +299,59 @@
   </main>
 </section>
 
+<!-- ======================= DIY 工坊 ======================= -->
+<section class="screen" id="scrDiy" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="diyBack">‹ 返回</button>
+    <div class="brand-mini">DIY 工坊</div>
+    <div class="topbar-r">
+      <span class="chip" id="diyCount" title="全服已保存的 DIY 角色">角色 0</span>
+      <button class="chip" id="diyHelp"><svg class="ic" viewBox="0 0 24 24"><use href="#i-scroll"/></svg> 说明书</button>
+    </div>
+  </header>
+  <main class="diy">
+    <!-- 左：角色信息 -->
+    <section class="diy-info">
+      <div class="diy-label">角色信息</div>
+      <div class="field"><label for="diyName">名字（1~12 字，全服唯一）</label><input id="diyName" maxlength="12" placeholder="例如：星尘学者" autocomplete="off"></div>
+      <div class="field"><label for="diyFaction">阵营（0~16 字）</label><input id="diyFaction" maxlength="16" placeholder="DIY 工坊" autocomplete="off"></div>
+      <div class="field"><label for="diyStyle">一句话风格（0~40 字）</label><input id="diyStyle" maxlength="40" placeholder="慢速控场 · 抽牌续航" autocomplete="off"></div>
+      <div class="diy-row2">
+        <div class="field"><label for="diyHp">血量（20~50）</label><input id="diyHp" type="number" inputmode="numeric" min="20" max="50" value="30"></div>
+        <div class="field"><label for="diyColor">主题色</label><input id="diyColor" type="color" value="#5ab4ff"></div>
+      </div>
+      <div class="diy-stats" id="diyStats"></div>
+      <div class="diy-info-btns">
+        <button class="btn" id="diyCheck">校验</button>
+        <button class="btn btn-gold" id="diyUpload">上传</button>
+        <button class="btn" id="diyExport">导出 JSON</button>
+        <button class="btn" id="diyImport">导入 JSON</button>
+        <input type="file" id="diyImportFile" accept="application/json,.json" hidden>
+      </div>
+      <p class="muted small" id="diyOwnerTip">上传后只有这台浏览器能删除（匿名 id 存在本地）。</p>
+    </section>
+    <!-- 中：卡牌编辑 -->
+    <section class="diy-cards">
+      <div class="diy-cards-head">
+        <div class="diy-label">卡牌 <span class="muted small" id="diyCardHint">8~24 种</span></div>
+        <button class="btn btn-primary" id="diyAddCard"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg> 加一张牌</button>
+      </div>
+      <div class="diy-list" id="diyList"></div>
+    </section>
+    <!-- 右：实时预览 -->
+    <aside class="diy-preview">
+      <div class="diy-label">实时预览</div>
+      <div class="diy-issues" id="diyIssues"></div>
+      <div class="diy-faces" id="diyFaces"></div>
+    </aside>
+  </main>
+  <!-- 底：已上传角色 -->
+  <footer class="diy-bottom">
+    <div class="diy-label">已上传的 DIY 角色 <span class="muted small">（点名字加载到编辑器；内置角色不能删）</span></div>
+    <div class="diy-heroes" id="diyHeroList"></div>
+  </footer>
+</section>
+
 <!-- ======================= 对局 ======================= -->
 <section class="screen" id="scrGame" hidden>
   <div id="rotate"><div class="phone"></div><h2>请横屏游玩</h2><p>旋转手机后自动继续</p><button class="btn btn-gold" id="rotFull" hidden>进入全屏</button><p class="small" id="rotIos" hidden>iPhone：点浏览器的「分享」→「添加到主屏幕」，从桌面图标打开即可全屏。</p></div>
@@ -298,6 +362,7 @@
       <div class="camp-dlg-body" id="campDlgBody"></div>
     </div>
     <div class="table-bg"></div>
+    <div class="frame-ticks"><i></i><i></i><i></i><i></i></div>
 
     <!-- 左：英雄 -->
     <div class="hero-block foe" id="foeHero"></div>
@@ -387,6 +452,13 @@
 </section>
 
 <!-- ======================= 弹窗 ======================= -->
+<div class="modal" id="mDiyHelp" hidden><div class="panel wide diy-help">
+  <button class="x-btn" data-close aria-label="关闭">✕</button>
+  <h2>DIY 工坊 · 说明书</h2>
+  <div id="diyHelpBody"></div>
+  <div class="panel-acts"><button class="btn btn-gold" data-close>明白了</button></div>
+</div></div>
+
 <div class="modal" id="mSolo" hidden><div class="panel">
   <h2>单人练习</h2>
   <div class="field"><label>你的卡牌师</label><div class="solo-me" id="soloMe"></div></div>
@@ -408,6 +480,8 @@
   <h2>创建房间</h2>
   <div class="field"><label>房间名称</label><input id="crName" maxlength="16" placeholder="不填则使用默认名称"></div>
   <div class="field"><label>房间密码（可选）</label><input id="crPass" maxlength="16" placeholder="留空表示公开房间"></div>
+  <div class="field"><label>房间类型</label><div class="seg seg-2" id="crPool"><button data-v="vanilla" class="on">原版房间</button><button data-v="diy">允许 DIY</button></div></div>
+  <p class="muted small">DIY 角色只能在「允许 DIY」的房间里使用；原版角色两种房间都能进。</p>
   <div class="panel-acts"><button class="btn" data-close>取消</button><button class="btn btn-gold" id="crGo">创建</button></div>
 </div></div>
 
@@ -555,6 +629,8 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/shared/cards.js"></script>
+<script src="/shared/diy.js"></script>
+<script src="/shared/diy-builtin.js"></script>
 <script src="/shared/cardfx.js"></script>
 <script src="/shared/engine.js"></script>
 <script src="/shared/ai.js"></script>

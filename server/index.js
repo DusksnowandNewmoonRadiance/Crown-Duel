@@ -12,6 +12,8 @@ const C=require("../shared/cards.js");
 const E=require("../shared/engine.js");
 const Store=require("./store.js");
 const adminRouter=require("./admin.js");
+const Diy=require("../shared/diy.js");
+const DiyServer=require("./diy.js");
 const VERSION=require("../package.json").version;
 
 const PORT=+process.env.PORT||3000;
@@ -192,6 +194,13 @@ const server=http.createServer(app);
 const io=new Server(server,{pingInterval:8000,pingTimeout:15000,maxHttpBufferSize:64*1024});
 
 /* ============================================================
+   DIY 角色：加载内置 + 已上传的，挂上 HTTP 接口
+   ============================================================ */
+DiyServer.init();
+DiyServer.setChangeHandler(heroes=>io.emit("diy:list",{heroes}));
+app.use(DiyServer.router);
+
+/* ============================================================
    工具
    ============================================================ */
 const now=()=>Date.now();
@@ -201,6 +210,12 @@ function randomCode(){
   for(let i=0;i<50;i++){const c=String(100000+crypto.randomInt(900000));if(![...rooms.values()].some(r=>r.code===c))return c;}
   return String(crypto.randomInt(1e9));
 }
+
+/* ---------- 房间池：vanilla 只允许原版角色，diy 额外允许 DIY 角色 ---------- */
+function poolOf(v){if(v===undefined||v===null||v==="")return "vanilla";return v==="diy"||v==="vanilla"?v:null;}
+const roomPool=r=>(r&&r.pool)==="diy"?"diy":"vanilla";
+const diyBlocked=(hero,room)=>Diy.isDiy(hero)&&roomPool(room)!=="diy";
+const diyBlockMsg=hero=>`${hero} 是 DIY 角色，只能在允许 DIY 的房间里使用`;
 
 /* ============================================================
    维护模式 / 平滑更新
@@ -308,14 +323,14 @@ function lobbyChanged(){
 function lobbySnapshot(){
   const list=[...rooms.values()].sort((a,b)=>(a.status==="waiting"?0:1)-(b.status==="waiting"?0:1)||b.createdAt-a.createdAt).slice(0,100);
   return{online:onlineCount(),queue:queue.length,rooms:list.map(r=>({
-    id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,status:r.status,
+    id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,status:r.status,pool:roomPool(r),
     players:r.seats.filter(Boolean).map(id=>{const u=users.get(id);return u?{id:u.id,nick:u.nick,hero:u.hero}:null;}).filter(Boolean)
   }))};
 }
 
 /* ---------- 房间 ---------- */
 function roomView(r,forId){
-  return{id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,hostId:r.hostId,status:r.status,
+  return{id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,hostId:r.hostId,status:r.status,pool:roomPool(r),
     you:r.seats.indexOf(forId),countdown:r.countdownAt?Math.max(0,r.countdownAt-now()):0,
     seats:r.seats.map((id,i)=>{if(!id)return null;const u=users.get(id);if(!u)return null;
       return{id,nick:u.nick,hero:u.hero,ready:r.ready[i],connected:u.connected,host:id===r.hostId};})};
@@ -324,9 +339,10 @@ function roomChanged(r){
   r.seats.forEach(id=>{if(id){const u=users.get(id);send(u,"room",roomView(r,id));}});
   lobbyChanged();
 }
-function createRoom(host,name,password,quick){
+function createRoom(host,name,password,quick,pool){
   const r={id:crypto.randomUUID(),code:randomCode(),name:clean(name,16)||`${host.nick}的房间`,password:clean(password,16),
-    hostId:host.id,seats:[null,null],ready:[false,false],status:"waiting",match:null,quick:!!quick,chat:[],createdAt:now(),countdownT:null,countdownAt:0};
+    hostId:host.id,seats:[null,null],ready:[false,false],status:"waiting",match:null,quick:!!quick,pool:roomPool({pool}),
+    chat:[],createdAt:now(),countdownT:null,countdownAt:0};
   rooms.set(r.id,r);return r;
 }
 function joinRoom(u,r){
@@ -360,6 +376,11 @@ function cancelCountdown(r){if(r.countdownT){clearTimeout(r.countdownT);r.countd
 function checkStart(r){
   if(r.status!=="waiting")return;
   if(MAINT.on){if(r.ready.every(Boolean))roomSys(r,"服务器维护中，暂时无法开始新对局");return;}
+  /* 池分离：vanilla 房间里不能带 DIY 角色开局 */
+  if(r.seats.every(Boolean)){
+    const bad=r.seats.map(id=>users.get(id)).find(u=>u&&diyBlocked(u.hero,r));
+    if(bad){if(r.ready.every(Boolean))roomSys(r,diyBlockMsg(bad.hero));return;}
+  }
   const ok=r.seats.every(Boolean)&&r.ready.every(Boolean)&&r.seats.every(id=>users.get(id)&&users.get(id).connected);
   if(!ok)return;
   r.status="countdown";r.countdownAt=now()+COUNTDOWN_MS;
@@ -368,6 +389,9 @@ function checkStart(r){
 }
 function startMatch(r){
   if(!r.seats.every(Boolean)){r.status="waiting";roomChanged(r);return;}
+  /* 兜底：倒计时期间有人换成 DIY 角色，就退回等待状态而不是开局 */
+  const bad=r.seats.map(id=>users.get(id)).find(u=>u&&diyBlocked(u.hero,r));
+  if(bad){r.status="waiting";r.ready=[false,false];roomSys(r,diyBlockMsg(bad.hero));roomChanged(r);return;}
   if(r.match)r.match.dispose();
   r.status="playing";r.ready=[false,false];
   r.match=new Match(r);
@@ -376,23 +400,29 @@ function startMatch(r){
 
 /* ---------- 快速匹配 ---------- */
 function dequeue(u){const n=queue.length;queue=queue.filter(id=>id!==u.id);if(queue.length!==n){send(u,"match:status",{searching:false});lobbyChanged();}}
-function enqueue(u){
+function enqueue(u,pool){
   if(MAINT.on){send(u,"toast",{text:MAINT.message});return;}
   if(u.roomId)leaveRoom(u,true);
   if(queue.includes(u.id))return;
+  const want=pool==="diy"?"diy":"vanilla";
   queue=queue.filter(id=>{const x=users.get(id);return x&&x.connected&&!x.roomId;});
-  const otherId=queue.shift();
+  /* 只和同一个池的人匹配：vanilla 排队的看不到 DIY 房间 */
+  let otherId=null;
+  for(let i=0;i<queue.length;i++){
+    const x=users.get(queue[i]);
+    if(x&&(x.queuedPool||"vanilla")===want){otherId=queue[i];queue.splice(i,1);break;}
+  }
   if(otherId){
     const other=users.get(otherId);
     send(other,"match:status",{searching:false});
-    const r=createRoom(other,"快速匹配",null,true);
+    const r=createRoom(other,"快速匹配",null,true,want);
     joinRoom(other,r);joinRoom(u,r);
     r.ready=[true,true];
     roomSys(r,"匹配成功！对局即将开始");
     checkStart(r);
   }else{
-    queue.push(u.id);u.queuedAt=now();
-    send(u,"match:status",{searching:true,since:u.queuedAt});
+    queue.push(u.id);u.queuedAt=now();u.queuedPool=want;
+    send(u,"match:status",{searching:true,since:u.queuedAt,pool:want});
   }
   lobbyChanged();
 }
@@ -530,11 +560,15 @@ io.on("connection",socket=>{
     if(u&&u.socket&&u.socket!==socket&&u.connected){u.socket.emit("kicked",{reason:"你在另一个窗口打开了游戏"});u.socket.disconnect(true);}
     if(!u){u={id:cid,nick:"",hero:"苏苏",deck:null,roomId:null};users.set(cid,u);}
     u.nick=mod.forcedName||clean(d.nick,12)||u.nick||("玩家"+crypto.randomInt(1000,9999));
-    if(d.hero&&C.PROFILES[d.hero]){u.hero=d.hero;u.deck=C.deckError(d.hero,d.deck)?null:d.deck;}
+    const r=u.roomId&&rooms.get(u.roomId);   // 重连回房间时，选角要先按房间池校验
+    if(d.hero&&C.PROFILES[d.hero]){
+      if(r&&diyBlocked(d.hero,r))return reply(cb,{ok:false,error:diyBlockMsg(d.hero)});
+      u.hero=d.hero;u.deck=C.deckError(d.hero,d.deck)?null:d.deck;
+    }
+    if(r&&diyBlocked(u.hero,r))return reply(cb,{ok:false,error:diyBlockMsg(u.hero)});
     u.socket=socket;u.connected=true;socket.data.uid=cid;
     if(u.dcTimer){clearTimeout(u.dcTimer);u.dcTimer=null;}
-    const r=u.roomId&&rooms.get(u.roomId);
-    reply(cb,{ok:true,id:cid,nick:u.nick,build:BUILD,version:VERSION,maintenance:maintView()});
+    reply(cb,{ok:true,id:cid,nick:u.nick,build:BUILD,version:VERSION,maintenance:maintView(),diyHeroes:DiyServer.list()});
     if(r){
       socket.join("room:"+r.id);
       send(u,"room",roomView(r,u.id));send(u,"room:chatlog",r.chat);
@@ -550,6 +584,7 @@ io.on("connection",socket=>{
     }
     send(u,"lobby",lobbySnapshot());
     send(u,"lobby:chatlog",lobbyChat);
+    send(u,"diy:list",{heroes:DiyServer.list()});
     lobbyChanged();
   });
 
@@ -558,8 +593,10 @@ io.on("connection",socket=>{
     const mod=Store.moderationState(u.id);
     if(d.nick!==undefined)u.nick=mod.forcedName||clean(d.nick,12)||u.nick;
     if(d.hero&&C.PROFILES[d.hero]&&!(u.roomId&&rooms.get(u.roomId)&&rooms.get(u.roomId).status==="playing")){
+      const room=u.roomId&&rooms.get(u.roomId);
+      if(diyBlocked(d.hero,room)){send(u,"toast",{text:diyBlockMsg(d.hero)});return;}
       u.hero=d.hero;u.deck=C.deckError(d.hero,d.deck)?null:d.deck;
-      const r=u.roomId&&rooms.get(u.roomId);
+      const r=room;
       if(r){const i=r.seats.indexOf(u.id);if(i>=0&&!r.quick)r.ready[i]=false;cancelCountdown(r);}
     }
     const r=u.roomId&&rooms.get(u.roomId);if(r)roomChanged(r);else lobbyChanged();
@@ -578,8 +615,11 @@ io.on("connection",socket=>{
     if(limited(u,"_rc",1500))return reply(cb,{ok:false,error:"操作太快了"});
     if(rooms.size>=MAX_ROOMS)return reply(cb,{ok:false,error:"房间数量已达上限，请稍后再试"});
     if(MAINT.on)return reply(cb,{ok:false,error:MAINT.message});
-    d=d||{};dequeue(u);
-    const r=createRoom(u,d.name,d.password,false);
+    d=d||{};
+    const pool=poolOf(d.pool);
+    if(!pool)return reply(cb,{ok:false,error:"房间类型无效，只能是 vanilla 或 diy"});
+    dequeue(u);
+    const r=createRoom(u,d.name,d.password,false,pool);
     joinRoom(u,r);reply(cb,{ok:true});
   });
 
@@ -589,6 +629,8 @@ io.on("connection",socket=>{
     const r=d.id?rooms.get(String(d.id)):[...rooms.values()].find(x=>x.code===clean(d.code,10));
     if(!r)return reply(cb,{ok:false,error:"房间不存在或已关闭"});
     if(r.seats.includes(u.id))return reply(cb,{ok:true});
+    /* 池分离：带着 DIY 角色进不了普通房间 */
+    if(diyBlocked(u.hero,r))return reply(cb,{ok:false,error:diyBlockMsg(u.hero)});
     if(r.password&&clean(d.password,16)!==r.password)return reply(cb,{ok:false,error:r.password&&d.password?"密码错误":"需要密码",needPassword:true});
     if(r.status==="playing")return reply(cb,{ok:false,error:"房间正在对局中"});
     if(!joinRoom(u,r))return reply(cb,{ok:false,error:"房间已满"});
@@ -614,7 +656,12 @@ io.on("connection",socket=>{
     io.to("room:"+r.id).emit("room:chat",m);reply(cb,{ok:true});
   });
 
-  socket.on("match:quick",()=>{const u=userOf(socket);if(u)enqueue(u);});
+  socket.on("match:quick",d=>{
+    const u=userOf(socket);if(!u)return;
+    const want=d&&typeof d==="object"&&d.pool!==undefined?poolOf(d.pool):"vanilla";
+    if(!want)return send(u,"toast",{text:"匹配类型无效，只能是 vanilla 或 diy"});
+    enqueue(u,want);
+  });
   socket.on("match:cancel",()=>{const u=userOf(socket);if(u)dequeue(u);});
 
   socket.on("game:action",(a,cb)=>{

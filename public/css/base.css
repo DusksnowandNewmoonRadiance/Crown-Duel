@@ -35,12 +35,34 @@ input::placeholder,textarea::placeholder{color:var(--ink-400)}
 /* ---------- 排版工具 ---------- */
 .muted{color:var(--text-3)}
 .small{font-size:var(--fs-sm)}
+/* 全大写微标注：全站用来做「技术感」的底噪 */
+.caps{
+  font-size:var(--fs-caps);font-weight:600;letter-spacing:var(--tr-caps);
+  text-transform:uppercase;color:var(--ink-300);
+}
 .section-label{
-  display:flex;align-items:center;gap:10px;
-  font-size:var(--fs-xs);font-weight:600;letter-spacing:.08em;
-  color:var(--text-3);text-transform:none;margin-bottom:12px;
+  display:flex;align-items:center;gap:12px;
+  font-size:var(--fs-caps);font-weight:600;letter-spacing:var(--tr-caps);
+  color:var(--ink-300);text-transform:uppercase;margin-bottom:12px;
+}
+.section-label em{
+  font-style:normal;font-size:9.5px;font-weight:500;letter-spacing:.12em;
+  color:var(--ink-400);font-variant-numeric:tabular-nums;
 }
 .section-label::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* 数字：等宽数位，收紧字距，用于血量/费用/数量等「有分量」的位置 */
+.num{font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+
+/* ---------- 入场：只做一次轻微上浮，不弹跳 ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.screen:not([hidden]) .rise{
+  animation:rise var(--t-long) var(--e-reveal) both;
+  animation-delay:var(--d,0s);
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-delay:0s!important;transition-duration:.001ms!important}
+}
 
 /* 线性图标 */
 .ic{
@@ -58,6 +80,11 @@ input::placeholder,textarea::placeholder{color:var(--ink-400)}
 .screen{
   position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden;
   background:var(--ink-900);
+}
+/* 单向打光：所有屏幕共用同一束顶光，视觉上把内容「压」在桌面上 */
+.screen::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:var(--light-top);
 }
 .screen>*{position:relative;z-index:1}
 
@@ -285,10 +312,11 @@ a.link:hover{color:var(--accent-hi);text-decoration:underline}
 }
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* 空状态 */
+/* 空状态：用上下两条细线围出留白，不用虚线框 */
 .empty{
-  grid-column:1/-1;text-align:center;color:var(--text-3);padding:40px 18px;
-  border:1px dashed var(--line-2);border-radius:var(--r-3);line-height:1.9;font-size:13.5px;
+  grid-column:1/-1;text-align:center;color:var(--ink-400);padding:46px 18px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  line-height:2;font-size:13px;letter-spacing:.02em;
 }
 .empty b{color:var(--text);font-weight:600}
 

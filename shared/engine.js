@@ -21,9 +21,15 @@ function hasBonus(p,r){return!!p&&(p.regime===r||!!p.fedTurn);}
 function hasCost(p,r){return!!p&&p.regime===r;}
 /* 增伤：爵士乐队（所有伤害）、乌克兰政体（部署与法术伤害，不含战斗） */
 function boost(src,n,combat){return n>0?n+bandCount(src)+((!combat&&hasBonus(src,"ukr"))?1:0):n;}
+/* 白俄罗斯铁壁：卡组里带了足够多的 blr 组件时，开局优先选白俄罗斯（俄罗斯政体拿不到护甲，整套甲牌会哑火） */
+function blrPieces(p){
+  const cards=((p&&p.deck)||[]).concat((p&&p.hand)||[]);
+  return cards.filter(c=>c&&(c.rep==="blr"||/^blr/.test(c.id||""))).length;
+}
 function bestRegime(me,foe){
   const enAtk=foe.board.reduce((a,u)=>a+(u.health>0?u.attack:0),0);
   if(me.hp<=12||enAtk>=8)return"blr";
+  if(blrPieces(me)>=6)return"blr";
   if(foe.board.length>=3)return"ukr";
   return"rus";
 }
@@ -67,6 +73,7 @@ function targetSpec(card,me,foe){
     case"stunOrKill":return eligible(foe.board,1,1,"选择 1 个敌方单位（眩晕或消灭）","foe");
     case"stunOneDraw":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
     case"cpNet":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 1 点伤害","foe");
+    case"diyPull":return eligible(foe.board,1,1,"选择 1 个敌方单位策反并使其获得 +1/+4","foe");
   }
   return null;
 }
@@ -91,6 +98,7 @@ function playError(card,me,foe){
   if(card.kind==="unit"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
   const e=card.effect;
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
+  if(e==="diyPull"&&!foe.board.length)return"敌方没有单位可以策反";
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
   if(e==="stunOneDraw"&&!foe.board.length)return"敌方没有单位可以眩晕";
@@ -98,6 +106,7 @@ function playError(card,me,foe){
   if(e==="reshuffleDraw"&&!me.hand.length)return"调节：你手牌为空";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
+  if(e==="blrSteelTide"&&me.steelTide)return"钢铁洪流：本局已经生效，不需要再打第二张";
   if(card.sealed)return"情报封存：这张牌在本回合无法打出";
   {
     const sc=me.hand.filter(x=>x.scrap&&x.uid!==card.uid).length;
@@ -135,6 +144,7 @@ function autoTargets(card,me,foe){
     sorted=pool.slice().sort((a,b)=>((b.health<=dmg?10:0)+unitValue(b))-((a.health<=dmg?10:0)+unitValue(a)));
   }else if(e==="choose3x2")sorted=pool.slice().sort((a,b)=>((b.health<=2?10:0)+unitValue(b))-((a.health<=2?10:0)+unitValue(a)));
   else if(e==="rebel")sorted=pool.slice().sort((a,b)=>unitValue(b)-unitValue(a));
+  else if(e==="diyPull")sorted=pool.slice().sort((a,b)=>unitValue(b)-unitValue(a));
   else if(e==="sacAoe3")sorted=pool.slice().sort((a,b)=>unitValue(a)-unitValue(b));
   else if(e==="pirateCommander")sorted=pool.slice().sort((a,b)=>((a.id==="pirateScout"?1e6:b.attack))-((b.id==="pirateScout"?1e6:a.attack)));
   else if(e==="killTough")sorted=pool.slice().sort((a,b)=>((b.taunt?10:0)+b.health)-((a.taunt?10:0)+a.health));
@@ -187,17 +197,19 @@ class Game{
     }
     if(this.intro.some(x=>x.pi===i))shuffle(deck);
     const hp=prof?prof.hp:(p.hp||30);
+    /* 初始卡组（40 张 id）：AI 用来判断自己带的是哪套预设（同一英雄可能有两套） */
+    const deckAll=deckIds.slice();
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp,maxHp:hp,armor:0,energy:0,maxEnergy:0,
-      fatigue:0,deck,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
+      fatigue:0,deck,deckAll,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
-      decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,
+      decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,steelTide:false,
       stats:{dmg:0,played:0,kills:0}};
   }
   clone(c,hero,upLvl){
     const up=(upLvl&&CAMPAIGN_UPGRADES[c.id]&&CAMPAIGN_UPGRADES[c.id][upLvl])||null;
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:up&&up.name?up.name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!(c.charge||(up&&up.charge)),taunt:!!(c.taunt||(up&&up.taunt)),ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
-      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,
+      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,onDraw:!!c.onDraw,
       scrap:!!c.scrap,recycle:c.recycle||"",recycleN:c.recycleN||1,upLvl:upLvl||0,upDeployDraw:up&&up.deployDraw||0};
     if(c.kind==="unit"){x.attack=c.atk+(up&&up.atk||0);x.health=c.hp+(up&&up.hp||0);x.maxHealth=c.hp+(up&&up.hp||0);x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
@@ -216,6 +228,8 @@ class Game{
     for(let i=0;i<n;i++){
       if(!p.deck.length){p.fatigue++;const dmg=p.fatigue*(p.fatigue+1)/2;this.note(`牌库已空，第 ${p.fatigue} 次疲劳，受到 ${dmg} 点伤害`,p);this.damageHero(p,dmg,{fatigue:true});if(this.phase==="over")break;continue;}
       const card=p.deck.pop();
+      /* DIY·神罚：抽到时自动施放（不进手牌） */
+      if(card.onDraw){this.note(`【${card.name}】抽到时自动施放`,p);this.cast(p,card,this.opp(p),[],null);if(this.phase==="over")break;continue;}
       if(p.hand.length>=MAX_HAND){this.burn(p,card,credit,label);continue;}
       p.hand.push(card);this._drawHeal(p);
     }
@@ -300,7 +314,7 @@ class Game{
   }
   _drawHeal(p){
     const n=p.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
-    if(!n)return;this.heal(p,2*n);this.note(`彗星观察者×${n}：恢复 ${2*n} 点生命`,p);
+    if(!n)return;this.heal(p,n);this.note(`彗星观察者×${n}：恢复 ${n} 点生命`,p);
   }
 
   /* ---------- 伤害 / 治疗 ---------- */
@@ -329,7 +343,7 @@ class Game{
   _enter(p,u){
     this._ready(u);
     if(u.kind!=="unit")return;
-    if(hasCost(p,"blr")&&u.charge){u.charge=false;u.atkLeft=0;}
+    if(hasCost(p,"blr")&&u.charge&&u.id!=="redTank"){u.charge=false;u.atkLeft=0;}
     if(hasBonus(p,"rus")&&!u.charge){u.charge=true;u.atkLeft=u.strikes;}
     if(hasBonus(p,"blr")&&u.taunt){u.attack+=1;u.health+=2;u.maxHealth+=2;}
     if(hasCost(p,"ukr")&&u.health>1){u.health-=1;u.maxHealth=Math.max(1,u.maxHealth-1);}
@@ -356,7 +370,7 @@ class Game{
   }
   loseMax(p,n){p.maxEnergy=Math.max(0,p.maxEnergy-n);p.energy=Math.min(p.energy,p.maxEnergy);}
   cleanup(){
-    const triggers=[],souls=[];
+    const triggers=[],souls=[],armorTriggers=[];
     for(const p of this.players){
       const dead=p.board.filter(u=>u.health<=0);
       if(!dead.length)continue;
@@ -370,7 +384,7 @@ class Game{
           this.emit({t:"ce",id:"killBoss",text:(this.campaign.events&&this.campaign.events.killBoss)||"敌方首领被击杀了！"});
         }
       }
-      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);});
+      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);if(u.effect==="blrDeathArmor")armorTriggers.push([p,u]);});
     }
     souls.forEach(([p,u])=>{
       const id=u.transfer||u.recycle;
@@ -387,6 +401,10 @@ class Game{
     triggers.forEach(([p,u])=>{
       this.note(`${u.name} 的亡语：对敌方英雄造成 ${u.deathDmg} 点伤害`,p);
       this.damageHero(this.opp(p),u.deathDmg);
+    });
+    /* 白俄罗斯民兵：亡语叠 2 点护甲 */
+    armorTriggers.forEach(([p,u])=>{
+      this.armor(p,2);this.note(`${u.name} 的亡语：获得 2 点护甲`,p);
     });
   }
   _ready(u){u.atkLeft=u.charge?u.strikes:0;u.fresh=true;}
@@ -506,6 +524,12 @@ class Game{
       this.damageHero(p,p.decay,{fatigue:true});
     }
     if(this.phase==="over")return;
+    /* 钢铁洪流：永久状态，每个自己的回合开始把 1 张【红军坦克】加入手牌（手牌满则跳过） */
+    if(p.steelTide){
+      const tank=this.clone(TOKENS.redTank,p.hero);
+      if(this.addToHand(p,tank))this.note("钢铁洪流：红军坦克进入手牌",p);
+      else this.note("钢铁洪流：手牌已满，红军坦克没能进入手牌",p);
+    }
     if(this.lock!==null)this.note("停摆：费用上限无法增加",p);
     p.maxEnergy=Math.min(MAX_ENERGY,p.maxEnergy+(this.lock!==null?0:1));
     p.energy=p.maxEnergy;
@@ -515,6 +539,17 @@ class Game{
       else u.atkLeft=u.strikes;
     }
     this.emit({t:"turn",pi});
+    /* DIY·机械眼：你的回合开始时随机攻击一个敌方目标（消耗本回合攻击次数） */
+    for(const u of p.board){
+      if(u.effect!=="diyMechEye"||u.health<=0||u.atkLeft<=0||u.stun>0)continue;
+      if(this.phase==="over")break;
+      const foe=this.players[1-pi];
+      const tg=foe.board.filter(x=>!x.untargetable&&x.health>0);
+      let target=null;
+      if(tg.length){if(!(Math.random()<.5))target=tg[Math.floor(Math.random()*tg.length)].uid;}
+      else if(foe.heroImmune)continue;
+      this.note(`机械眼：${u.name} 自动开火`,p);this.attack(pi,u.uid,target);
+    }
     if(!(pi===this.first&&p.turnsStarted===1))this.draw(p,1);
     for(const u of p.board.filter(x=>x.effect==="whiteEngine"&&x.health>0))
       this.destroyEnemyCards(p,this.opp(p),"deck",2,u.name);
@@ -555,6 +590,10 @@ class Game{
     const p=this.players[pi];
     for(const u of p.board){u.fresh=false;if(u.tempAtk){u.attack=Math.max(0,u.attack-u.tempAtk);u.tempAtk=0;}}
     if(hasBonus(p,"blr")){this.armor(p,2);this.note("白俄罗斯政体：回合结束，获得 2 点护甲",p);}
+    /* 边防哨所：己方回合结束时，只要场上还有嘲讽单位，就再叠 1 点护甲 */
+    if(p.board.some(u=>u.health>0&&u.effect==="blrBastion")&&p.board.some(u=>u.health>0&&u.taunt)){
+      this.armor(p,1);this.note("边防哨所：回合结束，获得 1 点护甲",p);
+    }
     p.fedTurn=false;
     p.hand.forEach(x=>{x.sealed=false;});
     this.emit({t:"endTurn",pi});
@@ -725,6 +764,9 @@ class Game{
       case"drawArmor":this.draw(s,1);this.armor(s,1);break;
       case"armor1":this.armor(s,1);break;
       case"armor2":this.armor(s,2);break;
+      /* 白俄罗斯铁壁：部署即叠甲 */
+      case"blrGarrison":this.armor(s,2);this.note(`${c.name}：部署，获得 2 点护甲`,s);break;
+      case"blrRailway":this.armor(s,3);this.note(`${c.name}：部署，获得 3 点护甲`,s);break;
       case"armor3":this.armor(s,3);this.note("海岸防线：获得 3 点护甲",s);break;
       case"hero1":this.damageHero(o,1);break;
       case"hero2":this.damageHero(o,2);break;
@@ -1012,6 +1054,19 @@ class Game{
       case"armor3draw":this.armor(s,3);this.draw(s,1);break;
       case"traceBoost":this.armor(s,6);this.draw(s,2);break;
       case"timeShield2":this.armor(s,5);this.heal(s,3);break;
+      /* 白俄罗斯铁壁：嘲讽刺数 → 护甲 → 甲换清场 */
+      case"blrFortify":{
+        const n=s.board.filter(u=>u.health>0&&u.taunt).length*2;
+        if(n>0)this.armor(s,n);
+        this.note(`筑垒令：${n>0?`获得 ${n} 点护甲`:"没有嘲讽单位，未获得护甲"}`,s);
+        break;}
+      case"blrArmorWall":{
+        const walls=s.board.filter(u=>u.health>0&&u.taunt);
+        walls.forEach(u=>{u.attack+=1;u.health+=1;u.maxHealth+=1;});
+        this.armor(s,2);
+        this.note(`铁壁：${walls.length} 个嘲讽单位 +1/+1，获得 2 点护甲`,s);
+        break;}
+      case"blrSteelTide":s.steelTide=true;this.note("钢铁洪流：本局你的每个回合开始都会获得 1 张【红军坦克】",s);break;
       case"nebulaShield2":this.armor(s,10);this.draw(s,2);break;
       case"buffPirate3":{
         const list=(targets&&targets.length)?targets:autoTargets(c,s,o);
@@ -1274,6 +1329,11 @@ class Game{
         const t=o.board.find(u=>u.uid===id);if(t)this.takeover(o,s,t,"策动叛乱");   // 永久策反
         break;}
       case"takeover":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>b.attack-a.attack)[0],"战术接管",true);break;
+      /* ---- DIY 白名单：神罚体系 ---- */
+      case"diyPunishCast":this.damageHero(s,1,{self:true});this.note("【神罚】降临：你的英雄受到 1 点伤害",s);this.draw(s,1);break;
+      case"diyBarrier":{let n=0;for(const cx of o.deck)if(cx.id==="diyPunish")n++;this.armor(s,n);this.note(`神谕壁垒：获得 ${n} 点护甲`,s);break;}
+      case"diyEcho":{for(let k=0;k<4;k++)o.deck.push(this.clone(TOKENS.diyPunish,o.hero));for(let k=0;k<2;k++)s.deck.push(this.clone(TOKENS.diyPunish,s.hero));this.note("神罚共鸣：4 张【神罚】洗入敌方牌库，2 张洗入你的牌库",s);break;}
+      case"diyPull":{const id=(targets&&targets[0])||autoTargets(c,s,o)[0];const tg=o.board.find(u=>u.uid===id);if(tg&&this.takeover(o,s,tg,"圣光牵引",true)){tg.attack+=1;tg.health+=4;tg.maxHealth+=4;this.note(`圣光牵引：${tg.name} 获得 +1/+4`,s);}break;}
       case"rebelLowest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.attack-b.attack)[0],"煽动哗变",true);break;
       case"rebelWeakest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.health-b.health)[0],"内应接应",true);this.draw(s,1);break;
       case"disruption":o.board.forEach(u=>{u.stun=Math.max(u.stun,1);u.atkLeft=0;});this.damageHero(o,2);fx("gravityLock");break;

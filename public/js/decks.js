@@ -4,7 +4,14 @@ const Decks=(()=>{
   const C=window.DuelCards,V=CardView;
   const $=s=>document.querySelector(s);
   const $$=s=>[...document.querySelectorAll(s)];
-  const HEROES=Object.keys(C.PROFILES);
+  /* 卡牌师池要动态取：DIY 角色是 app.js 在 decks.js 之后才注册进来的。
+     - allHeroes()：全部（原版 + 已注册的 DIY）
+     - vanillaHeroes()：只要原版（单人练习 / 原版房间用）
+     - isDiyHero(h)：是不是 DIY 角色（卡组页要给它加 DIY 标签） */
+  const DiyApi=()=>window.DuelDiy||null;
+  const allHeroes=()=>Object.keys(C.PROFILES);
+  const isDiyHero=h=>{const d=DiyApi();return !!(d&&h&&d.isDiy(h));};
+  const vanillaHeroes=()=>allHeroes().filter(h=>!isDiyHero(h));
   const MAX_DECKS=30,NAME_MAX=16,KEY="cd.decks.v2";
 
   /* ============================================================
@@ -18,7 +25,10 @@ const Decks=(()=>{
     try{
       const d=JSON.parse(localStorage.getItem(KEY)||"null");
       if(d&&d.v===2&&Array.isArray(d.list)){
-        d.list=d.list.filter(x=>x&&typeof x.id==="string"&&C.PROFILES[x.hero]&&Array.isArray(x.cards)).slice(0,MAX_DECKS)
+        /* 这里不再按 C.PROFILES 过滤：DIY 角色要等 app.js 注册后才存在，
+           过早过滤会把玩家给 DIY 角色组的卡组直接丢掉。未知角色的卡组先留着，
+           不显示、也不参与出战；真被删掉的角色在 refresh() 里再清。 */
+        d.list=d.list.filter(x=>x&&typeof x.id==="string"&&typeof x.hero==="string"&&Array.isArray(x.cards)).slice(0,MAX_DECKS)
           .map(x=>({id:x.id,hero:x.hero,name:cleanName(x.name)||"未命名卡组",cards:x.cards.filter(c=>typeof c==="string"),updatedAt:+x.updatedAt||0}));
         d.active=d.active&&typeof d.active==="object"?d.active:{};
         return d;
@@ -26,7 +36,7 @@ const Decks=(()=>{
     }catch(e){}
     /* 迁移旧版：每个卡牌师一个卡组 */
     const d={v:2,list:[],active:{}};
-    for(const h of HEROES){
+    for(const h of allHeroes()){
       try{
         const old=JSON.parse(localStorage.getItem("cd.deck."+h)||"null");
         if(Array.isArray(old)&&old.every(id=>C.PROFILES[h].cards.some(c=>c.id===id))&&old.length>0){
@@ -52,6 +62,24 @@ const Decks=(()=>{
       return d&&!C.deckError(h,d.cards)?d:virtualDeck(h);
     },
     activeCards:h=>api.active(h).cards.slice(),
+    /* DIY 角色注册/注销之后由 app.js 调用：清掉真被删掉的角色、修正当前选择、必要时重画 */
+    refresh(){
+      const live=new Set(allHeroes());
+      /* app.js 会把「服务端当前知道的 DIY 名字」放在这个全局集合里：
+         还没拉到卡表的角色先留着卡组，只有服务端确认删掉的才清 */
+      const known=window.__cdDiyNames;
+      const keep=d=>live.has(d.hero)||!!(known&&known.has(d.hero));
+      const before=data.list.length;
+      data.list=data.list.filter(keep);
+      for(const h of Object.keys(data.active)){if(!keep({hero:h}))delete data.active[h];}
+      if(data.list.length!==before)persist();
+      const list=allHeroes();
+      if(!hero||!list.includes(hero))hero=vanillaHeroes()[0]||list[0]||null;
+      if(W&&!list.includes(W.hero))W=null;
+      const scr=$("#scrDecks");
+      if(host&&scr&&!scr.hidden)renderAll();
+      return true;
+    },
     setActive(h,id){
       if(!id||String(id).startsWith("default:"))delete data.active[h];else data.active[h]=id;
       persist();
@@ -146,10 +174,14 @@ const Decks=(()=>{
     $("#scrDecks").dataset.tab=tab;
   }
   function renderHeroes(){
-    $("#dkHeroes").innerHTML=HEROES.map(h=>{
+    /* 原版在前，DIY 在后（带 DIY 标签）；当前选中的角色如果已被删除，回退到第一个原版角色 */
+    const list=allHeroes();
+    if(hero&&!list.includes(hero))hero=vanillaHeroes()[0]||list[0]||null;
+    const btn=h=>{
       const n=api.list(h).length;
-      return`<button class="${h===hero?"on":""}" data-h="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}"><span class="g">${V.esc(V.glyph(h))}</span><b>${V.esc(h)}</b>${n?`<i>${n}</i>`:""}</button>`;
-    }).join("");
+      return`<button class="${h===hero?"on":""}" data-h="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}"><span class="g">${V.esc(V.glyph(h))}</span><b>${V.esc(h)}</b>${isDiyHero(h)?`<em class="diy-tag">DIY</em>`:""}${n?`<i>${n}</i>`:""}</button>`;
+    };
+    $("#dkHeroes").innerHTML=vanillaHeroes().map(btn).join("")+list.filter(isDiyHero).map(btn).join("");
   }
   function badge(d,isCur){
     if(d.virtual)return`<span class="tg off">官方</span>`;
@@ -369,6 +401,8 @@ const Decks=(()=>{
   /* h: 初始选中的卡牌师；deckId: 可选，直接打开某个卡组 */
   function open(h,hostApi,deckId){
     host=hostApi;bind();
+    /* 传进来的角色可能刚被删（DIY 角色），回退到原版，别让 PROFILES[h] 取空崩掉 */
+    if(!h||!C.PROFILES[h])h=vanillaHeroes()[0]||allHeroes()[0];
     const d=deckId&&api.get(deckId);
     if(d)startWork(d);else pickInitial(h);
     kind="all";cost="all";rar="all";query="";$("#dkSearch").value="";tab="pool";
