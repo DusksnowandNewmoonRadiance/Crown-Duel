@@ -37,6 +37,22 @@ const PRE_ATTACK=new Set([
   "consolidate","sacAoe3","fireShip"
 ]);
 
+/* ---- 卡组流派：同一个英雄的两套预设打法不同，按自带 40 张判断 ---- */
+const FED_CARDS=new Set(["cometWatcher","sentinel","messenger","bulwark","scholar","orbitguard",
+  "gravityfield","starcore","foresee","forecast","mana","timeShield","crystalBreak","gravitywell",
+  "starClimb","cardCap","gravityLock","gravityFold","stasis","stasisfield","cometStrike",
+  "starlightPray","starlock","cometShackle","cometTrail","starlightEcho","stardustBeacon",
+  "cometTutor","tune"]);
+/* "blr" = 白俄罗斯铁壁（叠甲解场拖时间）；"federation" = 七星·星联邦流（叠血解场） */
+function deckMode(p){
+  /* deck 会随着抽牌变短，优先用开局记录的 40 张 */
+  const d=(p&&(p.deckAll||p.deck))||[];
+  if(d.filter(id=>/^blr/.test(id)).length>=6)return"blr";
+  /* 星联邦流有独有的三张牌，衰减流没有 */
+  if(d.includes("cometTrail")&&d.includes("starlightEcho")&&d.includes("stardustBeacon"))return"federation";
+  return"";
+}
+
 const BURN={hero99:99,damage5:5,damage6:6,damage7:7,damage5draw:5,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2,
   };
 function burnOf(s,c){
@@ -80,6 +96,8 @@ function isLethal(s,o){
 }
 function scoreCard(s,o,c,lethal,stage){
   const e=c.effect,myN=s.board.length,enN=o.board.length,burn=burnOf(s,c);
+  /* 同一英雄可能有两套预设（苏苏：俄布海 / 白俄罗斯铁壁），打法按自带卡组走 */
+  const mode=deckMode(s);
   /* 剧情·土匪AI：stage0 前期不铺场不打高费 */
   if(stage!==null&&stage===0){
     if(c.cost>1)return-30;
@@ -205,8 +223,29 @@ function scoreCard(s,o,c,lethal,stage){
       }
       else if(e==="blrFortify")sc+=walls>=1?5+walls*1.2:-2;    // 至少 1 个嘲讽才打
       else if(e==="blrArmorWall")sc+=walls>=1?4+walls*1.5:(s.hp<=14?1:-3);
-      else if(e==="blrSteelTide")sc+=s.hp>8?12:-60;            // 终端：血够厚才铺永久坦克产线
+      else if(e==="blrSteelTide"){
+        /* 终端：血够厚、场面能撑住才铺产线；被压着打的时候先苟 */
+        const threats=o.board.reduce((a,u)=>a+Math.max(0,u.attack),0);
+        const safe=s.hp>=10&&(threats<=10||walls>=1);
+        sc+=safe?14:-100;
+      }
     }
+  }
+  /* —— 卡组流派修正：白俄罗斯铁壁 = 叠甲解场拖时间；星联邦流 = 叠血解场 —— */
+  if(mode==="blr"){
+    if(c.taunt)sc+=2;
+    if(/^(armor|heal|drawHeal)/.test(e||""))sc+=s.hp<=20?3:1;
+    if(e==="blrFortify"||e==="blrArmorWall")sc+=1.5;
+    if(c.kind==="unit"&&(c.attack||0)<=2&&(c.health||0)>=4)sc+=1.5;   // 偏防守身材
+  }
+  if(mode==="federation"){
+    if(c.id==="cometWatcher"||e==="drawHeal")sc+=3;                   // 回血引擎
+    if(/^(heal2|heal3draw|heal4Draw1|heal5Armor2|healDraw|draw2heal2|draw2heal6|drawHeal1|armor3Draw1|armor3draw)$/.test(e||""))sc+=s.hp<=22?5:2;
+    if(/^(aoe2|aoe4|whiteAoe|stunAllDraw|cometStrike)$/.test(e||""))sc+=enN>=2?4:0;
+    if(/^(draw1|draw2|draw3|foresee|forecast|cometTutor|tune|reshuffleDraw)$/.test(e||""))sc+=s.hand.length<=5?2.5:1;  // 找牌但别爆牌
+    if(c.taunt)sc+=1.5;
+    if(e==="cometStrike")sc+=s.hp>40?12:(s.hp>=36?2:0);            // 彗星陨击要血 >40 才能打
+    if(/^(heal2|heal3draw|heal4Draw1|heal5Armor2|healDraw|draw2heal2|draw2heal6|draw1heal2|armor3draw|armor3Draw1)$/.test(e||""))sc+=s.hp<44?2.5:0;  // 先把血叠过 40
   }
   /* —— 角色风格修正（叠加在通用打分之上） —— */
   const style=HERO_STYLE[s.hero]||{};
@@ -413,8 +452,17 @@ class AIPlayer{
     return{unit:u,target:v.hero?null:(v.units[0]||null)};
   }
   chooseAttack(s,o){
-    const style=HERO_STYLE[this.hero]||{};
-    const aggro=style.aggro!==undefined?style.aggro:.5;
+    const style=HERO_STYLE[(s&&s.hero)||this.hero]||{};
+    const mode=deckMode(s);
+    /* 白俄罗斯铁壁 / 星联邦流：不抢血，优先解场与保住回血引擎 */
+    /* 钢铁洪流上线（坦克产线开动）后转为推进；
+       白俄罗斯：先解场攒甲，靠坦克反打；星联邦：纯防守拖疲劳 */
+    const tideOnline=!!(s&&s.steelTide);
+    const tradeFirst=!tideOnline&&(mode==="blr"||mode==="federation");
+    const defensive=!tideOnline&&mode==="federation";
+    let aggro=style.aggro!==undefined?style.aggro:.5;
+    if(mode==="blr")aggro=tideOnline?.8:.35;
+    else if(mode==="federation")aggro=tideOnline?.8:.4;
     for(let guard=0;guard<20;guard++){
       const ready=s.board.filter(u=>!canAttack(u)&&!this.passed.has(u.uid));
       if(!ready.length)return null;
@@ -423,7 +471,7 @@ class AIPlayer{
       for(const u of ready){
         const v=attackTargets(u,o);
         const hd=u.attack+heroBonus(u);
-        const wG=u.id==="cometWatcher"?-8:0;   // 保护彗星观察者：不打（留场回血）
+        const wG=u.id==="cometWatcher"?(mode==="federation"?-40:-8):0;   // 保护彗星观察者：不打（留场回血）
         const consider=(t,sc)=>{if(!best||sc>best.score)best={unit:u,target:t,score:sc};};
         if(v.hero){
           let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp))+wG;
@@ -434,6 +482,7 @@ class AIPlayer{
           if(aggro>=.85)fs+=hd*1.3;                     // 极致抢血（八幡/核弹）：打脸额外加成
           if(u.taunt&&!lethal&&s.hp<=14)fs-=3;
           if(!o.board.length)fs+=2;
+          if(tradeFirst){fs-=2;if(o.board.length)fs-=1;}   // 有场面先清，但别完全不摸脸
           if(this.level==="easy")fs+=3;
           consider(null,fs);
         }
@@ -444,6 +493,7 @@ class AIPlayer{
           if(kills&&!dies)sc+=3;
           if(!kills&&dies)sc-=4;
           if(t.taunt&&kills)sc+=1.5;
+          if(tradeFirst){sc+=1;if(t.attack>=4)sc+=.8;if(kills&&!dies)sc+=.6;}   // 解场优先
           if(this.level==="hard"&&t.id==="awaBand")sc+=4;
           // 极致抢血（八幡/核弹）：不白吃 / 不过墙 / 非自危威胁时，解场大幅降分 → 专注打脸
           // 白吃高值单位、或自己血量不健康/敌方威胁大(攻击高)时仍解场（保场面）
@@ -463,5 +513,5 @@ class AIPlayer{
   }
 }
 
-return{AIPlayer,burnOf,isLethal};
+return{AIPlayer,burnOf,isLethal,deckMode};
 });

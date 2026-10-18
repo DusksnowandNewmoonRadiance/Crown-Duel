@@ -194,8 +194,10 @@ class Game{
     }
     if(this.intro.some(x=>x.pi===i))shuffle(deck);
     const hp=prof?prof.hp:(p.hp||30);
+    /* 初始卡组（40 张 id）：AI 用来判断自己带的是哪套预设（同一英雄可能有两套） */
+    const deckAll=deckIds.slice();
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp,maxHp:hp,armor:0,energy:0,maxEnergy:0,
-      fatigue:0,deck,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
+      fatigue:0,deck,deckAll,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
       decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,steelTide:false,
       stats:{dmg:0,played:0,kills:0}};
