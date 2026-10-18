@@ -263,11 +263,8 @@ function askNick(){
    单人练习
    ============================================================ */
 const Solo={opp:store.get("soloOpp",""),level:store.get("soloLevel","normal"),oppDeck:store.get("soloOppDeck","random")};
-/* 单人练习可用英雄：原版 + 已注册的 DIY（本地对局，不进排位/原版数据） */
-function soloPool(){
-  const d=typeof diyHeroes==="function"?diyHeroes():[];
-  return HEROES.concat(d.filter(h=>!HEROES.includes(h)&&C.PROFILES[h]));
-}
+/* 单人练习只打原版对手；要用 DIY 角色对局，从「DIY 工坊 → 游玩 DIY 角色」进入 */
+function soloPool(){return HEROES.slice();}
 if(Solo.oppDeck==="decay")Solo.oppDeck="衰减流";
 if(Solo.oppDeck==="federation")Solo.oppDeck="星联邦流";
 function openSolo(){
@@ -297,8 +294,8 @@ $("#soloLevel").addEventListener("click",e=>{const b=e.target.closest("button");
 $("#soloGo").addEventListener("click",()=>{closeModal("#mSolo");startSolo();});
 
 class LocalController{
-  constructor(){
-    const me=Me.hero;
+  constructor(heroOverride){
+    const me=(heroOverride&&C.PROFILES[heroOverride])?heroOverride:Me.hero;
     const others=soloPool().filter(h=>h!==me);
     const foe=Solo.opp&&Solo.opp!==me?Solo.opp:others[Math.floor(Math.random()*others.length)];
     /* 选择的敌方预设卡组优先；随机时由 AI 自行挑选。 */
@@ -368,11 +365,12 @@ class LocalController{
   dispose(){this.dead=true;}
 }
 let solo=null;
-function startSolo(){
+function startSolo(opts){
+  const hero=(opts&&opts.hero&&C.PROFILES[opts.hero])?opts.hero:null;
   if(solo)solo.dispose();
-  solo=new LocalController();
+  solo=new LocalController(hero);
   show("#scrGame");
-  GameUI.start(solo,"solo",{tutorial:store.get("coach","")!=="1",onAgain:()=>startSolo(),onExit:()=>exitGame(),onWin:()=>reportWin(Me.hero)});
+  GameUI.start(solo,"solo",{tutorial:store.get("coach","")!=="1",onAgain:()=>startSolo(opts),onExit:()=>exitGame(),onWin:()=>reportWin(hero||Me.hero)});
   solo.begin();
 }
 /* 普通模式获胜：+金币 并 解锁该角色剧情（仅登录后上报） */
@@ -498,6 +496,7 @@ function fetchDiyHero(name){
 function applyDiySummaries(list){
   if(!Array.isArray(list)||!Diy)return;
   DiyUI.summaries=list.slice();
+  if(typeof renderDiyPlay==="function")setTimeout(renderDiyPlay,0);
   const builtinNames=new Set((DiyBuiltin&&DiyBuiltin.heroes||[]).map(h=>h&&h.name));
   const alive=new Set();
   for(const s of list){
@@ -963,9 +962,28 @@ $("#diyBack").addEventListener("click",()=>{
   if(Net.inLobby){if(Net.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}}
   else{show("#scrHome");renderHome();}
 });
+/* ---------- DIY 工坊左栏：游玩 DIY 角色 ---------- */
+const DiyPlay={hero:""};
+function renderDiyPlay(){
+  const list=typeof diyHeroes==="function"?diyHeroes():[];
+  if(!list.includes(DiyPlay.hero))DiyPlay.hero=list[0]||"";
+  const box=$("#diyPlayList");
+  if(!box)return;
+  box.innerHTML=list.length
+    ?list.map(h=>`<button class="diy-play-hero${h===DiyPlay.hero?" on":""}" data-v="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">${V.esc(h)}</button>`).join("")
+    :`<p class="muted small">还没有可玩的 DIY 角色。</p>`;
+  const go=$("#diyPlayGo");if(go)go.disabled=!DiyPlay.hero;
+  const hint=$("#diyPlayHint");
+  if(hint)hint.textContent=DiyPlay.hero?`将以「${DiyPlay.hero}」对战随机原版电脑（本地对局，不计段位）`:"没有可选角色";
+}
+$("#diyPlayList").addEventListener("click",e=>{
+  const b=e.target.closest("[data-v]");if(!b)return;
+  DiyPlay.hero=b.dataset.v;renderDiyPlay();
+});
+$("#diyPlayGo").addEventListener("click",()=>{if(DiyPlay.hero)startSolo({hero:DiyPlay.hero});});
 function openDiy(){
   if(!Diy){toast("DIY 模块没有加载成功，请刷新页面",false);return;}
-  DiyUI.open();
+  DiyUI.open();renderDiyPlay();
 }
 $("#btnDiy").addEventListener("click",openDiy);
 $("#lobbyDiy").addEventListener("click",openDiy);
