@@ -793,6 +793,9 @@ class Game{
         if(this.addToHand(s,this.clone(TOKENS.pirateCry,s.hero)))this.note("海盗统领：获得 1 张【海盗战嚎】",s);
         break;}
       case"decay1":this.addDecay(s,o,1);break;
+          case"decay2":this.addDecay(s,o,2);break;
+          case"decay3":this.addDecay(s,o,3);break;
+          case"decay3draw":this.addDecay(s,o,3);this.draw(s,1);break;
       case"copySmallCannon":if(this.summon(s,"smallcannon",1))this.note("轻型炮台复制了一个小炮组",s);break;
       case"buffAll1":this.buffAll(s,1,1);break;
       case"buffAll2":this.buffAll(s,2,2);break;
@@ -1206,6 +1209,9 @@ class Game{
         this.note("消除限制：敌方单位失去嘲讽，英雄失去免疫",s);
         this.damageHero(o,3);fx("breakthrough");break;}
       case"decay1":this.addDecay(s,o,1);break;
+          case"decay2":this.addDecay(s,o,2);break;
+          case"decay3":this.addDecay(s,o,3);break;
+          case"decay3draw":this.addDecay(s,o,3);this.draw(s,1);break;
       case"decay2draw":this.addDecay(s,o,2);this.draw(s,1);break;
       case"decayDouble":{const n=Math.max(o.decay||0,1);this.addDecay(s,o,n);break;}
       case"energyDown2":this.loseMax(o,2);this.note("敌方的费用上限 -2",s);break;

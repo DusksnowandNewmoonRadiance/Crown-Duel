@@ -114,7 +114,7 @@ function scoreCard(s,o,c,lethal,stage){
     if(/^buff|alwei|huiliyi/.test(e))sc+=myN*1.2;
     if(/energyDown|qixing/.test(e))sc+=1.5;
     if(e==="drawHeal")sc+=4;
-    if(e==="decay1")sc+=2.5;
+    if(/^decay[1-9]/.test(e||""))sc+=3.5+(parseInt((e||"").replace(/[^0-9]/g,"")||"1"));
     if(c.id==="superman")sc+=6;
     if(c.id==="redTank"){   // 红军坦克 token：5/4 冲锋，能打脸时高分
       const reach=faceReachAll(s,o)+(c.attack||0)*(c.strikes||1);

@@ -47,11 +47,11 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const g=game("七星","苏苏");
   const a=g.players[0],b=g.players[1];
   ready(g,0,[mk(g,"七星","eclipse"),mk(g,"七星","withering"),mk(g,"七星","doomsday")]);
-  check("星蚀：1 层衰减",play(g,0,a.hand[0]).ok&&b.decay===1);
-  check("凋零彗尾：+2 层并抽牌",play(g,0,a.hand.find(c=>c.id==="withering")).ok&&b.decay===3);
-  check("终焉倒计时：层数翻倍",play(g,0,a.hand.find(c=>c.id==="doomsday")).ok&&b.decay===6,"层数 "+b.decay);
+  check("星蚀：3 层衰减",play(g,0,a.hand[0]).ok&&b.decay===3);
+  check("凋零彗尾：+3 层并抽牌",play(g,0,a.hand.find(c=>c.id==="withering")).ok&&b.decay===6);
+  check("终焉倒计时：层数翻倍",play(g,0,a.hand.find(c=>c.id==="doomsday")).ok&&b.decay===12,"层数 "+b.decay);
   const hp=b.hp;b.armor=10;g.endTurn(0);
-  check("衰减在回合开始时造成伤害，且不被护甲抵挡",b.hp===hp-6&&b.armor===0,`hp ${hp}→${b.hp}`);
+  check("衰减在回合开始时造成伤害，且不被护甲抵挡",b.hp===hp-12&&b.armor===0,`hp ${hp}→${b.hp}`);
 }
 {
   const g=game("七星","苏苏");
