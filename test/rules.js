@@ -249,7 +249,7 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   const confiscate=mk(g,"白猫","insight"),victim=mk(g,"七星","awaBand"),drawn=mk(g,"白猫","spark");
   ready(g,0,[confiscate]);a.deck=[drawn];b.hand=[victim];b.deck=[mk(g,"七星","awaBand"),mk(g,"七星","awaBand")];
   const r=play(g,0,confiscate);
-  check("没收手稿：2 费销毁敌方手牌并抽牌",r.ok&&a.energy===8&&b.hand.length===0&&b.deck.length===2&&a.hand.some(c=>c.uid===drawn.uid)&&a.destroyedCards===1,r.error||"");
+  check("没收手稿：3 费销毁敌方手牌并抽牌",r.ok&&a.energy===7&&b.hand.length===0&&b.deck.length===2&&a.hand.some(c=>c.uid===drawn.uid)&&a.destroyedCards===1,r.error||"");
 }
 {
   const g=game("白猫","七星"),a=g.players[0],b=g.players[1];
