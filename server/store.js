@@ -3,6 +3,7 @@
 const fs=require("fs");
 const path=require("path");
 const crypto=require("crypto");
+const Rank=require("../shared/rank.js");
 
 const DATA_DIR=process.env.DATA_DIR||path.join(__dirname,"..","data");
 fs.mkdirSync(DATA_DIR,{recursive:true});
@@ -42,6 +43,7 @@ function newUser(user,pass,nick,email){
   const salt=crypto.randomBytes(8).toString("hex");
   const uid="u"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   return{uid,user,pass:hashPass(pass,salt),salt,nick:nick||user,email:email||"",gold:0,
+    rank:{seg:25,points:0,streak:0,wins:0,losses:0,lossStreak:0},   // 段位（见 shared/rank.js）
     inv:[],                    // 仓库 [{id,qty}]
     campaign:{},               // [hero]:{unlocked,slots:[{deck,ch1,upgrades},×3]}
     decks:null,                // 云端卡组 {v:2,list:[{id,hero,name,cards,updatedAt}],active:{hero:deckId}}
@@ -51,7 +53,8 @@ function newUser(user,pass,nick,email){
 }
 /* 用户安全视图（不含密码/盐） */
 function pubUser(u){
-  return{uid:u.uid,user:u.user,nick:u.nick,email:u.email||"",gold:u.gold,inv:u.inv,campaign:u.campaign};
+  return{uid:u.uid,user:u.user,nick:u.nick,email:u.email||"",gold:u.gold,inv:u.inv,campaign:u.campaign,
+    rank:u.rank||{seg:25,points:0,streak:0,wins:0,losses:0,lossStreak:0}};
 }
 function findUser(field,val){for(const k in users)if(users[k][field]===val)return users[k];return null;}
 function validEmail(v){return typeof v==="string"&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim());}
@@ -220,6 +223,11 @@ const Store={
     ch.best=best;
     write("users.json",users);
     return{best:ch.best,first};
+  },
+  /* 段位结算：只用于快速匹配；未登录 / 非账号对局由调用方跳过 */
+  applyRank(uid,win){
+    const u=findUser("uid",uid);if(!u)return null;
+    const res=Rank.applyResult(u.rank,win);u.rank=res.rank;write("users.json",users);return res;
   },
   announcements(){return announcements.slice().sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.createdAt-a.createdAt);},
   upsertAnnouncement(a){

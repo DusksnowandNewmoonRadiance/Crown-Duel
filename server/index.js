@@ -13,6 +13,7 @@ const E=require("../shared/engine.js");
 const Store=require("./store.js");
 const adminRouter=require("./admin.js");
 const Diy=require("../shared/diy.js");
+const Rank=require("../shared/rank.js");
 const DiyServer=require("./diy.js");
 const VERSION=require("../package.json").version;
 
@@ -579,6 +580,19 @@ class Match{
     /* 联机胜率统计：按双方英雄记录胜负（平局各记一场） */
     try{Store.recordMatch(this.seats.map(id=>{const u=users.get(id);return u&&u.hero||"?";}),g.winner);}
     catch(e){console.error("[stats] 记录对局失败",e);}
+    /* 段位：只算「快速匹配 + 双方登录真实账号 + uid 不同 + 分出胜负」，服务端判定 */
+    {
+      const su=this.seats.map(id=>users.get(id)||null);
+      const el=Rank.eligible({quick:!!r.quick,uidA:su[0]&&su[0].uid,uidB:su[1]&&su[1].uid,winner:g.winner});
+      if(!el.ok){console.log("[rank] skip:",el.why);}
+      else this.seats.forEach((id,i)=>{
+        const u=su[i];
+        try{
+          const res=Store.applyRank(u.uid,g.winner===i);
+          if(res)send(u,"rank:update",{rank:res.rank,delta:res.delta,from:res.from,to:res.to,promoted:res.promoted,demoted:res.demoted,capped:res.capped});
+        }catch(e){console.error("[rank] 段位结算失败",e);}
+      });
+    }
     roomSys(r,g.winner==="draw"?"对局结束：平局":`对局结束：${g.players[g.winner].name} 获胜`);
     roomChanged(r);
   }

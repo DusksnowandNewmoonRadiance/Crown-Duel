@@ -1006,6 +1006,15 @@ const Net={
     s.on("kicked",d=>{toast(d.reason||"连接已断开");this.leaveAll();});
     s.on("profile:corrected",d=>{if(d&&d.nick){Me.nick=d.nick;renderHome();if(this.inLobby)renderLobby();}});
     s.on("lobby",d=>{this.lobby=d;renderLobby();});
+    /* 段位结算（服务端判定，客户端只显示） */
+    s.on("rank:update",d=>{
+      if(!d)return;
+      if(Account.me)Account.me.rank=d.rank;
+      const R=window.DuelRank,st=R?R.summary(d.rank):null;
+      const head=d.promoted?"升段！":d.demoted?"掉段…":d.capped?"段位已封顶":(d.delta>0?`段位 +${d.delta} 分`:`段位 ${d.delta} 分`);
+      toast(head+(st?`  · 当前 ${st.label}`:""),!d.demoted);
+      renderHome();if(Net.inLobby&&!Net.room)renderLobby();
+    });
     s.on("lobby:chatlog",list=>{$("#lobbyChatLog").innerHTML="";list.forEach(m=>chatLine("#lobbyChatLog",m));});
     s.on("lobby:chat",m=>chatLine("#lobbyChatLog",m));
     s.on("room",r=>this.onRoom(r));
@@ -1190,10 +1199,15 @@ $("#reportSend").addEventListener("click",()=>{
 });
 
 /* ---------- 大厅 ---------- */
+function rankLabel(){
+  const R=window.DuelRank;if(!R)return "段位 ?";
+  const st=R.summary((Account.me||{}).rank);
+  return st.max?`${st.label} · 封顶`:`${st.label} · 本段 ${st.points}/${st.need} 分`;
+}
 function renderLobby(){
   const me=Me.hero;
   const mc=$("#lobbyMe");mc.style.setProperty("--hcr",V.heroRgb(me));
-  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)}${isDiyHero(me)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[me]||{}).title||(C.PROFILES[me]||{}).faction||"")} · 卡组：${V.esc(Me.deckName(me))}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
+  mc.innerHTML=`${crest(me)}<div class="who"><b>${V.esc(Me.nick)}</b><div>${V.esc(me)}${isDiyHero(me)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[me]||{}).title||(C.PROFILES[me]||{}).faction||"")} · 卡组：${V.esc(Me.deckName(me))} · ${rankLabel()}</div></div><button class="btn" id="lobbyHero">更换卡牌师</button><button class="btn" id="lobbyDeck">卡组</button>`;
   $("#lobbyHero").onclick=()=>pickHero(h=>{Me.hero=h;Net.profile();renderLobby();renderHome();});
   $("#lobbyDeck").onclick=()=>openDecks(Me.hero);
   const L=Net.lobby;
