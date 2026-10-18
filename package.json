@@ -1,6 +1,6 @@
 {
   "name": "crown-duel",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "description": "皇冠对决 · 网页联机卡牌对战",
   "private": true,
   "main": "server/index.js",

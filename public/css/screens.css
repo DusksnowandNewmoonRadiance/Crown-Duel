@@ -1134,3 +1134,48 @@
   .home-right>.hero-grid{grid-auto-rows:auto}
   .hero-grid .htile{aspect-ratio:3/4}
 }
+/* ============================================================================
+   移动端适配（竖屏手机 / 横屏手机 / 平板 / 刘海屏安全区）
+   实测（CDP，390×844 / 844×390 / 412×915 / 360×740 / 768×1024）：
+   - 各界面无裁切，但顶栏与次级动作的触摸目标只有 27~31px，低于 40px 推荐值
+   - 844×390 横屏时卡牌师详情会超出视口 25px
+   ============================================================================ */
+/* 1) 触摸目标：粗指针设备上放大可点区域 */
+@media (pointer:coarse){
+  .topbar .chip,.topbar-r .btn,.topbar-r button{min-height:38px}
+  .act-row{min-height:44px;padding:12px 2px}
+  .seg button,.seg-2 button,.seg-3 button{min-height:38px}
+  .modal [data-close],.diy-help [data-close]{min-height:40px;min-width:64px}
+  .dc-ctrl button{min-width:34px;min-height:34px}
+  .diy-info-btns .btn{min-height:40px}
+  /* 卡组 / 图鉴页的筛选片与标签页同样放大，27px 在手机上点不准 */
+  .chip,.dk-tabs button,.cx-tabs button,.dk-filters button,.seg-2 button,.rar-filter button{min-height:38px}
+  .dc-ctrl button{min-width:36px;min-height:36px}
+}
+/* 2) 安全区：刘海屏左右、底部手势条 */
+@media (max-width:900px){
+  .topbar{padding-left:calc(12px + env(safe-area-inset-left));padding-right:calc(12px + env(safe-area-inset-right))}
+  .home{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
+  .screen{overscroll-behavior:contain}
+}
+/* 3) 手机横屏（≤480 高）：详情再压一档，避免顶出视口 */
+@media (max-height:480px) and (orientation:landscape){
+  .hero-detail{padding-top:2px;gap:4px}
+  .hero-detail .hd-k{display:none}
+  .hero-detail .deck-pick label{display:none}
+  .home-right>.hero-grid{grid-auto-rows:minmax(56px,1fr)}
+  .hero-grid .htile{min-height:56px}
+}
+/* 4) 窄竖屏（≤520 宽）：卡面 3 列，详情文字放松行高 */
+@media (max-width:520px){
+  .hero-grid,.hero-grid.compact{grid-template-columns:repeat(3,1fr)}
+  .hero-grid .htile{aspect-ratio:3/4}
+  .hero-detail .tip{font-size:12px;line-height:1.7}
+}
+/* 5) 手机弹窗：占满宽度、内部滚动，工坊单列 + 底部条吸底 */
+@media (max-width:640px){
+  .modal{padding:10px}
+  .panel,.panel.wide{width:100%;max-height:calc(100dvh - 20px)}
+  .diy{grid-template-columns:1fr}
+  .diy-bottom{position:sticky;bottom:0;background:var(--ink-900)}
+}
