@@ -1,22 +1,24 @@
 # 音乐与音效
 
-## BGM
-1. `make_midi.py` —— 用 Python 写 MIDI（4/4、480 ticks/beat），分轨为低音提琴 / 大提琴 /
-   弦乐组 / 合唱 / 定音鼓 / 圆号 / 铜管 / 打击乐。起伏来自「分段进场 + CC11 表情自动化 +
-   高潮前留白」。
-2. `fluidsynth` —— 用 GeneralUser GS 渲染：
-   `ash
-   fluidsynth -ni -F menu.wav -r 44100 -g 0.55 \
-     -o synth.reverb.active=1 -o synth.reverb.room-size=0.88 \
-     -o synth.reverb.level=0.72 -o synth.chorus.active=1 \
-     GeneralUser.sf2 menu.mid
-   `
-3. `master.py` —— 补超低频（频率量化到循环长度内整数周期，接缝不断）、空气层、轻微提亮、
-   首尾交叉淡化，归一化到 -1.5 dBFS。
-4. `ffmpeg -c:a libvorbis -q:a 3` 转 OGG。
+## 当前方案：「蓝图」主题（v3.4）
+`blueprint_audio.py` —— 纯 numpy/scipy 离线合成，**无需 fluidsynth / ffmpeg / 采样库**，用 soundfile 直接写 OGG。
 
-改曲子：改 `make_midi.py` 里的 PROG（和弦进行）、各段 velocity、`mel`（圆号主题），重跑三步。
+```bash
+pip install numpy scipy soundfile
+python tools/music/blueprint_audio.py              # 全部（21 个音效 + 2 首 BGM）
+python tools/music/blueprint_audio.py --only sfx   # 只重做音效
+python tools/music/blueprint_audio.py --only bgm   # 只重做 BGM
+python tools/music/blueprint_audio.py --name hit   # 只重做某一个
+```
 
-## 音效
-- 打击 / 摩擦类用 Kenney CC0 采样，播放时降调 6~10%、4.2kHz 低通、压音量，再叠正弦身体。
-- 选牌 / 金币 / 回合等音阶性提示音由 `public/js/audio.js` 实时合成（低通 + 混响）。
+声音设定对应视觉：D 多利亚调式；马林巴 / FM 拨奏 + 玻璃钟（金色点缀）；16 分 tick 噪点 = 半调点阵；
+乒乓延迟 = 镜像倒影；UI 提示音是干净的 sine 双音 + 极短混响 = 十字定位。
+- `menu.ogg`：32 s / 60 BPM / 8 小节，Dm–Bb–Gm–A，稀疏马林巴 + 软 kick + 点阵 tick。
+- `duel.ogg`：34 s / 112 BPM / 16 小节，sub 脉冲 + kick/clap + 16 分琶音拨奏，每 4 小节金钟 + riser。
+- BGM 尾巴混响折回开头并做 5 ms 微淡化，循环无缝。
+- 改曲：改脚本里 `CH`（和弦表）、`render_menu / render_duel` 的 `prog` 与各层电平后重跑。
+- 音效相对电平在各 `fx_*` 的 `finalize(..., peak_db)`：提示音 -8~-10 dB，打击 -3~-5 dB。
+
+## 旧方案（v3.2，已弃用）
+`make_midi.py` + `master.py`：写 MIDI → fluidsynth + GeneralUser GS 渲染 → 补低频 / 无缝循环 → ffmpeg 转 OGG。
+音效曾使用 Kenney CC0 采样。两个脚本保留作参考，不再被产物引用。

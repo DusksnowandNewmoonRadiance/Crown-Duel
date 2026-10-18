@@ -1,16 +1,14 @@
 音频素材署名 / Audio credits
 ========================================
 
-public/audio/sfx/*.ogg
-  来自 Kenney 的 CC0 素材包（Creative Commons Zero 1.0，公有领域）：
-    · Kenney Interface Sounds  https://kenney.nl/assets/interface-sounds
-    · Kenney Impact Sounds     https://kenney.nl/assets/impact-sounds
-    · Kenney UI Audio          https://kenney.nl/assets/ui-audio
-  使用时做过降调、低通与音量配平。CC0 允许商用、修改、免署名。
+public/audio/bgm/menu.ogg, duel.ogg  与  public/audio/sfx/win.ogg, lose.ogg
+  原创配乐「皇冠对决 OST」。谱面见 music/midi/*.mid，由 tools/music/score/crown_duel_suite.py 生成；
+  用 FluidSynth 2.6 + GeneralUser GS 音色库渲染（music/README.md 有流程）。
+  GeneralUser GS（S. Christian Collins）允许免费使用其渲染输出（含商业用途）；本项目不分发 SF2 本体
+  （tools/music/.bin/ 已加入 .gitignore）。menu / duel 已做尾巴折回与 5 ms 微淡化，可无缝循环。
 
-public/audio/bgm/*.ogg
-  由 tools/music/make_midi.py 写 MIDI，fluidsynth 2.4 + GeneralUser GS 音色库渲染，
-  再经 tools/music/master.py 母带与无缝循环处理。不含第三方录音素材。
-  GeneralUser GS 允许免费使用其渲染输出（含商业用途），本项目不分发 SF2 本体。
+public/audio/sfx/*.ogg（其余 19 个）
+  由 tools/music/blueprint_audio.py 用 numpy/scipy 离线合成，不含第三方录音或采样库。
 
-其余声音（选牌、金币、回合、胜负音阶等）由 public/js/audio.js 用 WebAudio 实时合成。
+public/js/audio.js
+  文件缺失时的兜底音效 / 音乐由 WebAudio 实时合成。
