@@ -1480,6 +1480,20 @@ $("#homeNews").addEventListener("click",()=>Live.openNews());
 $("#lobbyNews").addEventListener("click",()=>Live.openNews());
 $("#newsList").addEventListener("click",e=>{const b=e.target.closest(".news-item");if(b)Live.renderNews(b.dataset.id);});
 
+/* Cosmetics 必须在「启动」之前定义：启动时 renderHome() 会读它，const 在 TDZ 内访问会抛错并中断后续全部初始化 */
+/* ============================================================
+   配饰（头衔 / 名字颜色）与金币动画
+   ============================================================ */
+const Cosmetics={
+  titles:{title_recruit:{name:"皇冠新兵",color:"#6fbf73"},title_general:{name:"皇冠将军",color:"#a98fd9"}},
+  colors:{red:"#e0664f",orange:"#e08a4f",yellow:"#d9c05a",green:"#6fbf73",cyan:"#4fb8b0",blue:"#5b9bd5",purple:"#a98fd9"},
+  of(me){return (me&&me.cosmetics)||{titles:[],colors:[],equip:{title:null,color:null}};},
+  nameHTML(nick,me){
+    const c=Cosmetics.of(me),eq=c.equip||{},t=eq.title&&Cosmetics.titles[eq.title];
+    const col=eq.color&&Cosmetics.colors[eq.color];
+    return (t?`<i class="cos-title" style="color:${t.color}">${V.esc(t.name)}</i>`:"")+`<b${col?` style="color:${col}"`:""}>${V.esc(nick||"")}</b>`;
+  }
+};
 /* ============================================================
    启动
    ============================================================ */
@@ -1502,19 +1516,6 @@ window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;}};
 /* ============================================================
    商店
    ============================================================ */
-/* ============================================================
-   配饰（头衔 / 名字颜色）与金币动画
-   ============================================================ */
-const Cosmetics={
-  titles:{title_recruit:{name:"皇冠新兵",color:"#6fbf73"},title_general:{name:"皇冠将军",color:"#a98fd9"}},
-  colors:{red:"#e0664f",orange:"#e08a4f",yellow:"#d9c05a",green:"#6fbf73",cyan:"#4fb8b0",blue:"#5b9bd5",purple:"#a98fd9"},
-  of(me){return (me&&me.cosmetics)||{titles:[],colors:[],equip:{title:null,color:null}};},
-  nameHTML(nick,me){
-    const c=Cosmetics.of(me),eq=c.equip||{},t=eq.title&&Cosmetics.titles[eq.title];
-    const col=eq.color&&Cosmetics.colors[eq.color];
-    return (t?`<i class="cos-title" style="color:${t.color}">${V.esc(t.name)}</i>`:"")+`<b${col?` style="color:${col}"`:""}>${V.esc(nick||"")}</b>`;
-  }
-};
 function reducedMotion(){try{return matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){return false;}}
 function flyCoin(n){
   if(reducedMotion())return;
