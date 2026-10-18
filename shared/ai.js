@@ -261,21 +261,38 @@ function scoreCard(s,o,c,lethal,stage){
     if(c.id==="scavenger"||c.id==="station"||c.id==="temp")sc+=2;
     if(c.scrap&&!e)sc-=10;
   }
-  if(style.slow&&s.hero==="七星"){   // 七星：观察者+抽牌回血联动，能量压制优先
-    if(c.id==="cometWatcher")sc+=s.board.some(u=>u.effect==="drawHeal"&&u.health>0)?1:6;
-    if(/draw|foresee|forecast/.test(e)){const wN=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;if(wN)sc+=2+wN*2.5;}
-    if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
-    if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
-    if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
-    if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者时仅手牌多才洗（重抽），手牌少绝不打（亏费，低于出牌底线直接跳过）
-      const w=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
-      if(w)sc+=12+w*6+Math.min(s.hand.length,8)*1.8+(s.hand.length<4?-6:0);
-      else sc+=s.hand.length>=4?2:-25;
+  if(style.slow&&s.hero==="七星"){   // 七星：前期压槽 → 中期观察者+抽牌回血 → 陨击收尾
+    const early=(s.turnsStarted||0)<=6;
+    const walls=s.board.filter(u=>u.taunt&&u.health>0).length;
+    const wN=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
+    /* 压槽家族：前期是主线（+10），后期回归常规 */
+    if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|lockCap1|lockCap2|starClimb|crystalBreak|costRaise)/.test(e||""))sc+=early?10:2;
+    /* 观察者：没有嘲讽别裸下（残血抢回血例外） */
+    if(c.id==="cometWatcher"){
+      if(wN)sc+=1;
+      else if(walls)sc+=6;
+      else sc+=s.hp<=12?2:-12;
     }
-    if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;   // 彗星预言：手里没陨击才检索
-    if(c.id==="starlightPray")sc+=4;   // 星光祝福：大回复+过牌
-    if(c.id==="starcore")sc+=2;   // 星核卫士：嘲讽大墙+0费联动
-    if(e==="stunOneDraw"){   // 星辉锁链：敌方有高攻单位才晕，否则浪费（抽牌联动观察者）
+    /* 抽牌：中期有观察者才加权，前期压低 */
+    if(/draw|foresee|forecast/.test(e||"")){
+      if(wN&&!early)sc+=2+wN*2.5;
+      else if(early)sc-=3;
+    }
+    /* 调节：没观察者基本不打；有观察者且手牌够多才高分 */
+    if(c.id==="tune"){
+      if(!wN)sc-=60;
+      else sc+=(s.hand.length>=4?12+wN*6+Math.min(s.hand.length,8)*1.8:-10);
+    }
+    if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打
+    if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e||"")&&s.hp<=44)sc+=early?-1:3;
+    if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;
+    if(c.id==="starlightPray")sc+=4;
+    /* 星核卫士：血厚有墙时留着给高费降费；被压或残血才打 */
+    if(c.id==="starcore"){
+      const bigFoe=o.board.some(u=>u.health>0&&u.attack>=5);
+      sc+=(s.hp<6||bigFoe)?4:(walls&&s.hp>18?-8:2);
+    }
+    if(e==="stunOneDraw"){   // 星辉锁链：敌方有高攻单位才晕
       const threat=o.board.some(u=>u.health>0&&u.attack>=3);
       sc+=threat?5:o.board.length?0:-10;
     }

@@ -446,14 +446,15 @@ const DECK_PRESETS={
   "字母":{"新式铺场":defaultDeck("字母")},
   "七星":{
     "衰减流":defaultDeck("七星"),
+    /* v3.4 星联邦流：调节带满 + 压槽主线（mana/lockCap 拉满），但保留足够站场与回血，保证能摸到 40 血触发陨击 */
     "星联邦流":[
-      "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger","messenger",
-      "bulwark","bulwark","tune","orbitguard","orbitguard","gravityfield","starcore",
-      "foresee","forecast","mana","mana","mana","timeShield","timeShield",
-      "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
-      "stasisfield","cometStrike","starlightPray","starlock","cometShackle",
-      "cometTrail","starlightEcho","stardustBeacon",
-      "cometTutor","cometTutor","cometWatcher","tune"
+      "cometWatcher","cometWatcher","cometWatcher","sentinel","sentinel",
+      "tune","tune","tune","tune",
+      "mana","mana","mana","cardCap","gravitywell","crystalBreak",
+      "gravityfield","starcore","stasisfield","gravityLock","gravityFold",
+      "timeShield","timeShield","stasis","starClimb","foresee","forecast",
+      "cometStrike","starlightPray","starlock","cometShackle","cometTrail","starlightEcho","stardustBeacon",
+      "cometTutor","cometTutor","messenger","messenger","bulwark","bulwark","orbitguard"
     ]
   },
   "核弹":{"禁忌召唤":defaultDeck("核弹")},
