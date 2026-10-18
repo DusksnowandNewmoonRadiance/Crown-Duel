@@ -262,14 +262,14 @@ function scoreCard(s,o,c,lethal,stage){
     if(c.scrap&&!e)sc-=10;
   }
   if(style.slow&&s.hero==="七星"){   // 七星：观察者+抽牌回血联动，能量压制优先
-    if(c.id==="cometWatcher")sc+=2;
-    if(s.board.some(u=>u.effect==="drawHeal")&&/draw|foresee/.test(e))sc+=2;
+    if(c.id==="cometWatcher")sc+=s.board.some(u=>u.effect==="drawHeal"&&u.health>0)?1:6;
+    if(/draw|foresee|forecast/.test(e)){const wN=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;if(wN)sc+=2+wN*2.5;}
     if(/^(manaBurn|energyDown|energyDown2|energyDownDraw|starClimb|crystalBreak)/.test(e))sc+=1;
     if(c.effect==="cometStrike")sc+=(s.hp>40?25:-100);   // 彗星陨击：血量(不含甲)>40 才打（否则 playError 也会拦）
     if(/^(heal2|healDraw1|timeShield2|armor3Draw1|heal4Draw1|heal5Armor2)$/.test(e)&&s.hp<=44)sc+=3;   // 星联邦：回血抬到 41+ 以便触发彗星陨击
     if(c.id==="tune"){   // 调节：观察者在场时疯狂触发回血；无观察者时仅手牌多才洗（重抽），手牌少绝不打（亏费，低于出牌底线直接跳过）
       const w=s.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
-      if(w)sc+=10+w*6;
+      if(w)sc+=12+w*6+Math.min(s.hand.length,8)*1.8+(s.hand.length<4?-6:0);
       else sc+=s.hand.length>=4?2:-25;
     }
     if(c.effect==="cometTutor")sc+=s.hand.some(x=>x.id==="cometStrike")?-8:6;   // 彗星预言：手里没陨击才检索
@@ -472,7 +472,7 @@ class AIPlayer{
       for(const u of ready){
         const v=attackTargets(u,o);
         const hd=u.attack+heroBonus(u);
-        const wG=u.id==="cometWatcher"?(mode==="federation"?-40:-8):0;   // 保护彗星观察者：不打（留场回血）
+        const wG=u.id==="cometWatcher"?(mode==="federation"?-40:-30):0;   // 保护彗星观察者：不打（留场回血）
         const consider=(t,sc)=>{if(!best||sc>best.score)best={unit:u,target:t,score:sc};};
         if(v.hero){
           let fs=hd*(.5+.9*(1-Math.max(0,o.hp)/o.maxHp))+wG;

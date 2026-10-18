@@ -448,7 +448,7 @@ const DECK_PRESETS={
     "衰减流":defaultDeck("七星"),
     "星联邦流":[
       "cometWatcher","cometWatcher","sentinel","sentinel","messenger","messenger","messenger",
-      "bulwark","bulwark","scholar","orbitguard","orbitguard","gravityfield","starcore",
+      "bulwark","bulwark","tune","orbitguard","orbitguard","gravityfield","starcore",
       "foresee","forecast","mana","mana","mana","timeShield","timeShield",
       "crystalBreak","gravitywell","starClimb","cardCap","gravityLock","gravityFold","stasis",
       "stasisfield","cometStrike","starlightPray","starlock","cometShackle",
