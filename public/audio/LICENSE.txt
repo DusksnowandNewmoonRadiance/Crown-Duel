@@ -1,12 +1,16 @@
 音频素材署名 / Audio credits
 ========================================
 
-public/audio/sfx/*.ogg —— 来自 Kenney 的 CC0 素材包（Creative Commons Zero 1.0，公有领域）：
-  · Kenney Interface Sounds  https://kenney.nl/assets/interface-sounds
-  · Kenney Impact Sounds     https://kenney.nl/assets/impact-sounds
-  · Kenney UI Audio          https://kenney.nl/assets/ui-audio
+public/audio/sfx/*.ogg
+  来自 Kenney 的 CC0 素材包（Creative Commons Zero 1.0，公有领域）：
+    · Kenney Interface Sounds  https://kenney.nl/assets/interface-sounds
+    · Kenney Impact Sounds     https://kenney.nl/assets/impact-sounds
+    · Kenney UI Audio          https://kenney.nl/assets/ui-audio
+  使用时做过降调、低通与音量配平。CC0 允许商用、修改、免署名。
 
-CC0 允许商业使用、修改与再分发，且不要求署名；此处列出出处只为方便追溯。
+public/audio/bgm/*.ogg
+  由 tools/music/make_midi.py 写 MIDI，fluidsynth 2.4 + GeneralUser GS 音色库渲染，
+  再经 tools/music/master.py 母带与无缝循环处理。不含第三方录音素材。
+  GeneralUser GS 允许免费使用其渲染输出（含商业用途），本项目不分发 SF2 本体。
 
-其余声音（背景音乐、胜负音阶等）由 public/js/audio.js 用 WebAudio 实时合成，不含任何采样文件。
-public/audio/bgm/*.ogg —— 由 tools/render-bgm.py 离线渲染生成，随本项目授权（CC0 1.0），不含第三方采样。
+其余声音（选牌、金币、回合、胜负音阶等）由 public/js/audio.js 用 WebAudio 实时合成。
