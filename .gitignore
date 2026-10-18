@@ -6,3 +6,6 @@ Duel-latest/
 *.zip
 TODO2.md
 docs/pr/
+.ui-audit*.cjs
+.shots.cjs
+.shots/

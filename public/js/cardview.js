@@ -57,9 +57,12 @@ const CardView=(()=>{
       +(rar?` · <span class="rar r-${rar}">${C.RARITY[rar].name}</span>`:"");
     const gem=rar?`<i class="gem r-${rar}" title="${C.RARITY[rar].name}"></i>`:"";
     const body=richText(c.text)+(c.flavor?`<i class="flv">${esc(c.flavor)}</i>`:"");
+    /* 长描述自动降一档字号，避免在 9.5px 的卡池/预览里被裁成半句；悬停仍可看完整文本 */
+    const txLen=String(c.text||"").length;
+    const txCls=txLen>66?"tx tx-xs":txLen>44?"tx tx-s":"tx";
     /* 卡面插画：程序化 SVG（见 cardart.js），glyph 只作为兜底文字保留 */
     const artwork=window.CardArt?CardArt.art(c):"";
-    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art">${artwork}<span class="glyph">${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${body}</div>${gem}${stats}</div>`;
+    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art">${artwork}<span class="glyph">${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="${txCls}" title="${esc(c.text||"")}">${body}</div>${gem}${stats}</div>`;
   }
   function backInner(){return window.CardArt?CardArt.back():"";}
   function back(costUp){return`<div class="card-back${costUp?" up":""}">${backInner()}<span class="glyph">♛</span></div>`;}

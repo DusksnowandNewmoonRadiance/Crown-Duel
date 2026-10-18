@@ -328,4 +328,11 @@
 .cx-card .card{font-size:12px}
 .pile .card-back{font-size:3.6px}
 .cardview .card,.cv-card .card{font-size:19px}
-
+/* 长描述自适应：卡池 / 预览里字号更小，避免被裁成半句（配合 cardview.js 的 tx-s / tx-xs） */
+.card .tx-s{font-size:.74em;line-height:1.42}
+.card .tx-xs{font-size:.66em;line-height:1.36}
+/* 所有卡面描述都用行内省略号收尾，避免"半句话"被硬切 */
+.card .tx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6;overflow:hidden;word-break:break-word}
+.card .tx-s,.card .tx-xs{-webkit-line-clamp:9}
+/* 兜底：任何情况下溢出都以省略号收尾，而不是硬切 */
+.card .tx{overflow-wrap:anywhere}
