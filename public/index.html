@@ -47,6 +47,7 @@
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 7.6V12l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
   <symbol id="i-flagline" viewBox="0 0 24 24"><path d="M6 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 5h11l-2 3 2 3H6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arw" viewBox="0 0 24 24"><path d="M4 12h15M13.4 6.1 19.5 12l-6.1 5.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
 </defs></svg>
 
 <!-- ======================= 主页 ======================= -->
@@ -64,27 +65,35 @@
   </header>
   <main class="home">
     <div class="home-left">
-      <div class="brand">
-        <div class="eyebrow">TACTICAL CARD DUEL</div>
+      <div class="brand rise" style="--d:.02s">
+        <div class="eyebrow">Tactical Card Duel</div>
         <h1>皇冠对决</h1>
-        <p class="tagline">10 位风格迥异的卡牌师 · 一局 10 分钟的快节奏对决</p>
+        <p class="tagline">10 位风格迥异的卡牌师<br>一局 10 分钟的快节奏对决</p>
       </div>
-      <div class="home-actions">
-        <button class="btn btn-gold btn-xl" id="btnOnline"><span class="bi"><svg class="ic" viewBox="0 0 24 24"><use href="#i-swords"/></svg></span><span><b>联机对战</b><small>进入大厅，与真人对决</small></span></button>
-        <button class="btn btn-primary btn-xl" id="btnSolo"><span class="bi"><svg class="ic" viewBox="0 0 24 24"><use href="#i-board"/></svg></span><span><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span></button>
-        <div class="home-actions-row">
-          <button class="btn" id="btnDeck"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cards"/></svg> 编辑卡组</button>
-          <button class="btn" id="btnCodex"><svg class="ic" viewBox="0 0 24 24"><use href="#i-book"/></svg> 图鉴</button>
-          <button class="btn" id="btnCampaign"><svg class="ic" viewBox="0 0 24 24"><use href="#i-flag"/></svg> 剧情模式</button>
-          <button class="btn" id="btnShop"><svg class="ic" viewBox="0 0 24 24"><use href="#i-shop"/></svg> 商店</button>
-          <button class="btn" id="btnVault"><svg class="ic" viewBox="0 0 24 24"><use href="#i-vault"/></svg> 仓库</button>
-          <button class="btn" id="btnRules"><svg class="ic" viewBox="0 0 24 24"><use href="#i-scroll"/></svg> 玩法说明</button>
+      <div class="home-actions rise" style="--d:.10s">
+        <button class="act act-main" id="btnOnline">
+          <span class="act-no">01</span>
+          <span class="act-b"><b>联机对战</b><small>进入大厅，与真人对决</small></span>
+          <span class="act-go"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></span>
+        </button>
+        <button class="act" id="btnSolo">
+          <span class="act-no">02</span>
+          <span class="act-b"><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span>
+          <span class="act-go"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></span>
+        </button>
+        <div class="act-list">
+          <button class="act-row" id="btnDeck">编辑卡组<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnCodex">图鉴<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnCampaign">剧情模式<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnShop">商店<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnVault">仓库<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnRules">玩法说明<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
         </div>
         <div class="ver" id="verLabel"></div>
       </div>
     </div>
-    <div class="home-right">
-      <div class="section-label">选择你的卡牌师</div>
+    <div class="home-right rise" style="--d:.16s">
+      <div class="section-label"><span>卡牌师</span><em>10 Masters</em></div>
       <div class="hero-grid" id="heroGrid"></div>
       <div class="hero-detail" id="heroDetail"></div>
     </div>
@@ -298,6 +307,7 @@
       <div class="camp-dlg-body" id="campDlgBody"></div>
     </div>
     <div class="table-bg"></div>
+    <div class="frame-ticks"><i></i><i></i><i></i><i></i></div>
 
     <!-- 左：英雄 -->
     <div class="hero-block foe" id="foeHero"></div>
