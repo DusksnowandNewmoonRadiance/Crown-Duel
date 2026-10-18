@@ -298,6 +298,8 @@ const PROFILES={
 
 /* 衍生物：不属于任何卡组 */
 const TOKENS={
+  /* DIY 白名单·神罚：抽到时自动施放（自伤 1 + 抽 1），由「神罚共鸣」洗入牌库 */
+  diyPunish:{id:"diyPunish",name:"神罚",cost:0,kind:"spell",art:"⚡",text:"抽到时自动施放：你的英雄受到 1 点伤害，抽 1 张牌。",effect:"diyPunishCast",onDraw:true,owner:"DIY",rarity:"common"},
   awaBand:{id:"awaBand",name:"爵士乐队",cost:3,kind:"unit",art:"♪",atk:0,hp:4,owner:"awa",untargetable:true,text:"无法被敌方单位攻击。你的单位和法术对敌方造成的伤害 +1（可叠加）。"},
   redGuard:{id:"redGuard",name:"近卫红军",cost:0,kind:"unit",art:"★",atk:0,hp:1,charge:true,rep:"rus",text:"冲锋。整编的产物：属性等于被整编的【俄布】之和。"},
   /* 钢铁洪流的产物：只存在于手牌，不进任何卡池 / 默认卡组 */

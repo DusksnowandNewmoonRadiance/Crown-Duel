@@ -88,6 +88,70 @@ for (let k = 0; k < 6; k++) {
 }
 check("苍蓝能打完 6 局（AI 互打）", finished === 6 && errors === 0, `完成 ${finished}/6，平均 ${(turns / Math.max(1, finished)).toFixed(1)} 回合`);
 
+/* ---- 神罚体系（苍蓝原版机制进白名单） ---- */
+{
+  const mk = () => {
+    const g = new E.Game({ players: [{ name: "甲", hero: "苍蓝" }, { name: "乙", hero: "字母" }], first: 0 });
+    g.mulligan(0, []); g.mulligan(1, []);
+    const a = g.players[0], b = g.players[1];
+    a.hand = []; b.hand = []; a.board = []; b.board = []; a.armor = 0;
+    a.energy = a.maxEnergy = 10;
+    return { g, a, b };
+  };
+  const punish = (g, hero) => g.clone(C.TOKENS.diyPunish, hero);
+
+  check("白名单含 5 个神罚体系机制", ["diyPunishCast", "diyBarrier", "diyEcho", "diyPull", "diyMechEye"].every(id => !!Diy.CATALOG[id]));
+
+  { // 神罚：抽到自动施放（自伤 1 + 抽 1），不进手牌
+    const { g, a } = mk();
+    a.deck = [g.clone(C.cardDef("苍蓝", "blue_prayer"), "苍蓝"), punish(g, "苍蓝")];   // deck.pop() 从末尾取
+    a.hp = 30;
+    g.draw(a, 1);
+    check("神罚：抽到时自伤 1 点", a.hp === 29, a.hp);
+    check("神罚：抽到时自动抽 1 张", a.hand.length === 1, a.hand.length);
+    check("神罚：不会留在手牌里", !a.hand.some(c => c.id === "diyPunish"));
+  }
+  { // 神谕壁垒：护甲 = 敌方牌库神罚数
+    const { g, a, b } = mk();
+    b.deck = [punish(g, "字母"), punish(g, "字母"), punish(g, "字母")];
+    const card = g.clone(C.cardDef("苍蓝", "blue_barrier"), "苍蓝");
+    a.hand = [card];
+    const r = g.playCard(0, card.uid, [], null);
+    check("神谕壁垒：按敌方神罚数获得护甲", r.ok && a.armor === 3, "armor=" + a.armor);
+  }
+  { // 神罚共鸣：4 张进敌方牌库，2 张进自己
+    const { g, a, b } = mk();
+    b.deck = []; a.deck = [];
+    const card = g.clone(C.cardDef("苍蓝", "blue_echo"), "苍蓝");
+    a.hand = [card];
+    const r = g.playCard(0, card.uid, [], null);
+    const en = b.deck.filter(c => c.id === "diyPunish").length, my = a.deck.filter(c => c.id === "diyPunish").length;
+    check("神罚共鸣：敌方牌库 +4 神罚", r.ok && en === 4, en);
+    check("神罚共鸣：自己牌库 +2 神罚", my === 2, my);
+  }
+  { // 圣光牵引：临时策反 +1/+4
+    const { g, a, b } = mk();
+    const u = g.clone(C.cardDef("字母", "shadow"), "字母");
+    b.board.push(u);
+    const card = g.clone(C.cardDef("苍蓝", "blue_pull"), "苍蓝");
+    a.hand = [card];
+    const r = g.playCard(0, card.uid, [u.uid], null);
+    const mine = a.board.find(x => x.id === "shadow");
+    check("圣光牵引：策反到己方战场", r.ok && !!mine);
+    check("圣光牵引：获得 +1/+4", mine && mine.attack === u.attack && mine.health === 5, mine ? mine.attack + "/" + mine.health : "-");
+  }
+  { // 机械眼：回合开始自动开火
+    const { g, a, b } = mk();
+    const eye = g.clone(C.cardDef("苍蓝", "blue_mech_eye"), "苍蓝");
+    a.board.push(eye);
+    const foe = g.clone(C.cardDef("字母", "shadow"), "字母");
+    b.board.push(foe);
+    b.hp = 30;
+    g._startTurn(0);
+    const hurt = foe.health < 1 || b.hp < 30;
+    check("机械眼：回合开始自动攻击", eye.atkLeft === 0 && hurt, "atkLeft=" + eye.atkLeft + " foeHp=" + b.hp + " unitHp=" + foe.health);
+  }
+}
 const passed = results.filter(Boolean).length;
 console.log(`\nDIY TEST ${passed === results.length ? "PASSED" : "FAILED"} (${passed}/${results.length})`);
 if (passed !== results.length) process.exitCode = 1;

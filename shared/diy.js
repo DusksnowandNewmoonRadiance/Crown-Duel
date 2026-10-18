@@ -63,6 +63,12 @@
     drawHeal: { name: "每次抽牌回 1", kind: "unit", text: "每当你获得 1 张手牌，恢复 1 点生命。" },
     drawHeal1: { name: "部署抽 1 回 1", kind: "unit", text: "部署：抽 1 张牌，恢复 1 点生命。" },
     whiteAoe: { name: "清场 3 伤", kind: "spell", text: "对所有敌方单位造成 3 点伤害。" },
+    /* ---- 神罚体系（苍蓝原版机制） ---- */
+    diyPunishCast: { name: "神罚（抽到自动）", kind: "spell", text: "抽到时自动施放：你的英雄受到 1 点伤害，抽 1 张牌。" },
+    diyBarrier: { name: "神谕壁垒", kind: "spell", text: "获得等同于敌方牌库中【神罚】数量的护甲。" },
+    diyEcho: { name: "神罚共鸣", kind: "spell", text: "将 4 张【神罚】洗入敌方牌库，再将 2 张洗入你的牌库。" },
+    diyPull: { name: "圣光牵引", kind: "spell", text: "策反 1 个敌方单位（下回合返回），使其获得 +1/+4。" },
+    diyMechEye: { name: "机械眼", kind: "unit", text: "在你的回合开始时，随机攻击一个敌方目标（消耗当回合攻击次数）。" },
   };
 
   /* ------------------------------------------------------------
@@ -117,12 +123,14 @@
       let effect = str(c.effect) || "";
       if (effect && !CATALOG[effect]) { errors.push(`${at} 使用了未开放的机制：${effect}`); effect = ""; }
       if (kind === "spell" && !effect) errors.push(`${at} 是法术牌，必须选择一种机制`);
+      if (c.onDraw && kind !== "spell") errors.push(`${at}：只有法术牌可以标记「抽到时自动施放」`);
 
       const card = {
         id, name, cost, kind,
         art: cleanText(c.art, 2) || (kind === "unit" ? "◆" : "✧"),
         text: cleanText(c.text, LIMITS.text[1]) || (CATALOG[effect] ? CATALOG[effect].text : ""),
         effect: effect || undefined,
+        onDraw: !!c.onDraw || undefined,
         n: int(c.n), limit: int(c.limit),
         rarity: "common",
       };

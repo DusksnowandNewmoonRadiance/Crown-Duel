@@ -73,6 +73,7 @@ function targetSpec(card,me,foe){
     case"stunOrKill":return eligible(foe.board,1,1,"选择 1 个敌方单位（眩晕或消灭）","foe");
     case"stunOneDraw":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
     case"cpNet":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 1 点伤害","foe");
+    case"diyPull":return eligible(foe.board,1,1,"选择 1 个敌方单位策反并使其获得 +1/+4","foe");
   }
   return null;
 }
@@ -97,6 +98,7 @@ function playError(card,me,foe){
   if(card.kind==="unit"&&me.board.length>=MAX_BOARD)return`战场已满（最多 ${MAX_BOARD} 个单位）`;
   const e=card.effect;
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
+  if(e==="diyPull"&&!foe.board.length)return"敌方没有单位可以策反";
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
   if(e==="stunOneDraw"&&!foe.board.length)return"敌方没有单位可以眩晕";
@@ -142,6 +144,7 @@ function autoTargets(card,me,foe){
     sorted=pool.slice().sort((a,b)=>((b.health<=dmg?10:0)+unitValue(b))-((a.health<=dmg?10:0)+unitValue(a)));
   }else if(e==="choose3x2")sorted=pool.slice().sort((a,b)=>((b.health<=2?10:0)+unitValue(b))-((a.health<=2?10:0)+unitValue(a)));
   else if(e==="rebel")sorted=pool.slice().sort((a,b)=>unitValue(b)-unitValue(a));
+  else if(e==="diyPull")sorted=pool.slice().sort((a,b)=>unitValue(b)-unitValue(a));
   else if(e==="sacAoe3")sorted=pool.slice().sort((a,b)=>unitValue(a)-unitValue(b));
   else if(e==="pirateCommander")sorted=pool.slice().sort((a,b)=>((a.id==="pirateScout"?1e6:b.attack))-((b.id==="pirateScout"?1e6:a.attack)));
   else if(e==="killTough")sorted=pool.slice().sort((a,b)=>((b.taunt?10:0)+b.health)-((a.taunt?10:0)+a.health));
@@ -206,7 +209,7 @@ class Game{
     const up=(upLvl&&CAMPAIGN_UPGRADES[c.id]&&CAMPAIGN_UPGRADES[c.id][upLvl])||null;
     const x={uid:++this.uid,id:c.id,hero:c.hero||hero||"",name:up&&up.name?up.name:c.name,cost:c.cost,baseCost:c.cost,kind:c.kind,art:c.art,text:c.text,flavor:c.flavor||"",
       effect:c.effect||"",charge:!!(c.charge||(up&&up.charge)),taunt:!!(c.taunt||(up&&up.taunt)),ignoreTaunt:!!c.ignoreTaunt,core:!!c.core,owner:c.owner||"",
-      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,
+      untargetable:!!c.untargetable,gun:!!c.gun,member:!!c.member,rarity:c.rarity||"",fx:c.fx||"",rep:c.rep||"",transfer:c.transfer||"",sealed:false,awaSwap:!!c.awaSwap,onDraw:!!c.onDraw,
       scrap:!!c.scrap,recycle:c.recycle||"",recycleN:c.recycleN||1,upLvl:upLvl||0,upDeployDraw:up&&up.deployDraw||0};
     if(c.kind==="unit"){x.attack=c.atk+(up&&up.atk||0);x.health=c.hp+(up&&up.hp||0);x.maxHealth=c.hp+(up&&up.hp||0);x.strikes=c.strikes||1;x.atkLeft=0;x.stun=0;x.fresh=false;x.deathDmg=0;x.lifespan=c.lifespan||0;}
     return x;
@@ -225,6 +228,8 @@ class Game{
     for(let i=0;i<n;i++){
       if(!p.deck.length){p.fatigue++;const dmg=p.fatigue*(p.fatigue+1)/2;this.note(`牌库已空，第 ${p.fatigue} 次疲劳，受到 ${dmg} 点伤害`,p);this.damageHero(p,dmg,{fatigue:true});if(this.phase==="over")break;continue;}
       const card=p.deck.pop();
+      /* DIY·神罚：抽到时自动施放（不进手牌） */
+      if(card.onDraw){this.note(`【${card.name}】抽到时自动施放`,p);this.cast(p,card,this.opp(p),[],null);if(this.phase==="over")break;continue;}
       if(p.hand.length>=MAX_HAND){this.burn(p,card,credit,label);continue;}
       p.hand.push(card);this._drawHeal(p);
     }
@@ -534,6 +539,17 @@ class Game{
       else u.atkLeft=u.strikes;
     }
     this.emit({t:"turn",pi});
+    /* DIY·机械眼：你的回合开始时随机攻击一个敌方目标（消耗本回合攻击次数） */
+    for(const u of p.board){
+      if(u.effect!=="diyMechEye"||u.health<=0||u.atkLeft<=0||u.stun>0)continue;
+      if(this.phase==="over")break;
+      const foe=this.players[1-pi];
+      const tg=foe.board.filter(x=>!x.untargetable&&x.health>0);
+      let target=null;
+      if(tg.length){if(!(Math.random()<.5))target=tg[Math.floor(Math.random()*tg.length)].uid;}
+      else if(foe.heroImmune)continue;
+      this.note(`机械眼：${u.name} 自动开火`,p);this.attack(pi,u.uid,target);
+    }
     if(!(pi===this.first&&p.turnsStarted===1))this.draw(p,1);
     for(const u of p.board.filter(x=>x.effect==="whiteEngine"&&x.health>0))
       this.destroyEnemyCards(p,this.opp(p),"deck",2,u.name);
@@ -1313,6 +1329,11 @@ class Game{
         const t=o.board.find(u=>u.uid===id);if(t)this.takeover(o,s,t,"策动叛乱");   // 永久策反
         break;}
       case"takeover":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>b.attack-a.attack)[0],"战术接管",true);break;
+      /* ---- DIY 白名单：神罚体系 ---- */
+      case"diyPunishCast":this.damageHero(s,1,{self:true});this.note("【神罚】降临：你的英雄受到 1 点伤害",s);this.draw(s,1);break;
+      case"diyBarrier":{let n=0;for(const cx of o.deck)if(cx.id==="diyPunish")n++;this.armor(s,n);this.note(`神谕壁垒：获得 ${n} 点护甲`,s);break;}
+      case"diyEcho":{for(let k=0;k<4;k++)o.deck.push(this.clone(TOKENS.diyPunish,o.hero));for(let k=0;k<2;k++)s.deck.push(this.clone(TOKENS.diyPunish,s.hero));this.note("神罚共鸣：4 张【神罚】洗入敌方牌库，2 张洗入你的牌库",s);break;}
+      case"diyPull":{const id=(targets&&targets[0])||autoTargets(c,s,o)[0];const tg=o.board.find(u=>u.uid===id);if(tg&&this.takeover(o,s,tg,"圣光牵引",true)){tg.attack+=1;tg.health+=4;tg.maxHealth+=4;this.note(`圣光牵引：${tg.name} 获得 +1/+4`,s);}break;}
       case"rebelLowest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.attack-b.attack)[0],"煽动哗变",true);break;
       case"rebelWeakest":if(o.board.length)this.takeover(o,s,o.board.slice().sort((a,b)=>a.health-b.health)[0],"内应接应",true);this.draw(s,1);break;
       case"disruption":o.board.forEach(u=>{u.stun=Math.max(u.stun,1);u.atkLeft=0;});this.damageHero(o,2);fx("gravityLock");break;
