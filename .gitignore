@@ -13,3 +13,7 @@ screenshots/
 .shots-batch.cjs
 tools/music/.bin/
 .build/
+.ui-*.cjs
+USED/
+__pycache__/
+.tmp/sf/

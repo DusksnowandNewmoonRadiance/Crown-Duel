@@ -17,6 +17,7 @@ const PALETTES={
   crimson:{name:"绯红",c:["#ff5a3d","#ffb08a"]},
   gold:{name:"鎏金",c:["#f6d27a","#fff1c0"]},
   azure:{name:"苍蓝",c:["#5ab4ff","#bfe4ff"]},
+  holygold:{name:"圣光",c:["#f2d98a","#fff6d8"]},
   jade:{name:"翠青",c:["#4fe0a8","#c4ffe6"]},
   violet:{name:"紫晶",c:["#a86be0","#e0c8ff"]},
   rose:{name:"蔷薇",c:["#ff7aa8","#ffd0e0"]},
@@ -34,6 +35,17 @@ const PALETTES={
 const TARGETS=["foe","me","foeBoard","meBoard","center"];
 
 /* ---- 特殊卡：通用配方（可重复） ---- */
+/* ===== 苍蓝（内置角色）的特效配方 ===== */
+const CANGLAN_FX={
+  "苍蓝:blueApocalypse":{pattern:"burst",palette:"azure",glyph:"☄",target:"foe"},
+  "苍蓝:divineEcho":{pattern:"rain",palette:"violet",glyph:"✹",target:"foe"},
+  "苍蓝:blueMechWave":{pattern:"spiral",palette:"steel",glyph:"⚙",target:"meBoard"},
+  "苍蓝:punishArrival":{pattern:"pillar",palette:"holygold",glyph:"♛",target:"meBoard"},
+  "苍蓝:vaultDeath":{pattern:"pillar",palette:"steel",glyph:"▤",target:"foeBoard"},
+  "苍蓝:beelzebub":{pattern:"flash",palette:"blood",glyph:"👑",target:"meBoard"},
+  "苍蓝:purgeOrder":{pattern:"beam",palette:"holygold",glyph:"⚖",target:"foe"},
+  "苍蓝:divineWrath":{pattern:"rain",palette:"azure",glyph:"⚡",target:"foe"},
+};
 const SPECIAL={
   sp_strike:{pattern:"slash",palette:"steel",glyph:"✦",target:"foe",label:"直击"},
   sp_storm:{pattern:"wave",palette:"ember",glyph:"✹",target:"foeBoard",label:"风暴"},
@@ -115,6 +127,10 @@ function build(id,rarity,r){
 function recipeFor(card){
   if(!card)return null;
   if(card.fx&&SPECIAL[card.fx])return build(card.fx,"special",SPECIAL[card.fx]);
+  {
+    const ck=(card.hero||"")+":"+card.id;
+    if(CANGLAN_FX[ck])return build(ck,"special",CANGLAN_FX[ck]);
+  }
   if(card.rarity==="elite"){
     const key=(card.hero||"")+":"+card.id;
     if(ELITE[key])return build(key,"elite",ELITE[key]);
@@ -123,5 +139,5 @@ function recipeFor(card){
 }
 /* 配方的“指纹”：精英之间不能重复 */
 const signature=r=>r.native?"native:"+r.id:r.pattern+"/"+r.palette;
-return{PATTERNS,PALETTES,TARGETS,SPECIAL,ELITE,recipeFor,signature};
+return{PATTERNS,PALETTES,TARGETS,SPECIAL,ELITE,CANGLAN_FX,recipeFor,signature};
 });

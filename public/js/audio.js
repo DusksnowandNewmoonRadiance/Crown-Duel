@@ -53,7 +53,7 @@ const Audio2=(()=>{
       dry=AC.createGain();dry.gain.value=1;dry.connect(comp);
       ready=true;
       loadSamples();
-      loadBgm("menu");loadBgm("duel");
+      loadBgm("menu");loadBgm("duel");loadBgm("eriyi");
     }catch(e){AC=null;ready=false;}
   }
   /* 把一路信号接到干声，并按比例送进混响 */
@@ -218,8 +218,9 @@ const Audio2=(()=>{
   /* ---------------- 背景音乐 ---------------- */
   /* 离线渲染的管弦 loop（public/audio/bgm/*.ogg）：真曲子，比实时合成厚得多。
      文件没到位时先用合成顶上，加载完自动切过去；断网则一直是合成，不会静音。 */
-  const BGM_URL={menu:"audio/bgm/menu.ogg",duel:"audio/bgm/duel.ogg"};
-  const BGM_GAIN={menu:.30,duel:.30};
+  const BGM_URL={menu:"audio/bgm/menu.ogg",duel:"audio/bgm/duel.ogg",susu:"audio/bgm/susu.ogg",eriyi:"audio/bgm/eriyi.mp3"};
+  /* menu / duel 是原声配乐（-16 dBFS RMS 左右）；susu / eriyi 是角色专属曲，各自按成品响度配平 */
+  const BGM_GAIN={menu:.30,duel:.30,susu:.36,eriyi:.34};
   const bgmBuf={},bgmLoading={};
   const BG={want:null,current:null,timer:null,bus:null,pad:null,padOscs:null,file:null};
   function loadBgm(name){
@@ -250,6 +251,9 @@ const Audio2=(()=>{
   const THEMES={
     menu:{notes:[294,349,440,523,440,349,330,294,262,294,349,392,349,294,262,294],bpm:60,type:"sine",vol:.03,pad:[73,110]},
     duel:{notes:[294,349,440,349,294,262,294,349,392,349,294,262,233,262,294,0],bpm:112,type:"triangle",vol:.028,pad:[73,110]},
+    /* 苏苏《赤色铁流》的合成版兜底：susu.ogg 没加载完（或断网）时先顶这段主题 A，
+       音高/调性（D 小调）与真曲子一致，切过去不会跳调。 */
+    susu:{notes:[440,440,587,698,698,659,587,587,523,587,659,698,659,587,440,0],bpm:124,type:"triangle",vol:.028,pad:[147,220]},
     win:{notes:[523,659,784,1047,784,1047,1319,0],bpm:120,type:"triangle",vol:.045,once:true},
     lose:{notes:[330,294,262,220,196,175,0],bpm:80,type:"sine",vol:.040,once:true}
   };

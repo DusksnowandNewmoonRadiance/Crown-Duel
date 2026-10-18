@@ -74,6 +74,14 @@ function targetSpec(card,me,foe){
     case"stunOneDraw":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
     case"cpNet":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 1 点伤害","foe");
     case"diyPull":return eligible(foe.board,1,1,"选择 1 个敌方单位策反并使其获得 +1/+4","foe");
+    /* 内置角色·苍蓝 */
+    case"azureSynth":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 4 点伤害","foe");
+    case"divinePull":return eligible(foe.board,1,1,"选择 1 个敌方单位策反并使其获得 +1/+4","foe");
+    case"dreamCast":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
+    case"sacrifice":return eligible(me.board,1,1,"选择 1 个友方单位进行献祭","me");
+    case"symbiosis":return eligible(me.board,1,1,"选择 1 个友方单位获得亡语","me");
+    case"holySmite":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 2（或 4）点伤害","foe");
+    case"purgeOrder":return eligible(foe.board,1,1,"选择 1 个敌方单位消灭","foe");
   }
   return null;
 }
@@ -99,6 +107,13 @@ function playError(card,me,foe){
   const e=card.effect;
   if(e==="rebel"&&!foe.board.length)return"敌方没有单位可以策反";
   if(e==="diyPull"&&!foe.board.length)return"敌方没有单位可以策反";
+  /* 内置角色·苍蓝 */
+  if(e==="azureSynth"&&!foe.board.length)return"敌方没有单位可以攻击";
+  if(e==="holySmite"&&!foe.board.length)return"敌方没有单位";
+  if(e==="purgeOrder"&&!foe.board.length)return"敌方没有单位";
+  if(e==="sacrifice"&&!me.board.length)return"你没有可以献祭的友方单位";
+  if(e==="symbiosis"&&!me.board.length)return"你没有友方单位";
+  if(e==="divinePull"&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
   if(e==="stunOneDraw"&&!foe.board.length)return"敌方没有单位可以眩晕";
@@ -202,7 +217,7 @@ class Game{
     return{idx:i,name:p.name||("玩家"+(i+1)),hero:p.hero,hp,maxHp:hp,armor:0,energy:0,maxEnergy:0,
       fatigue:0,deck,deckAll,hand:[],board:[],money:0,destroyedCards:0,destroyedLog:[],heroImmune:false,turnsStarted:0,mulliganDone:false,
       regime:null,regimeChanges:0,fedTurn:false,
-      decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,steelTide:false,
+      decay:0,turnCap:null,nextCap:null,noSpell:false,nextNoSpell:false,playedTurn:0,steelTide:false,lostMaxEnergy:0,
       stats:{dmg:0,played:0,kills:0}};
   }
   clone(c,hero,upLvl){
@@ -223,6 +238,16 @@ class Game{
 
   /* ---------- 抽牌 / 手牌 ---------- */
   _drawRaw(p,n){for(let i=0;i<n&&p.deck.length;i++)p.hand.push(p.deck.pop());}
+  /* 贝露佩欧露：敌方每抽 1 张牌或部署 1 个单位，存在于手牌/牌库中的它费用 -2 */
+  _reduceBeelzebub(p){
+    const reduce=(card)=>{
+      if(card&&card.id==="beelzebub"&&card.cost>0){
+        card.cost=Math.max(0,card.cost-2);
+        this.emit({t:"fx",name:"beelzebubCost",pi:p.idx,cost:card.cost});
+      }
+    };
+    p.deck.forEach(reduce);p.hand.forEach(reduce);
+  }
   draw(p,n=1,credit=null,label="手牌上限"){
     if(this.lock!==null){if(n>0)this.note("停摆：无法抽牌",p);return;}
     for(let i=0;i<n;i++){
@@ -232,6 +257,7 @@ class Game{
       if(card.onDraw){this.note(`【${card.name}】抽到时自动施放`,p);this.cast(p,card,this.opp(p),[],null);if(this.phase==="over")break;continue;}
       if(p.hand.length>=MAX_HAND){this.burn(p,card,credit,label);continue;}
       p.hand.push(card);this._drawHeal(p);
+      this._reduceBeelzebub(this.opp(p));
     }
   }
   addToHand(p,card){
@@ -240,7 +266,7 @@ class Game{
     if(p.pirateBuff&&card.kind==="unit"&&(card.hero==="八幡"||card.id==="pirateScout")){
       card.attack=(card.attack||0)+1;card.health=(card.health||0)+1;card.maxHealth=(card.maxHealth||0)+1;
     }
-    p.hand.push(card);this._drawHeal(p);return true;
+    p.hand.push(card);this._drawHeal(p);this._reduceBeelzebub(this.opp(p));return true;
   }
   burn(p,card,credit=null,label="手牌上限"){
     if(credit){this.recordDestroyed(credit,card,"抽牌溢出",label);return;}
@@ -368,7 +394,7 @@ class Game{
     if(this.lock!==null){this.note("停摆：无法增加费用",p);return false;}
     p.maxEnergy=Math.min(MAX_ENERGY,p.maxEnergy+n);return true;
   }
-  loseMax(p,n){p.maxEnergy=Math.max(0,p.maxEnergy-n);p.energy=Math.min(p.energy,p.maxEnergy);}
+  loseMax(p,n){p.maxEnergy=Math.max(0,p.maxEnergy-n);p.energy=Math.min(p.energy,p.maxEnergy);p.lostMaxEnergy=(p.lostMaxEnergy||0)+n;}
   cleanup(){
     const triggers=[],souls=[],armorTriggers=[];
     for(const p of this.players){
@@ -384,7 +410,26 @@ class Game{
           this.emit({t:"ce",id:"killBoss",text:(this.campaign.events&&this.campaign.events.killBoss)||"敌方首领被击杀了！"});
         }
       }
-      dead.forEach(u=>{if(u.deathDmg>0)triggers.push([p,u]);if(u.transfer||u.recycle)souls.push([p,u]);if(u.effect==="blrDeathArmor")armorTriggers.push([p,u]);});
+      dead.forEach(u=>{
+        if(u.deathDmg>0)triggers.push([p,u]);
+        if(u.transfer||u.recycle)souls.push([p,u]);
+        if(u.effect==="blrDeathArmor")armorTriggers.push([p,u]);
+        /* 苍蓝·信徒：亡语获得 1 点费用 */
+        if(u.effect==="believerDeath"){p.energy+=1;this.note("信徒的亡语：获得 1 点费用",p);}
+        /* 共生：获得 2 点费用并抽 1 张牌 */
+        if(u.deathEnergyDraw){p.energy+=u.deathEnergyDraw;this.draw(p,1);this.note(`${u.name} 的亡语：获得 2 点费用并抽 1 张牌`,p);}
+        /* 不朽堡垒：亡语将 2 张神罚洗入敌方牌库 */
+        if(u.effect==="vaultDeath"){
+          for(let k=0;k<2;k++)this.opp(p).deck.push(this.clone(TOKENS.divinePunish,this.opp(p).hero));
+          shuffle(this.opp(p).deck);
+          this.note(`${u.name} 的亡语：将 2 张【神罚】洗入敌方牌库`,p);
+        }
+        /* 赤血战车：亡语使手牌费用 -1 */
+        if(u.id==="warChariot"){
+          p.hand.forEach(x=>{x.cost=Math.max(0,x.cost-1);});
+          this.note("赤血战车的亡语：手牌中的所有牌费用 -1",p);
+        }
+      });
     }
     souls.forEach(([p,u])=>{
       const id=u.transfer||u.recycle;
@@ -542,7 +587,7 @@ class Game{
     this.emit({t:"turn",pi});
     /* DIY·机械眼：你的回合开始时随机攻击一个敌方目标（消耗本回合攻击次数） */
     for(const u of p.board){
-      if(u.effect!=="diyMechEye"||u.health<=0||u.atkLeft<=0||u.stun>0)continue;
+      if(!(u.effect==="diyMechEye"||u.effect==="mechEye")||u.health<=0||u.atkLeft<=0||u.stun>0)continue;
       if(this.phase==="over")break;
       const foe=this.players[1-pi];
       const tg=foe.board.filter(x=>!x.untargetable&&x.health>0);
@@ -590,6 +635,15 @@ class Game{
     const g=this._guard(pi);if(g)return err(g);
     const p=this.players[pi];
     for(const u of p.board){u.fresh=false;if(u.tempAtk){u.attack=Math.max(0,u.attack-u.tempAtk);u.tempAtk=0;}}
+    /* 巫师议会：友方回合结束时，敌方所有单位攻击力 -1 */
+    if(p.board.some(u=>u.id==="wizardCouncil"&&u.health>0)){
+      this.opp(p).board.forEach(u=>{u.attack=Math.max(0,u.attack-1);});
+      this.note("巫师议会：敌方所有单位攻击力 -1",p);
+    }
+    /* 机动防御等限时单位：回合结束时消散 */
+    for(const u of p.board){
+      if(u.tempTurns>0){u.tempTurns--;if(u.tempTurns<=0){u.health=0;this.note(`${u.name} 的机动掩护结束了，消散了`,p);}}
+    }
     if(hasBonus(p,"blr")){this.armor(p,2);this.note("白俄罗斯政体：回合结束，获得 2 点护甲",p);}
     /* 边防哨所：己方回合结束时，只要场上还有嘲讽单位，就再叠 1 点护甲 */
     if(p.board.some(u=>u.health>0&&u.effect==="blrBastion")&&p.board.some(u=>u.health>0&&u.taunt)){
@@ -730,6 +784,43 @@ class Game{
     if(s.pirateBuff&&c.kind==="unit"&&(c.hero==="八幡"||c.id==="pirateScout")){c.attack+=1;c.health+=1;c.maxHealth+=1;}
     const T=()=>targets&&targets.length?targets:autoTargets(c,s,o);
     switch(c.effect){
+      /* ===== 内置角色·苍蓝（部署） ===== */
+      case"mechPriest":
+        if(this.summon(s,"blueMechEye",1))this.note("机械神甫：召唤了【苍蓝·机械眼】",s);
+        break;
+      case"lavaFortress":{
+        const idx=s.board.indexOf(c);
+        const isEdge=(idx===0||idx===s.board.length-1);
+        const dmg=isEdge?6:3;
+        o.board.forEach(u=>this.damageUnit(o,u,dmg,s));
+        this.note(`熔岩骑士堡垒：造成 ${dmg} 点群体伤害！`,s);
+        break;}
+      case"wizardThunder":{
+        if(s.board.some(u=>u.id==="wizardFire"&&u.health>0&&u!==c)){
+          c.health=0;
+          const council=this.clone(TOKENS.wizardCouncil,s.hero);
+          s.board.push(council);this._enter(s,council);
+          this.note("雷与火交织，大巫师[雷]转化成了【巫师议会】！",s);
+        }
+        break;}
+      case"wizardFire":{
+        if(s.board.some(u=>u.id==="wizardThunder"&&u.health>0&&u!==c)){
+          c.health=0;
+          const council=this.clone(TOKENS.wizardCouncil,s.hero);
+          s.board.push(council);this._enter(s,council);
+          this.note("火与雷交织，大巫师[火]转化成了【巫师议会】！",s);
+        }
+        break;}
+      case"scoutDeploy":c.health-=3;this.note("侦察者：对自身造成 3 点伤害",s);break;
+      case"spyGhostDeploy":{
+        const pool=o.board.filter(u=>u.cost<=3&&u.health>0);
+        if(pool.length){
+          pool.sort((a,b)=>unitValue(b)-unitValue(a));
+          this.takeover(o,s,pool[0],"间谍鬼策反");
+        }else this.note("间谍鬼：敌方没有花费<=3的单位",s);
+        break;}
+      case"warChariotDeploy":this.loseMax(s,1);this.note("赤血战车：失去 1 点费用上限",s);break;
+
       case"heal2":this.heal(s,2);break;
       case"heal3":this.heal(s,3);break;
       case"draw":this.draw(s,1);break;
@@ -932,6 +1023,170 @@ class Game{
   cast(s,c,o,targets,option){
     const fx=(name,extra)=>this.emit(Object.assign({t:"fx",name,pi:s.idx},extra||{}));
     switch(c.effect){
+      /* ===== 内置角色·苍蓝（法术） ===== */
+      case"scoutDream":{
+        const opts=[TOKENS.scout,TOKENS.spyGhost,TOKENS.dream].map(x=>this.clone(x,s.hero));
+        this._pick(s,"侦察者的梦境","从 3 张梦境造物中选择 1 张加入手牌",opts,0,card=>{
+          if(!this.addToHand(s,card))this.burn(s,card);
+          this.note(`侦察者的梦境：获得了【${card.name}】`,s,true);
+        });
+        break;}
+      case"dreamCast":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){t.stun=Math.max(t.stun||0,1);t.atkLeft=0;this.note(`入梦：${t.name} 被眩晕`,s);}
+        break;}
+      case"sacrifice":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=s.board.find(u=>u.uid===id);
+        if(t){t.health=0;this.note(`献祭：消灭了 ${t.name}`,s);}
+        this.draw(s,2);
+        break;}
+      case"disaster":{
+        this.draw(s,1);
+        const lost=s.lostMaxEnergy||0;
+        s.energy+=lost*2;
+        for(let k=0;k<lost;k++)o.deck.push(this.clone(TOKENS.divinePunish,o.hero));
+        shuffle(o.deck);
+        this.note(`妄想天灾：失去 ${lost} 个上限，获得 ${lost*2} 点临时费用，并洗入 ${lost} 张【神罚】`,s);
+        break;}
+      case"symbiosis":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=s.board.find(u=>u.uid===id);
+        if(t){t.deathEnergyDraw=2;this.note(`共生：${t.name} 获得了亡语`,s);}
+        break;}
+      case"extremeMission":
+        if(this.addToHand(s,this.clone(TOKENS.fearless,s.hero)))this.note("极限使命：将【无畏伤痛】加入了手牌",s);
+        break;
+      case"fearless":{
+        s.board.forEach(u=>{u.attack+=2;u.health-=3;if(u.atkLeft<u.strikes&&!u.stun)u.atkLeft=u.strikes;});
+        this.cleanup();
+        this.note("无畏伤痛：全军 +2/-3，并在本回合即可攻击",s);
+        const pool=s.deck.slice();
+        if(pool.length){
+          const opts=shuffle(pool).slice(0,3).map(x=>this.clone(x,s.hero));
+          const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+          this._pick(s,"无畏伤痛","从牌库随机展示的 3 张牌中选择 1 张加入手牌",opts,auto,card=>{
+            if(!this.addToHand(s,card))this.burn(s,card);
+            this.note(`无畏伤痛：开发了【${card.name}】`,s,true);
+          });
+        }
+        break;}
+      case"shatteredImage":{
+        this.loseMax(s,1);
+        const pool=s.deck.slice();
+        if(pool.length){
+          const opts=shuffle(pool).slice(0,3).map(x=>this.clone(x,s.hero));
+          const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+          this._pick(s,"破碎映像","从牌库随机展示的 3 张牌中选择 1 张",opts,auto,card=>{
+            if(!this.addToHand(s,card))this.burn(s,card);
+            this.note(`破碎映像：开发了【${card.name}】`,s,true);
+          });
+        }else this.note("破碎映像：牌库已空，只扣除费用上限",s);
+        break;}
+      case"divineWrath":{
+        o.deck.push(this.clone(TOKENS.divinePunish,o.hero));
+        o.deck.push(this.clone(TOKENS.divinePunish,o.hero));
+        shuffle(o.deck);
+        this.note("神怒：将 2 张【神罚】洗入敌方牌库",s);
+        break;}
+      case"divineBarrier":{
+        let count=0;for(const cx of o.deck)if(cx.id==="divinePunish")count++;
+        this.armor(s,count);this.note(`神谕壁垒：获得 ${count} 点护甲`,s);
+        break;}
+      case"divinePull":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t&&this.takeover(o,s,t,"圣光牵引",true)){
+          t.attack+=1;t.health+=4;t.maxHealth+=4;
+          this.note(`圣光牵引：${t.name} 获得 +1/+4`,s);
+        }
+        break;}
+      case"divineEcho":{
+        for(let k=0;k<4;k++)o.deck.push(this.clone(TOKENS.divinePunish,o.hero));
+        for(let k=0;k<2;k++)s.deck.push(this.clone(TOKENS.divinePunish,s.hero));
+        shuffle(o.deck);shuffle(s.deck);
+        this.note("神罚共鸣：将 4 张【神罚】洗入敌方牌库，2 张洗入你的牌库",s);
+        break;}
+      case"summonMechEyeMax":{
+        let k=0;
+        while(s.board.length<MAX_BOARD){if(this.summon(s,"blueMechEye",1))k++;else break;}
+        this.note(`机械狂潮：召唤了 ${k} 个【苍蓝·机械眼】`,s);
+        break;}
+      case"summonMechDef":{
+        const k=this.summon(s,"blueMechDef",1);
+        if(k){s.board[s.board.length-1].tempTurns=2;this.note("机动防御：召唤了 2/10 的机械眼",s);}
+        break;}
+      case"holySmite":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){
+          let count=0;for(const cx of o.deck)if(cx.id==="divinePunish")count++;
+          const dmg=count>0?4:2;
+          this.damageUnit(o,t,dmg,s);
+          this.note(`圣光惩戒：对 ${t.name} 造成 ${dmg} 点伤害`,s);
+        }
+        break;}
+      case"purgeOrder":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){t.health=0;this.note(`净除指令：消灭了 ${t.name}`,s);}
+        for(let k=0;k<2;k++)o.deck.push(this.clone(TOKENS.divinePunish,o.hero));
+        shuffle(o.deck);
+        this.note("净除指令：将 2 张【神罚】洗入敌方牌库",s);
+        break;}
+      case"punishArrival":{
+        let count=0;for(const cx of o.deck)if(cx.id==="divinePunish")count++;
+        if(count>0){
+          const u=this.clone(TOKENS.holyColossus,s.hero);
+          u.attack=count;u.health=count;u.maxHealth=count;
+          s.board.push(u);this._enter(s,u);
+          this.note(`神罚降临：召唤了 ${count}/${count} 的圣光巨像`,s);
+        }else this.note("神罚降临：敌方牌库没有神罚",s);
+        break;}
+      case"divinePunish":
+        this.damageHero(s,1);
+        this.draw(s,1);
+        {
+          const ascetics=this.opp(s).board.filter(x=>x.effect==="ascetic"&&x.health>0);
+          if(ascetics.length>0&&this.phase!=="over"){
+            this.draw(this.opp(s),ascetics.length);
+            this.note(`苦修者：敌方抽到【神罚】，抽 ${ascetics.length} 张牌`,this.opp(s));
+          }
+        }
+        break;
+      case"azureDevelop":{
+        const pool=[];
+        for(const h in PROFILES)PROFILES[h].cards.forEach(x=>{if(x.azure)pool.push(x);});
+        if(!pool.length)break;
+        const opts=shuffle(pool.slice()).slice(0,3).map(x=>this.clone(x,s.hero));
+        const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+        this._pick(s,"尘封故事","从 3 张【苍蓝】牌中选择 1 张加入手牌",opts,auto,card=>{
+          if(!this.addToHand(s,card))this.burn(s,card);
+          this.note(`尘封故事：开发出【${card.name}】`,s,true);
+        });
+        break;}
+      case"azureSynth":{
+        const id=(targets&&targets[0])||autoTargets(c,s,o)[0];
+        const t=o.board.find(u=>u.uid===id);
+        if(t){this.damageUnit(o,t,4,s);this.note(`碎质合成：对 ${t.name} 造成 4 点伤害`,s);}
+        this.armor(s,1);
+        break;}
+      case"azureStar":this.armor(s,10);this.note("永恒虚星：获得 10 点护甲",s);break;
+      case"azureDescend":{
+        this.heal(s,5);
+        const pool=s.deck.slice();
+        if(!pool.length){this.note("机械神降：牌库为空，只恢复 5 点生命",s);break;}
+        const opts=shuffle(pool).slice(0,3);
+        const auto=opts.reduce((bi,x,i,a)=>x.cost>a[bi].cost?i:bi,0);
+        this._pick(s,"机械神降","从牌库随机展示的 3 张牌中选择 1 张复制到手牌",opts,auto,card=>{
+          const copy=this.clone(card,s.hero);
+          if(!this.addToHand(s,copy))this.burn(s,copy);
+          this.note(`机械神降：复制了【${copy.name}】`,s,true);
+        });
+        this.note("机械神降：恢复 5 点生命值",s);
+        break;}
+
       case"scrapToUnits":{
         const pool=PROFILES[s.hero].cards.filter(x=>x.kind==="unit"&&x.rarity!=="elite"&&!x.awaSwap);
         const names=[];

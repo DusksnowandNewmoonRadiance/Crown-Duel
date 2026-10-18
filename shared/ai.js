@@ -28,7 +28,9 @@ const HERO_STYLE={
   下水:{aggro:.5},
   猪瘟鱼:{aggro:.3},
   "045":{aggro:.45},
-  白猫:{aggro:.3,slow:true}
+  白猫:{aggro:.3,slow:true},
+  /* 内置 DIY 角色·苍蓝：后期神系，前期苟活、中后期神罚压制 */
+  苍蓝:{aggro:.4,lateEngine:true}
 };
 
 /* 打出前需要先让己方单位攻击的法术：只含"消耗己方单位"的牌（单位攻击完再献祭/整编，避免浪费攻击次数）。
@@ -175,7 +177,7 @@ function scoreCard(s,o,c,lethal,stage){
     else if(e==="costRaise")sc+=o.handCount!==undefined?(o.handCount>=3?4:-100):(o.hand.length>=3?4:-100);
     else if(/^(unitDamageHero|finish)/.test(e))sc+=myN?myN*1.5:-100;
     else if(/^(filterSuperman|tutorSuperman|scry|foresee)/.test(e))sc+=4;
-    else if(/^decay/.test(e))sc+=3+(o.decay||0)*(e==="decayDouble"?1.5:1)+(e==="decay2draw"?1.5:0)-(s.hp<=8?3:0);
+    else if(/^decay/.test(e))sc+=3+(o.decay||0)*(e==="decayDouble"?1.5:1)+(/decay\d*draw/.test(e||"")?1.5:0)-(s.hp<=8?3:0);
     else if(/^lock(Cap|Spell)/.test(e))sc+=((o.handCount!==undefined?o.handCount:o.hand.length)>=3?3.5:-2)+(e==="lockCap1"?1.5:0);
     else if(e==="energyDown2")sc+=o.maxEnergy>=4?3:-3;
     else if(e==="revengeDeath")sc+=myN?myN*1.6:-100;
@@ -247,6 +249,39 @@ function scoreCard(s,o,c,lethal,stage){
     if(c.taunt)sc+=1.5;
     if(e==="cometStrike")sc+=s.hp>40?12:(s.hp>=36?2:0);            // 彗星陨击要血 >40 才能打
     if(/^(heal2|heal3draw|heal4Draw1|heal5Armor2|healDraw|draw2heal2|draw2heal6|draw1heal2|armor3draw|armor3Draw1)$/.test(e||""))sc+=s.hp<44?2.5:0;  // 先把血叠过 40
+  }
+  /* —— 内置角色·苍蓝（移植自作者原版打分） —— */
+  if(s.hero==="苍蓝"){
+    const myN=s.board.length,enN=o.board.length;
+    const punishInFoeDeck=(()=>{let n=0;for(const x of o.deck)if(x.id==="divinePunish")n++;return n;})();
+    if(c.id==="beelzebub")sc+=1000;                       // 贝露佩欧露：降到能打就立刻打
+    else if(e==="azureDevelop")sc+=4;
+    else if(e==="azureSynth")sc+=enN?5:-100;
+    else if(e==="azureStar")sc+=s.hp<=22?5:3;
+    else if(e==="azureDescend")sc+=5;
+    else if(e==="divineWrath")sc+=2+punishInFoeDeck*0.2;
+    else if(e==="divineBarrier")sc+=punishInFoeDeck>=3?4:2;
+    else if(e==="divinePull")sc+=5;
+    else if(e==="divineEcho")sc+=(s.deck.length>10?2:-100);
+    else if(e==="summonMechEyeMax")sc+=(MAX_BOARD-myN)*2.5;
+    else if(e==="mechEye")sc+=2;
+    else if(e==="sacrifice")sc+=s.board.length>=3?5:-20;
+    else if(e==="disaster")sc+=(s.lostMaxEnergy||0)>0?6:2;
+    else if(e==="symbiosis")sc+=s.board.some(u=>u.taunt&&u.health>0)?4:1;
+    else if(e==="extremeMission")sc+=3;
+    else if(e==="fearless")sc+=s.board.length>=3?4:-10;
+    else if(e==="shatteredImage")sc+=2;
+    else if(e==="warChariotDeploy")sc+=s.maxEnergy>=6?3:-6;
+    else if(e==="summonMechDef")sc+=4;
+    else if(e==="holySmite")sc+=enN?(punishInFoeDeck>0?6:4):-100;
+    else if(e==="mechPriest")sc+=4;
+    else if(e==="ascetic")sc+=3;
+    else if(e==="purgeOrder")sc+=enN?6:-100;
+    else if(e==="vaultDeath")sc+=4;
+    else if(e==="punishArrival")sc+=punishInFoeDeck>3?punishInFoeDeck*1.5:0;
+    else if(e==="scoutDream")sc+=2;
+    else if(e==="dreamCast")sc+=enN?3:-100;
+    if(c.taunt&&s.hp<=18)sc+=2;                            // 残血优先架墙
   }
   /* —— 角色风格修正（叠加在通用打分之上） —— */
   const style=HERO_STYLE[s.hero]||{};
@@ -437,7 +472,7 @@ class AIPlayer{
           /* 需要场面的牌（整编/燃烧弹/策反/AOE）：先让己方单位攻击，避免浪费攻击次数 */
           if(PRE_ATTACK.has(best.effect)&&!lethal&&s.board.some(u=>!canAttack(u)&&u.attack>0)){
             const mv=this.chooseAttack(s,o)||this.forceAttack(s,o);
-            if(mv)return mv;
+            if(mv)return{type:"attack",uid:mv.unit.uid,target:mv.target?mv.target.uid:null};   /* 必须转标准动作：联机端只认 {type,uid,target} */
           }
           this.plays++;
           return{type:"play",uid:best.uid,targets:this.aiTargets(best,s,o),option:autoOption(best,s,o)};

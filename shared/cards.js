@@ -313,7 +313,16 @@ const TOKENS={
   pirateCry:{id:"pirateCry",name:"海盗战嚎",cost:1,kind:"spell",art:"♬",text:"选择一个你的单位，使其 +3/+3。",effect:"buffPirate3",fx:"sp_bless"},
   stunClub:{id:"stunClub",name:"闷棍",cost:1,kind:"spell",art:"⚒",text:"眩晕 1 个敌方单位。如果它已经被眩晕，改为将其消灭。",effect:"stunOrKill",fx:"sp_bind"},
   duck:{id:"duck",name:"鸭子",cost:1,kind:"unit",art:"鸭",atk:1,hp:1,text:"",flavor:"嘎。"},
-  junk:{id:"junk",name:"垃圾",cost:1,kind:"spell",art:"▧",text:"打出：销毁你牌库顶的 1 张牌，然后抽 1 张牌。",effect:"whiteJunk"}
+  junk:{id:"junk",name:"垃圾",cost:1,kind:"spell",art:"▧",text:"打出：销毁你牌库顶的 1 张牌，然后抽 1 张牌。",effect:"whiteJunk"},
+  /* 内置角色·苍蓝的 token（内部使用，不进任何卡组） */
+  blueMechDef:{ id:"blueMechDef", name:"苍蓝·机动机械眼", cost:3, kind:"unit", art:"◉", atk:2, hp:10, taunt:true, effect:"mechEye", text:"嘲讽。在你的回合开始时，随机攻击一个敌方目标。在你的下个回合结束时消散。", rarity:"common" },
+  holyColossus:{ id:"holyColossus", name:"圣光巨像", cost:6, kind:"unit", art:"♛", atk:0, hp:1, rarity:"common" },
+  fearless:{ id:"fearless", name:"无畏伤痛", cost:0, kind:"spell", art:"💔", effect:"fearless", text:"使所有友方单位获得 +2/-3，并在本回合即可攻击。开发 1 张你牌库中的牌。", rarity:"common" },
+  wizardCouncil:{ id:"wizardCouncil", name:"巫师议会", cost:5, kind:"unit", art:"🧙", atk:5, hp:6, taunt:true, effect:"wizardCouncil", text:"嘲讽。友方回合结束时：使所有敌方单位攻击力 -1。", rarity:"elite" },
+  scout:{ id:"scout", name:"侦察者", cost:3, kind:"unit", art:"👁", atk:0, hp:10, taunt:true, effect:"scoutDeploy", text:"嘲讽。部署：对本单位造成 3 点伤害。", rarity:"common" },
+  spyGhost:{ id:"spyGhost", name:"间谍鬼", cost:3, kind:"unit", art:"👻", atk:2, hp:3, effect:"spyGhostDeploy", text:"部署：策反一个花费不大于 3 的敌方单位。", rarity:"common" },
+  dream:{ id:"dream", name:"入梦", cost:3, kind:"spell", art:"💤", effect:"dreamCast", text:"眩晕一个敌方单位。", rarity:"common" },
+  divinePunish:{ id:"divinePunish", name:"神罚", cost:0, kind:"spell", art:"⚡", onDraw:true, effect:"divinePunish", text:"抽取：使用。对你的角色造成 1 点伤害，抽 1 张牌。", rarity:"common" },
 };
 
 /* awa 卡牌：不进卡组编辑器。只有携带苏苏的【awa】时，开局会变成其中随机一张并洗入牌库 */
@@ -372,6 +381,7 @@ const KEYWORDS={
   pollute:{name:"污染",desc:"把敌方手牌或牌库中的非垃圾牌直接变成【垃圾】，卡牌数量不变。"},
   junk:{name:"垃圾",desc:"1 费法术。打出时销毁自己牌库顶的一张牌，然后抽一张；牌库为空时抽牌会触发疲劳。"},
   fatigue:{name:"疲劳",desc:"牌库为空时每次尝试抽牌都会受到伤害：第 1 次 1 点、第 2 次 3 点、第 3 次 6 点，此后按 1+2+…+次数累加。"},
+  onDraw:{name:"抽取：使用",desc:"抽到这张牌时立即自动使用，不进入手牌。"},
   overdraw:{name:"手牌上限",desc:"手牌最多 10 张。手牌已满时继续抽牌，新抽到的牌会被销毁，无法进入手牌。"}
 };
 

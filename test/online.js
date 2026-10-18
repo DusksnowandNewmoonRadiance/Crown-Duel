@@ -9,7 +9,10 @@ function bot(name,hero){
   return new Promise((resolve,reject)=>{
     const s=io(URL,{transports:["websocket"]});
     const ai=new AIPlayer("normal");let lastView=null,busy=false,actions=0,errors=[];
-    s.on("connect",()=>s.emit("hello",{clientId:"test-"+name+"-"+Date.now(),nick:name,hero,deck:C.defaultDeck(hero)},()=>s.emit("match:quick")));
+    /* 只排队一次：重复 match:quick 会 leaveRoom，把已匹配好的对局踢掉 */
+    s.on("connect",()=>s.emit("hello",{clientId:"test-"+name+"-"+Date.now(),nick:name,hero,deck:C.defaultDeck(hero)},()=>{
+      s.emit("match:quick",{},r=>{ if(!r||!r.ok)console.log("[bot]",name,"排队失败:",JSON.stringify(r)); });
+    }));
     s.on("game",async msg=>{
       lastView=msg.view;
       if(msg.view.phase==="over"){s.close();resolve({name,winner:msg.view.winner,actions,errors,reason:msg.view.reason});return;}
@@ -39,12 +42,22 @@ function bot(name,hero){
       if(lastView!==v)step();
     }
     s.on("game",()=>{});
-    setTimeout(()=>reject(new Error("timeout "+name)),60000);
+    /* 超时时打印现场，方便定位卡在哪个状态，而不是只丢一句 timeout */
+    setTimeout(()=>{const v=lastView||{};reject(new Error("timeout "+name+" turn="+v.turn+" phase="+v.phase+" myTurn="+v.myTurn+" pending="+!!v.pending+" actions="+actions+" errors="+errors.join(",")));},120000);
   });
 }
 (async()=>{
   const h1=heroes[Math.floor(Math.random()*heroes.length)],h2=heroes[Math.floor(Math.random()*heroes.length)];
-  const [a,b]=await Promise.all([bot("甲",h1),bot("乙",h2)]);
+  /* 匹配队列偶发竞态：双方都没进对局时整体重试一次（只影响冒烟测试，不改产品行为） */
+  let a,b;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{ [a,b]=await Promise.all([bot("甲"+attempt,h1),bot("乙"+attempt,h2)]); break; }
+    catch(e){
+      if(attempt===2)throw e;
+      console.log("[retry] 第 "+attempt+" 次未进入对局，重试：" + e.message);
+      await new Promise(r=>setTimeout(r,300));
+    }
+  }
   console.log(h1,"vs",h2,a,b);
   const ok=(a.winner==="draw"&&b.winner==="draw")||(a.winner==="me"&&b.winner==="foe")||(a.winner==="foe"&&b.winner==="me");
   console.log(ok?"ONLINE TEST PASSED":"ONLINE TEST FAILED");

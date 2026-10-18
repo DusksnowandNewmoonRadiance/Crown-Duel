@@ -1227,3 +1227,29 @@
 .ico-opt small{font-size:10.5px;color:var(--text-3)}
 .ico-opt:hover{border-color:var(--line-3)}
 .ico-opt.on{border-color:var(--accent);color:var(--accent-hi);background:rgba(240,180,41,.08)}
+/* ============================================================================
+   DIY 工坊：最左「游玩 DIY 角色」栏（四栏布局）
+   ============================================================================ */
+.diy{grid-template-columns:196px 300px minmax(0,1fr) 300px}
+.diy-play{
+  border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);
+  padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;
+}
+.diy-play-list{display:flex;flex-direction:column;gap:6px;min-height:0;overflow:auto}
+.diy-play-hero{
+  display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;border-radius:var(--r-2);
+  border:1px solid var(--line);background:var(--surface-2);color:var(--text);font:600 13px var(--sans);
+  cursor:pointer;text-align:left;
+}
+.diy-play-hero::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--hcr,#5ab4ff);flex:none}
+.diy-play-hero:hover{border-color:var(--line-2)}
+.diy-play-hero.on{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+#diyPlayGo{margin-top:auto}
+@media (max-width:1400px){.diy{grid-template-columns:170px 260px minmax(0,1fr) 260px}}
+@media (max-width:1180px){.diy{grid-template-columns:160px 240px minmax(0,1fr) 240px;gap:10px}}
+@media (max-width:900px){
+  .diy{grid-template-columns:minmax(0,1fr);}
+  .diy-play{order:-1}
+  .diy-play-list{flex-direction:row;flex-wrap:wrap}
+  .diy-play-hero{width:auto}
+}

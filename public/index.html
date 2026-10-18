@@ -318,7 +318,15 @@
     </div>
   </header>
   <main class="diy">
-    <!-- 左：角色信息 -->
+    <!-- 最左：游玩 DIY 角色 -->
+    <aside class="diy-play">
+      <div class="diy-label">游玩 DIY 角色</div>
+      <p class="muted small">选一个自制角色，和对面的原版电脑打一局（本地对局，不计段位、不影响原版池）。</p>
+      <div class="diy-play-list" id="diyPlayList"></div>
+      <button class="btn btn-gold" id="diyPlayGo" disabled>开始对局</button>
+      <p class="muted small" id="diyPlayHint">正在读取角色…</p>
+    </aside>
+    <!-- 左二：角色信息 -->
     <section class="diy-info">
       <div class="diy-label">角色信息</div>
       <div class="field"><label for="diyName">名字（1~12 字，全服唯一）</label><input id="diyName" maxlength="12" placeholder="例如：星尘学者" autocomplete="off"></div>

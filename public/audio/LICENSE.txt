@@ -10,5 +10,10 @@ public/audio/bgm/menu.ogg, duel.ogg  与  public/audio/sfx/win.ogg, lose.ogg
 public/audio/sfx/*.ogg（其余 19 个）
   由 tools/music/blueprint_audio.py 用 numpy/scipy 离线合成，不含第三方录音或采样库。
 
+public/audio/bgm/susu.ogg（苏苏 ·《赤色铁流》）
+  原创曲。由 tools/music/susu_theme.py 用 numpy 直接合成音色、卷积混响，
+  ffmpeg 母带后转 OGG；同一份乐谱可导出 tools/music/susu.mid。
+  不使用任何采样、音色库或第三方录音，全部为程序生成的乐音与噪声。
+
 public/js/audio.js
   文件缺失时的兜底音效 / 音乐由 WebAudio 实时合成。

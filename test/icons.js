@@ -58,13 +58,24 @@ ok("DIY：合法 icon 通过并保留；非法 icon 被拒绝", () => {
   const clone = () => JSON.parse(JSON.stringify(base));
   const good = clone(); good.name = "图标测试";
   good.cards[0].icon = "flame";
-  const r1 = Diy.validate(good, { allowReplace: "苍蓝" });
+  const r1 = Diy.validate(good, { builtin: true, allowReplace: "苍蓝" });
   assert(r1.ok, JSON.stringify(r1.errors));
   assert.strictEqual(r1.def.cards[0].icon, "flame");
   const bad = clone(); bad.name = "图标测试二";
   bad.cards[0].icon = "<svg onload=alert(1)>";
-  const r2 = Diy.validate(bad, { allowReplace: "苍蓝" });
+  const r2 = Diy.validate(bad, { builtin: true, allowReplace: "苍蓝" });
   assert(!r2.ok && r2.errors.some((e) => /图标/.test(e)));
+});
+
+ok("内置 DIY 角色苍蓝（41 张，含私有机制）的卡牌也都解析到库内图标", () => {
+  const v = Diy.validate(require("../shared/diy-builtin.js").heroes[0], { builtin: true, allowReplace: "苍蓝" });
+  assert(v.ok, JSON.stringify(v.errors));
+  assert(Diy.register(v.def, { builtin: true }).ok);
+  const cards = C.PROFILES["苍蓝"].cards;
+  assert(cards.length >= 40);
+  const seen = new Set();
+  for (const c of cards) { const id = CardIcons.forCard({ ...c, hero: "苍蓝" }); assert(Icons.has(id), c.id); seen.add(id); }
+  assert(seen.size >= 6, "苍蓝只用了 " + seen.size + " 种图标");
 });
 
 console.log(`\nICONS TEST PASSED (${pass}/${pass})`);
