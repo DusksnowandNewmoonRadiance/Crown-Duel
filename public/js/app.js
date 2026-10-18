@@ -263,15 +263,20 @@ function askNick(){
    单人练习
    ============================================================ */
 const Solo={opp:store.get("soloOpp",""),level:store.get("soloLevel","normal"),oppDeck:store.get("soloOppDeck","random")};
+/* 单人练习可用英雄：原版 + 已注册的 DIY（本地对局，不进排位/原版数据） */
+function soloPool(){
+  const d=typeof diyHeroes==="function"?diyHeroes():[];
+  return HEROES.concat(d.filter(h=>!HEROES.includes(h)&&C.PROFILES[h]));
+}
 if(Solo.oppDeck==="decay")Solo.oppDeck="衰减流";
 if(Solo.oppDeck==="federation")Solo.oppDeck="星联邦流";
 function openSolo(){
   const me=Me.hero;
   $("#soloMe").innerHTML=`${crest(me)}<span style="--hcr:${V.heroRgb(me)}">${V.esc(me)}<small class="muted" style="display:block;font:500 12px var(--sans)">卡组：${V.esc(Me.deckName(me))}</small></span><button class="btn" id="soloChange">更换</button>`;
   $("#soloMe").style.setProperty("--hcr",V.heroRgb(me));
-  $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();},HEROES);
+  $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();},soloPool().filter(h=>h!==Solo.opp));
   if(Solo.opp===me)Solo.opp="";
-  $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+HEROES.filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}</button>`).join("");
+  $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+soloPool().filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}${isDiyHero(h)?` <i class="diy-tag">DIY</i>`:""}</button>`).join("");
   /* 只有真正有多套预设的对手才给选择；只有一套的一律用默认卡组。 */
   const presets=Solo.opp?C.presets(Solo.opp):null;
   const deckChoices=presets?Object.keys(presets):[];
@@ -294,7 +299,7 @@ $("#soloGo").addEventListener("click",()=>{closeModal("#mSolo");startSolo();});
 class LocalController{
   constructor(){
     const me=Me.hero;
-    const others=HEROES.filter(h=>h!==me);
+    const others=soloPool().filter(h=>h!==me);
     const foe=Solo.opp&&Solo.opp!==me?Solo.opp:others[Math.floor(Math.random()*others.length)];
     /* 选择的敌方预设卡组优先；随机时由 AI 自行挑选。 */
     let foeDeck=C.aiDeck(foe);
