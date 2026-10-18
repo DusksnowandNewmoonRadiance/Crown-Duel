@@ -522,6 +522,7 @@ class Game{
       this.note(`衰减：${p.name} 受到 ${p.decay} 点伤害`,p);
       this.emit({t:"fx",name:"decay",pi,n:p.decay});
       this.damageHero(p,p.decay,{fatigue:true});
+      if(this.phase!=="over"&&p.decay>0)p.decay--;   /* 衰减：每回合开始掉一层 */
     }
     if(this.phase==="over")return;
     /* 钢铁洪流：永久状态，每个自己的回合开始把 1 张【红军坦克】加入手牌（手牌满则跳过） */
