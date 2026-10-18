@@ -9,3 +9,4 @@ public/audio/sfx/*.ogg —— 来自 Kenney 的 CC0 素材包（Creative Commons
 CC0 允许商业使用、修改与再分发，且不要求署名；此处列出出处只为方便追溯。
 
 其余声音（背景音乐、胜负音阶等）由 public/js/audio.js 用 WebAudio 实时合成，不含任何采样文件。
+public/audio/bgm/*.ogg —— 由 tools/render-bgm.py 离线渲染生成，随本项目授权（CC0 1.0），不含第三方采样。

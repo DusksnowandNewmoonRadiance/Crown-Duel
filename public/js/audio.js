@@ -57,6 +57,7 @@ const Audio2=(()=>{
       dry=AC.createGain();dry.gain.value=1;dry.connect(comp);
       ready=true;
       loadSamples();
+      loadBgm("menu");loadBgm("duel");
     }catch(e){AC=null;ready=false;}
   }
   /* 把一路信号接到干声，并按比例送进混响 */
@@ -229,7 +230,37 @@ const Audio2=(()=>{
   }
 
   /* ---------------- 背景音乐 ---------------- */
-  const BG={want:null,current:null,timer:null,bus:null,pad:null,padOscs:null};
+  /* 离线渲染的管弦 loop（public/audio/bgm/*.ogg）：真曲子，比实时合成厚得多。
+     文件没到位时先用合成顶上，加载完自动切过去；断网则一直是合成，不会静音。 */
+  const BGM_URL={menu:"audio/bgm/menu.ogg",duel:"audio/bgm/duel.ogg"};
+  const BGM_GAIN={menu:.30,duel:.34};
+  const bgmBuf={},bgmLoading={};
+  const BG={want:null,current:null,timer:null,bus:null,pad:null,padOscs:null,file:null};
+  function loadBgm(name){
+    if(!AC||bgmBuf[name]||bgmLoading[name])return;
+    bgmLoading[name]=true;
+    fetch(BGM_URL[name]).then(r=>r.ok?r.arrayBuffer():Promise.reject(r.status))
+      .then(ab=>AC.decodeAudioData(ab))
+      .then(buf=>{bgmBuf[name]=buf;bgmLoading[name]=false;
+        /* 曲子到位时如果正放同主题的合成版，直接换过去 */
+        if(S.music&&BG.want===name&&!BG.file&&AC){BG.current=null;music(name);}})
+      .catch(()=>{bgmLoading[name]=false;});
+  }
+  function playBgmFile(name){
+    const buf=bgmBuf[name];
+    if(!buf||!AC)return false;
+    try{
+      const src=AC.createBufferSource();src.buffer=buf;src.loop=true;
+      const g=AC.createGain();g.gain.value=.0001;
+      src.connect(g);g.connect(comp);
+      const send=AC.createGain();send.gain.value=.5;g.connect(send);send.connect(reverb);
+      src.start();
+      g.gain.exponentialRampToValueAtTime(BGM_GAIN[name]||.3,AC.currentTime+1.6);
+      BG.file={src,gain:g};
+      BG.current=name;
+      return true;
+    }catch(e){return false;}
+  }
   const THEMES={
     menu:{notes:[262,330,392,440,392,330,294,262,220,262,294,330,294,262,247,262],bpm:72,type:"triangle",vol:.026,pad:[131,196]},
     duel:{notes:[220,262,330,262,220,196,220,262,294,262,220,196,175,196,220,0],bpm:96,type:"triangle",vol:.030,pad:[110,165]},
@@ -238,6 +269,14 @@ const Audio2=(()=>{
   };
   function stopMusic(){
     BG.current=null;
+    if(BG.file){
+      const f=BG.file;BG.file=null;
+      try{
+        f.gain.gain.setValueAtTime(Math.max(.0001,f.gain.gain.value),AC.currentTime);
+        f.gain.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+.5);
+        f.src.stop(AC.currentTime+.65);
+      }catch(e){}
+    }
     if(BG.timer){clearInterval(BG.timer);BG.timer=null;}
     const stopNode=n=>{
       if(!n||!AC)return;
@@ -273,6 +312,11 @@ const Audio2=(()=>{
     init();if(!AC||!ready)return;
     if(BG.current===theme)return;
     stopMusic();
+    /* 有离线渲染的曲子就放曲子；还没加载完先挂上加载，同时用合成顶着 */
+    if(BGM_URL[theme]){
+      if(playBgmFile(theme))return;
+      loadBgm(theme);
+    }
     const th=THEMES[theme];if(!th)return;
 
     const busGain=AC.createGain();busGain.gain.value=.0001;busGain.connect(comp);
