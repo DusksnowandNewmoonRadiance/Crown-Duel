@@ -1215,6 +1215,18 @@
   background:rgba(9,9,11,.72);border:1px solid var(--line-3);color:var(--text-2);font-size:12px;letter-spacing:.04em;pointer-events:none}
 #scrGame.spectating #hand,#scrGame.spectating #endBtn,#scrGame.spectating #playBtn,#scrGame.spectating #dropHint{display:none!important}
 #scrGame.spectating #meLane .row{opacity:.9}
+/* ---------- DIY 工坊：卡面图标选择器 ---------- */
+.diy-ico{display:inline-flex;align-items:center;gap:6px;width:100%;height:34px;padding:0 8px;
+  border:1px solid var(--line-2);background:var(--ink-850);color:var(--text);cursor:pointer}
+.diy-ico:hover{border-color:var(--accent-line)}
+.diy-ico svg{flex:none;color:var(--accent)}
+.diy-ico i{font-style:normal;font-size:11px;color:var(--text-3)}
+.ico-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px;max-height:56vh;overflow:auto;padding:2px}
+.ico-opt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px 6px;
+  border:1px solid var(--line);background:rgba(255,255,255,.02);color:var(--ink-100);cursor:pointer}
+.ico-opt small{font-size:10.5px;color:var(--text-3)}
+.ico-opt:hover{border-color:var(--line-3)}
+.ico-opt.on{border-color:var(--accent);color:var(--accent-hi);background:rgba(240,180,41,.08)}
 /* ============================================================================
    DIY 工坊：最左「游玩 DIY 角色」栏（四栏布局）
    ============================================================================ */

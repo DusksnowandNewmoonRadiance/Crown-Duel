@@ -30,6 +30,7 @@ const store={
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
   ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  document.body.classList.toggle("in-game",id==="#scrGame");   // 对局中关掉整屏装饰层（不用 :has，避免整页样式失效）
   if(id==="#scrGame")GameUI.fit();
   if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
 }
@@ -624,7 +625,7 @@ const DiyUI={
         <label class="${kind==="spell"?"off":""}">血<input type="number" inputmode="numeric" data-k="hp" min="1" max="30" value="${this.num(c.hp)}"${kind==="spell"?" disabled":""}></label>
         <label>张数<input type="number" inputmode="numeric" data-k="n" min="1" max="4" value="${this.num(c.n)}"></label>
         <label>上限<input type="number" inputmode="numeric" data-k="limit" min="1" max="4" value="${this.num(c.limit)}"></label>
-        <label>角标<input data-k="art" maxlength="2" value="${V.esc(c.art||"")}" placeholder="◆" autocomplete="off"></label>
+        <label>图标<button type="button" class="diy-ico" data-op="icon" title="选择卡面图标（留空 = 自动）">${DuelIcons.svg(c.icon||CardIcons.forCard(Object.assign({hero:(this.def&&this.def.name)||""},c,{kind})),{size:"1.5em",stroke:1.7})}${c.icon?"":"<i>自动</i>"}</button></label>
       </div>
       <div class="diy-card-fields2">
         <label class="grow">机制<select data-k="effect">${opts}</select></label>
@@ -697,6 +698,24 @@ const DiyUI={
     else c[k]=el.value;
     this.renderPreview();
     this.renderStats();
+  },
+  /* 图标选择器：来自 DuelIcons 白名单，选「自动」则按机制 / 关键字推断 */
+  pickIcon(i){
+    const c=this.def.cards[i];if(!c)return;
+    let m=document.getElementById("mDiyIcon");
+    if(!m){
+      m=document.createElement("div");m.className="modal";m.id="mDiyIcon";
+      m.innerHTML=`<div class="panel"><button class="x-btn" data-close aria-label="关闭">✕</button><h2>选择卡面图标</h2><div class="ico-grid" id="icoGrid"></div><div class="panel-acts"><button class="btn" id="icoAuto">自动（按机制推断）</button><button class="btn btn-gold" data-close>完成</button></div></div>`;
+      document.body.appendChild(m);
+      m.addEventListener("click",e=>{if(e.target===m||e.target.closest("[data-close]"))m.hidden=true;});
+    }
+    const draw=()=>{
+      $("#icoGrid").innerHTML=DuelIcons.list().map(x=>`<button type="button" class="ico-opt${c.icon===x.id?" on":""}" data-id="${x.id}" title="${V.esc(x.label)}">${DuelIcons.svg(x.id,{size:"26px",stroke:1.6})}<small>${V.esc(x.label)}</small></button>`).join("");
+    };
+    draw();
+    $("#icoGrid").onclick=e=>{const b=e.target.closest(".ico-opt");if(!b)return;c.icon=b.dataset.id;draw();this.renderList();this.renderPreview();};
+    $("#icoAuto").onclick=()=>{c.icon="";draw();this.renderList();this.renderPreview();};
+    m.hidden=false;
   },
   setKind(i,kind){
     const c=this.def.cards[i];if(!c)return;
@@ -940,6 +959,7 @@ $("#diyList").addEventListener("click",e=>{
   const i=+b.closest(".diy-card").dataset.i;
   if(b.dataset.op==="up")DiyUI.move(i,-1);
   else if(b.dataset.op==="down")DiyUI.move(i,1);
+  else if(b.dataset.op==="icon")DiyUI.pickIcon(i);
   else DiyUI.del(i);
 });
 $("#diyAddCard").addEventListener("click",()=>DiyUI.add());
@@ -1505,6 +1525,20 @@ $("#homeNews").addEventListener("click",()=>Live.openNews());
 $("#lobbyNews").addEventListener("click",()=>Live.openNews());
 $("#newsList").addEventListener("click",e=>{const b=e.target.closest(".news-item");if(b)Live.renderNews(b.dataset.id);});
 
+/* Cosmetics 必须在「启动」之前定义：启动时 renderHome() 会读它，const 在 TDZ 内访问会抛错并中断后续全部初始化 */
+/* ============================================================
+   配饰（头衔 / 名字颜色）与金币动画
+   ============================================================ */
+const Cosmetics={
+  titles:{title_recruit:{name:"皇冠新兵",color:"#6fbf73"},title_general:{name:"皇冠将军",color:"#a98fd9"}},
+  colors:{red:"#e0664f",orange:"#e08a4f",yellow:"#d9c05a",green:"#6fbf73",cyan:"#4fb8b0",blue:"#5b9bd5",purple:"#a98fd9"},
+  of(me){return (me&&me.cosmetics)||{titles:[],colors:[],equip:{title:null,color:null}};},
+  nameHTML(nick,me){
+    const c=Cosmetics.of(me),eq=c.equip||{},t=eq.title&&Cosmetics.titles[eq.title];
+    const col=eq.color&&Cosmetics.colors[eq.color];
+    return (t?`<i class="cos-title" style="color:${t.color}">${V.esc(t.name)}</i>`:"")+`<b${col?` style="color:${col}"`:""}>${V.esc(nick||"")}</b>`;
+  }
+};
 /* ============================================================
    启动
    ============================================================ */
@@ -1527,19 +1561,6 @@ window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;}};
 /* ============================================================
    商店
    ============================================================ */
-/* ============================================================
-   配饰（头衔 / 名字颜色）与金币动画
-   ============================================================ */
-const Cosmetics={
-  titles:{title_recruit:{name:"皇冠新兵",color:"#6fbf73"},title_general:{name:"皇冠将军",color:"#a98fd9"}},
-  colors:{red:"#e0664f",orange:"#e08a4f",yellow:"#d9c05a",green:"#6fbf73",cyan:"#4fb8b0",blue:"#5b9bd5",purple:"#a98fd9"},
-  of(me){return (me&&me.cosmetics)||{titles:[],colors:[],equip:{title:null,color:null}};},
-  nameHTML(nick,me){
-    const c=Cosmetics.of(me),eq=c.equip||{},t=eq.title&&Cosmetics.titles[eq.title];
-    const col=eq.color&&Cosmetics.colors[eq.color];
-    return (t?`<i class="cos-title" style="color:${t.color}">${V.esc(t.name)}</i>`:"")+`<b${col?` style="color:${col}"`:""}>${V.esc(nick||"")}</b>`;
-  }
-};
 function reducedMotion(){try{return matchMedia("(prefers-reduced-motion:reduce)").matches;}catch(e){return false;}}
 function flyCoin(n){
   if(reducedMotion())return;

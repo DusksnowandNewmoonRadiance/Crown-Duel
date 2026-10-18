@@ -1,13 +1,15 @@
 {
   "name": "crown-duel",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "description": "皇冠对决 · 网页联机卡牌对战",
   "private": true,
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node test/decks.js && node test/decks-sync.js && node test/diy.js && node test/presets.js && node test/rarity.js && node test/rules.js && node test/susu.js && node test/ai-modes.js && node test/eriyi.js && node test/sim.js && node test/diy-server.js && node test/online.js && node test/live.js && node test/admin-users.js && node test/cosmetics.js && node test/rank.js && node test/chat.js && node test/social.js && node test/spectate.js && node test/netstab.js"
+    "test": "node test/decks.js && node test/decks-sync.js && node test/diy.js && node test/icons.js && node test/presets.js && node test/rarity.js && node test/rules.js && node test/susu.js && node test/ai-modes.js && node test/eriyi.js && node test/sim.js && node test/diy-server.js && node test/online.js && node test/live.js && node test/admin-users.js && node test/cosmetics.js && node test/rank.js && node test/chat.js && node test/social.js && node test/spectate.js && node test/netstab.js",
+    "build": "node tools/build.js",
+    "typecheck": "node tools/build.js --check"
   },
   "engines": {
     "node": ">=18"
@@ -17,7 +19,7 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "typescript": "^5.9.3"
   }
 }
-

@@ -142,8 +142,9 @@ const FX=(()=>{
     const d=ms||1200;
     bars(d-200);
     const l=add(`position:absolute;inset:0;z-index:205;pointer-events:none;display:grid;place-content:center;gap:12px;text-align:center;opacity:0`);
-    l.innerHTML=`<div style="font:600 44px/1 var(--font-ui);letter-spacing:.22em;text-indent:.22em;color:#eef2f4">${esc(text)}</div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:12px"><i style="width:34px;height:1px;background:#6b7478"></i><span style="font:500 10px var(--font-mono);letter-spacing:.28em;color:#7b8488">AWA</span><i style="width:34px;height:1px;background:#6b7478"></i></div>`;
+    l.innerHTML=`<div class="awa-t" data-t="${esc(text)}">${esc(text)}</div>
+      <div class="awa-sub"><i></i><span>AWA // 0x${[...String(text)].map(ch=>ch.charCodeAt(0).toString(16)).join("").slice(0,8).toUpperCase()}</span><i></i></div>
+      <div class="awa-scan"></div>`;
     run(l,[{opacity:0},{opacity:1,offset:.15},{opacity:1,offset:.75},{opacity:0}],{duration:d,easing:"linear"});
     return l;
   }

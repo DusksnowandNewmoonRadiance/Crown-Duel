@@ -11,6 +11,8 @@ docs/pr/
 .shots/
 screenshots/
 .shots-batch.cjs
+tools/music/.bin/
+.build/
 .ui-*.cjs
 USED/
 __pycache__/

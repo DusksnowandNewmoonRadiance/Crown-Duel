@@ -6,9 +6,9 @@
    - 与正常池严格分离：C.isDiy(hero) 为 true 的角色只能进入 DIY 房间
    ============================================================ */
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("./cards.js"));
-  else root.DuelDiy = factory(root.DuelCards);
-})(typeof self !== "undefined" ? self : this, function (C) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("./cards.js"), require("./icons.js"));
+  else root.DuelDiy = factory(root.DuelCards, root.DuelIcons);
+})(typeof self !== "undefined" ? self : this, function (C, Icons) {
   "use strict";
 
   const SCHEMA = 1;
@@ -152,12 +152,15 @@
       if (effect && !CATALOG[effect] && !BUILTIN_EFFECTS[effect]) {
         errors.push(`${at} 使用了不存在的机制：${effect}`);
       }
+      const icon = str(c.icon);
+      if (icon && !(Icons && Icons.has(icon))) errors.push(`${at} 的图标不在图标库内：${icon}`);
       const card = {
         id,
         name: cleanText(c.name, LIMITS.cardName[1]) || id,
         cost: int(c.cost),
         kind,
         art: cleanText(c.art, 2) || (kind === "unit" ? "◆" : "✧"),
+        icon: icon && Icons && Icons.has(icon) ? icon : undefined,
         text: String(c.text == null ? "" : c.text).slice(0, 200),
         effect: effect || undefined,
         onDraw: !!c.onDraw || undefined,
@@ -227,9 +230,13 @@
       if (kind === "spell" && !effect) errors.push(`${at} 是法术牌，必须选择一种机制`);
       if (c.onDraw && kind !== "spell") errors.push(`${at}：只有法术牌可以标记「抽到时自动施放」`);
 
+      /* 卡面图标：只接受图标库里的 id（白名单，不接受自定义 SVG） */
+      const icon = str(c.icon);
+      if (icon && !(Icons && Icons.has(icon))) errors.push(`${at} 的图标不在图标库内：${icon}`);
       const card = {
         id, name, cost, kind,
         art: cleanText(c.art, 2) || (kind === "unit" ? "◆" : "✧"),
+        icon: icon && Icons && Icons.has(icon) ? icon : undefined,
         text: cleanText(c.text, LIMITS.text[1]) || (CATALOG[effect] ? CATALOG[effect].text : ""),
         effect: effect || undefined,
         onDraw: !!c.onDraw || undefined,

@@ -1,17 +1,13 @@
 /* ============================================================================
-   音效与背景音乐 · Audio2（WebAudio 合成，无音频文件）
+   音效与背景音乐 · Audio3「蓝图」
    ----------------------------------------------------------------------------
-   之前「塑料感」的根源不是音色选得不对，而是整条链路太干、太裸：
-     · 振荡器直接接 destination：没有滤波、没有空间、没有动态
-     · 全是三角/方波单音，瞬态是一个陡峭的 exponential 衰减 → 电子表滴滴声
-     · 音效没有分层（只有一记音），重复触发音高完全一样 → 机关枪
-     · 音乐是 setTimeout 单音旋律，抖动 + 无和声 → 机械
-   这一版的链路：
-     每个声部 → 低通（带扫频包络） → 音量包络 → [干声 + 混响送出]
-              → 压缩器 → 主音量 → 输出
-     · 混响用噪声脉冲响应现场合成，2.2 秒，立体声去相关
-     · 音效一律「瞬态噪声 + 音体 + 尾巴」三层叠加，每次触发 ±3% 微调音高
-     · 音乐用 AudioContext 时钟做前瞻排期，加铺底 pad 与和声
+   与视觉主题（深炭底 / 半调点阵 / 十字定位 / 金色手写体）对应的声音设计：
+     · 冷色、克制、精确：D 多利亚调式，马林巴/FM 拨奏 + 玻璃钟（金色点缀）
+     · 半调点阵 → 高频短促 tick；十字定位 → 干净的 sine 双音；叠影 → 乒乓延迟
+   全部音效与两首 BGM 由 tools/music/blueprint_audio.py 离线合成（numpy，无外部采样），
+   输出到 public/audio/{sfx,bgm}/*.ogg。每个音效文件自带短混响，这里不再重复加。
+   取不到文件时退回下面同风格的 WebAudio 实时合成，断网 / 老缓存也不会哑音。
+     每个声部 → 低通 → 音量包络 → [干声 + 混响送出] → 压缩器 → 主音量 → 输出
    ============================================================================ */
 const Audio2=(()=>{
   let AC=null,unlocked=false,ready=false;
@@ -73,23 +69,11 @@ const Audio2=(()=>{
      真录音永远比合成器「高级」：19 个 CC0 素材（Kenney，见 public/audio/LICENSE.txt）
      覆盖全部高频音效，仍然走同一条压缩/混响总线。取不到就退回下面的合成实现，
      所以断网、离线包、老缓存都不会出现哑音。 */
-  const SAMPLE_URL={
-    play:"audio/sfx/play.ogg", hit:"audio/sfx/hit.ogg", die:"audio/sfx/die.ogg",
-    swing:"audio/sfx/swing.ogg", satur:"audio/sfx/satur.ogg",
-    core:"audio/sfx/core.ogg", match:"audio/sfx/match.ogg"
-  };
-  /* 采样只用在「打击 / 摩擦」这类真实质感上；音阶类（选牌、金币、回合）继续合成——
-     上一版把所有音效都换采样，UI 提示音全是高频嘶声，反而更廉价。
-     每个采样统一降调 + 低通 + 压音量，再叠一层正弦「身体」，把「尖」磨掉。 */
-  const SAMPLE_MIX={
-    play:{rate:.94,cut:4200,gain:.50,body:[96,.16]},
-    hit:{rate:.90,cut:3000,gain:.58,body:[78,.14]},
-    die:{rate:.92,cut:2400,gain:.55,body:[62,.18]},
-    swing:{rate:.95,cut:5200,gain:.40},
-    satur:{rate:.90,cut:2800,gain:.55,body:[70,.12]},
-    core:{rate:.96,cut:5000,gain:.45},
-    match:{rate:.96,cut:5200,gain:.42}
-  };
+  const SAMPLE_NAMES=["click","select","pick","draw","play","spell","swing","hit","heal","die","turn",
+    "enemy","coin","error","tick","core","satur","win","lose","emote","match"];
+  const SAMPLE_URL={};SAMPLE_NAMES.forEach(n=>{SAMPLE_URL[n]="audio/sfx/"+n+".ogg";});
+  /* 渲染时已按「提示音轻、打击重」配好相对电平；这里只留一个总增益，并在运行时加 ±3% 音高微调防机关枪 */
+  const SFX_GAIN=.62;
   const samples={};
   let samplesLoading=false;
   function loadSamples(){
@@ -104,17 +88,14 @@ const Audio2=(()=>{
     });
   }
   function playSample(n){
-    const cfg=SAMPLE_MIX[n],b=samples[n];
-    if(!cfg||!b||!AC)return false;
+    const b=samples[n];
+    if(!b||!AC)return false;
     try{
       const src=AC.createBufferSource();src.buffer=b;
-      src.playbackRate.value=cfg.rate||1;
-      const lp=AC.createBiquadFilter();lp.type="lowpass";
-      lp.frequency.value=cfg.cut||4200;lp.Q.value=.6;
-      const g=AC.createGain();g.gain.value=cfg.gain||.5;
-      src.connect(lp);lp.connect(g);bus(g,.14);
+      src.playbackRate.value=1+rnd(-.03,.03);
+      const g=AC.createGain();g.gain.value=SFX_GAIN;
+      src.connect(g);bus(g,0);
       src.start(AC.currentTime);
-      if(cfg.body)voice(cfg.body[0],0,.24,{type:"sine",vol:cfg.body[1],cutoff:420,glide:.72,wet:.08});
       return true;
     }catch(e){return false;}
   }
@@ -238,7 +219,8 @@ const Audio2=(()=>{
   /* 离线渲染的管弦 loop（public/audio/bgm/*.ogg）：真曲子，比实时合成厚得多。
      文件没到位时先用合成顶上，加载完自动切过去；断网则一直是合成，不会静音。 */
   const BGM_URL={menu:"audio/bgm/menu.ogg",duel:"audio/bgm/duel.ogg",susu:"audio/bgm/susu.ogg",eriyi:"audio/bgm/eriyi.mp3"};
-  const BGM_GAIN={menu:.30,duel:.34,susu:.36,eriyi:.34};
+  /* menu / duel 是原声配乐（-16 dBFS RMS 左右）；susu / eriyi 是角色专属曲，各自按成品响度配平 */
+  const BGM_GAIN={menu:.30,duel:.30,susu:.36,eriyi:.34};
   const bgmBuf={},bgmLoading={};
   const BG={want:null,current:null,timer:null,bus:null,pad:null,padOscs:null,file:null};
   function loadBgm(name){
@@ -258,17 +240,17 @@ const Audio2=(()=>{
       const src=AC.createBufferSource();src.buffer=buf;src.loop=true;
       const g=AC.createGain();g.gain.value=.0001;
       src.connect(g);g.connect(comp);
-      const send=AC.createGain();send.gain.value=.5;g.connect(send);send.connect(reverb);
+      const send=AC.createGain();send.gain.value=.12;g.connect(send);send.connect(reverb);
       src.start();
-      g.gain.exponentialRampToValueAtTime(BGM_GAIN[name]||.3,AC.currentTime+1.6);
+      g.gain.exponentialRampToValueAtTime(BGM_GAIN[name]||.25,AC.currentTime+1.6);
       BG.file={src,gain:g};
       BG.current=name;
       return true;
     }catch(e){return false;}
   }
   const THEMES={
-    menu:{notes:[262,330,392,440,392,330,294,262,220,262,294,330,294,262,247,262],bpm:72,type:"triangle",vol:.026,pad:[131,196]},
-    duel:{notes:[220,262,330,262,220,196,220,262,294,262,220,196,175,196,220,0],bpm:96,type:"triangle",vol:.030,pad:[110,165]},
+    menu:{notes:[294,349,440,523,440,349,330,294,262,294,349,392,349,294,262,294],bpm:60,type:"sine",vol:.03,pad:[73,110]},
+    duel:{notes:[294,349,440,349,294,262,294,349,392,349,294,262,233,262,294,0],bpm:112,type:"triangle",vol:.028,pad:[73,110]},
     /* 苏苏《赤色铁流》的合成版兜底：susu.ogg 没加载完（或断网）时先顶这段主题 A，
        音高/调性（D 小调）与真曲子一致，切过去不会跳调。 */
     susu:{notes:[440,440,587,698,698,659,587,587,523,587,659,698,659,587,440,0],bpm:124,type:"triangle",vol:.028,pad:[147,220]},

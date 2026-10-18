@@ -5,133 +5,175 @@
    ============================================================================ */
 
 /* ============================================================================
-   卡面
+   卡面 · 标准模板（结构见 src/ui/cardtemplate.ts）
+   标题栏（费用宝石 + 名称）/ 插画窗（蓝图底 + 中央图标 + 关键字徽章）/ 类型带 / 文本框 / 攻防徽章
+   整张卡以 em 计量，改 font-size 即可整体缩放；颜色由 --hcr（卡牌师主题色）与稀有度 --rc 决定
    ============================================================================ */
 .card{
   --hcr:160,160,168;
+  --rc:var(--line-2);
   position:relative;width:11em;height:15.4em;font-size:12px;
-  border-radius:.72em;padding:.46em;
+  border-radius:.55em;padding:0;
   display:flex;flex-direction:column;text-align:center;overflow:hidden;
   color:var(--text);
-  background:var(--ink-800);
-  border:1px solid var(--line-2);
+  background:
+    linear-gradient(180deg,rgba(var(--hcr),.16),rgba(var(--hcr),0) 38%),
+    var(--ink-800);
+  border:1px solid var(--rc);
   box-shadow:var(--sh-1);
   user-select:none;
   transition:border-color var(--t-fast),box-shadow var(--t-fast);
   isolation:isolate;
 }
-
-/* 费用 */
-.card .cost{
-  position:absolute;left:.42em;top:.42em;z-index:6;
-  width:2.1em;height:2.1em;border-radius:50%;
-  display:grid;place-items:center;
-  font:600 1.15em/1 var(--font-ui);font-variant-numeric:tabular-nums;
-  color:var(--ink-50);
-  background:rgba(10,10,12,.82);
-  border:1px solid rgba(255,255,255,.22);
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+/* 角标：四角取景括号，颜色随稀有度（与界面的「十字定位」语言一致） */
+:is(#preview,#reveal,.ov-cards,.cv-card,.card-event,.reveal-side,.cx-card) .card::after{
+  content:"";position:absolute;inset:.22em;z-index:7;pointer-events:none;
+  --b:var(--rc);
+  background:
+    linear-gradient(var(--b),var(--b)) left top/.7em 1px no-repeat,
+    linear-gradient(var(--b),var(--b)) left top/1px .7em no-repeat,
+    linear-gradient(var(--b),var(--b)) right top/.7em 1px no-repeat,
+    linear-gradient(var(--b),var(--b)) right top/1px .7em no-repeat,
+    linear-gradient(var(--b),var(--b)) left bottom/.7em 1px no-repeat,
+    linear-gradient(var(--b),var(--b)) left bottom/1px .7em no-repeat,
+    linear-gradient(var(--b),var(--b)) right bottom/.7em 1px no-repeat,
+    linear-gradient(var(--b),var(--b)) right bottom/1px .7em no-repeat;
+  opacity:.8;
 }
-.card.costup .cost{border-color:rgba(194,96,90,.8);color:#f0c6c1}
-.card.costdown .cost{border-color:rgba(105,173,138,.8);color:#c9e6d8}
 
-/* 插画窗：满幅到卡边，让卡面读起来像一张海报而不是贴了个图标 */
+/* 费用宝石：菱形底 + 数字（数字不随底座旋转） */
+.card .cost{
+  position:absolute;left:.3em;top:.24em;z-index:8;
+  width:2.3em;height:2.3em;isolation:isolate;
+  display:grid;place-items:center;
+  font:700 1.12em/1 var(--font-ui);font-variant-numeric:tabular-nums;
+  color:var(--ink-0);text-shadow:0 1px 2px rgba(0,0,0,.8);
+}
+.card .cost::before{
+  content:"";position:absolute;inset:.3em;z-index:-1;transform:rotate(45deg);
+  background:rgba(10,10,12,.92);border:1px solid rgba(var(--hcr),.95);border-radius:.28em;
+  box-shadow:0 0 0 1px rgba(0,0,0,.55),0 .15em .5em rgba(0,0,0,.5);
+}
+.card.costup .cost{color:#f6cdc8}
+.card.costup .cost::before{border-color:rgba(194,96,90,.95)}
+.card.costdown .cost{color:#cdebdc}
+.card.costdown .cost::before{border-color:rgba(105,173,138,.95)}
+
+/* 标题栏 */
+.card .nm{
+  flex:none;height:2.2em;padding:.15em .5em .15em 2.7em;
+  display:flex;align-items:center;justify-content:flex-start;text-align:left;
+  font:600 .92em/1.15 var(--font-ui);letter-spacing:0;color:var(--ink-25);
+  background:linear-gradient(90deg,rgba(var(--hcr),.0),rgba(var(--hcr),.12));
+  border-bottom:1px solid var(--line-2);
+  overflow:hidden;
+}
+.card .nm>span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.card .nm-m{font-size:.84em}
+.card .nm-s{font-size:.72em;line-height:1.2}
+
+/* 插画窗 */
 .card .art{
-  position:relative;flex:none;height:4.7em;
-  margin:-.46em -.46em .4em;
-  border-radius:0;overflow:hidden;
+  position:relative;flex:none;height:4.5em;overflow:hidden;
   background:var(--ink-750);
   border-bottom:1px solid var(--line-2);
 }
-.card .art .artimg{position:absolute;inset:0;width:100%;height:100%;display:block}
-.card .art .glyph{display:none}
-
-/* 名字 */
-.card .nm{
-  font:600 1.02em/1.2 var(--font-ui);letter-spacing:0;color:var(--ink-25);
-  display:flex;align-items:center;justify-content:center;
-  min-height:2.1em;padding:0 .15em;
+.card .art .artbg,.unit .ua .artbg{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat}
+.card .ico-wrap{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.card .ico-wrap::before,.unit .ua .ico-wrap::before{
+  content:"";position:absolute;left:50%;top:50%;width:150%;aspect-ratio:1;transform:translate(-50%,-50%);
+  background:radial-gradient(closest-side,rgba(var(--hcr),.42),rgba(var(--hcr),0));pointer-events:none;
 }
-/* 类型行 */
+.card .ico-wrap{overflow:hidden}
+.card .ico-wrap .ico{position:relative;width:3.3em;height:3.3em;display:block}
+
+/* 类型带 */
 .card .type{
-  font-size:.68em;line-height:1.3;color:var(--ink-300);
-  margin:0 0 .34em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  flex:none;padding:.3em .5em;
+  font:500 .62em/1.2 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-300);
+  background:rgba(0,0,0,.22);border-bottom:1px solid var(--line);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.card .type .rar{font-weight:600}
+.card .type .rar{font-weight:700}
 
-/* 说明 */
+/* 文本框 */
 .card .tx{
-  flex:1;min-height:0;font-size:.82em;line-height:1.5;
-  color:var(--ink-200);overflow:hidden;padding:0 .16em;
+  flex:1;min-height:0;margin:.3em .4em .3em;padding:.28em .3em;
+  font-size:.8em;line-height:1.45;color:var(--ink-100);overflow:hidden;
+  background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:.25em;
 }
-.card .tx b{color:var(--ink-25);font-weight:600}
+.card .tx b{color:var(--ink-0);font-weight:700}
 .card .tx .flv{display:block;color:var(--ink-400);font-style:normal;margin-top:.25em;font-size:.95em}
 .card .tx:has(.flv:first-child){display:flex;align-items:center;justify-content:center}
+.card.k-unit .tx{margin-bottom:1.45em}
+/* 小卡面隐藏风味文字（预览 / 大卡里显示），避免挤掉效果说明 */
+.card .tx .flv{display:none}
+.card .tx:has(.flv:first-child) .flv,#preview .flv,#reveal .flv,.ov-cards .flv,.cv-card .flv,.card-event .flv,.reveal-side .flv,.cx-card .flv{display:block}
 
-/* 攻击 / 生命 */
-.card .stats{display:flex;justify-content:space-between;align-items:flex-end;margin-top:.16em}
+/* 攻防徽章：左下攻击、右下生命，压在卡面边缘 */
+.card .stats{position:absolute;left:.3em;right:.3em;bottom:.3em;z-index:8;display:flex;justify-content:space-between;pointer-events:none}
 .stat{
-  width:1.95em;height:1.95em;border-radius:50%;
-  display:grid;place-items:center;
-  font:600 1.05em/1 var(--font-ui);font-variant-numeric:tabular-nums;
-  color:var(--ink-50);
-  background:var(--ink-700);
-  border:1px solid var(--line-2);
-}
-.stat.atk{color:var(--ink-25)}
-.stat.hp{background:rgba(194,96,90,.14);border-color:rgba(194,96,90,.34);color:#eec9c5}
-.stat.hp.dmg{color:#f5b9b2}
-.stat.buff{color:#bfe4d1;border-color:rgba(105,173,138,.45);background:rgba(105,173,138,.12)}
-
-/* 关键字 */
-.card .kws{
-  position:absolute;right:.36em;top:.36em;z-index:6;
-  display:flex;flex-direction:column;gap:.16em;align-items:flex-end;
-}
-.kw{
-  font-style:normal;font:500 .68em/1 var(--font-ui);
-  padding:.32em .45em;border-radius:.34em;
-  background:rgba(10,10,12,.8);
+  position:relative;width:2.1em;height:2.1em;border-radius:.45em;
+  display:grid;place-items:center;overflow:hidden;
+  font:700 1.05em/1 var(--font-ui);font-variant-numeric:tabular-nums;
+  color:var(--ink-0);
+  background:rgba(10,10,12,.9);
   border:1px solid var(--line-3);
-  color:var(--ink-50);
-  white-space:nowrap;
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
 }
-.kw.charge{border-color:rgba(211,177,132,.6);color:var(--accent-hi)}
-.kw.taunt{border-color:rgba(255,255,255,.28)}
-.kw.pierce{border-color:rgba(109,158,209,.6);color:#bdd5ec}
-.kw.hide{border-color:rgba(255,255,255,.2);color:var(--ink-100)}
-.kw.core{border-color:rgba(147,117,194,.65);color:#d3c4e8}
-.kw.multi{border-color:rgba(194,96,90,.65);color:#eec9c5}
+.stat .si{position:absolute;inset:16%;opacity:.22;color:currentColor;display:block}
+.stat .si svg{width:100%;height:100%;display:block}
+.stat .sv{position:relative;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.stat.atk{border-color:rgba(var(--hcr),.8)}
+.stat.hp{background:rgba(34,14,14,.9);border-color:rgba(194,96,90,.65);color:#f6d3cf}
+.stat.hp.dmg{color:#ff9d93}
+.stat.buff{color:#c6ecd7;border-color:rgba(105,173,138,.7)}
 
-/* 稀有度小点 */
+/* 关键字徽章：图标 +（大卡上）文字 */
+.card .kws{position:absolute;left:.3em;bottom:.3em;z-index:6;display:flex;flex-wrap:wrap;gap:.22em;max-width:calc(100% - .6em)}
+.kw{
+  display:inline-flex;align-items:center;gap:.25em;
+  font-style:normal;font:600 .62em/1 var(--font-ui);
+  padding:.34em .42em;border-radius:.3em;
+  background:rgba(10,10,12,.86);border:1px solid var(--line-3);color:var(--ink-50);
+  white-space:nowrap;
+}
+.kw svg{width:1.45em;height:1.45em;flex:none;display:block}
+.kw .t{display:none}
+.kw.charge{border-color:rgba(240,180,41,.7);color:var(--accent-hi)}
+.kw.taunt{border-color:rgba(255,255,255,.4)}
+.kw.pierce{border-color:rgba(109,158,209,.7);color:#bdd5ec}
+.kw.hide{border-color:rgba(255,255,255,.28);color:var(--ink-100)}
+.kw.core{border-color:rgba(147,117,194,.75);color:#d3c4e8}
+.kw.multi{border-color:rgba(194,96,90,.75);color:#eec9c5}
+.kw.fleet{border-color:rgba(147,117,194,.75);color:#d3c4e8}
+/* 够大的卡面（预览 / 选牌 / 图鉴）显示关键字文字 */
+#preview .kw .t,#reveal .kw .t,.ov-cards .kw .t,.cv-card .kw .t,.card-event .kw .t,.reveal-side .kw .t,.cx-card .kw .t{display:inline}
+
+/* 稀有度宝石（居中小菱形）与配色 */
 .card .gem{
-  position:absolute;left:50%;bottom:.5em;z-index:5;
-  width:.42em;height:.42em;transform:translateX(-50%);border-radius:50%;
+  position:absolute;left:50%;bottom:.55em;z-index:5;
+  width:.55em;height:.55em;transform:translateX(-50%) rotate(45deg);
 }
 .gem.r-common{background:var(--r-common)}
 .gem.r-rare{background:var(--r-rare)}
 .gem.r-special{background:var(--r-special)}
 .gem.r-elite{background:var(--r-elite)}
-.card .rar{font-weight:600}
+.card .rar{font-weight:700}
 .rar.r-common{color:var(--r-common)}
 .rar.r-rare{color:var(--r-rare)}
 .rar.r-special{color:var(--r-special)}
 .rar.r-elite{color:var(--r-elite)}
 
 /* 状态变体 */
-.card.core{border-color:rgba(147,117,194,.5)}
-.card.awa{background:var(--ink-850)}
-.card.awa .art{filter:grayscale(1) contrast(1.05)}
-.card.awa .nm,.card.awa .tx{font-family:var(--font-mono)}
-.card.awa .type{color:var(--ink-400)}
+.card.core{box-shadow:0 0 0 1px rgba(147,117,194,.35),var(--sh-1)}
 .card.cant{opacity:.55}
 
 /* 稀有度描边 */
-.card.r-common{border-color:var(--line-2)}
-.card.r-rare{border-color:rgba(91,143,199,.42)}
-.card.r-special{border-color:rgba(147,117,194,.45)}
-.card.r-elite{border-color:rgba(195,162,103,.55)}
+.card.r-common{--rc:rgba(244,244,241,.22)}
+.card.r-rare{--rc:rgba(91,143,199,.7)}
+.card.r-special{--rc:rgba(147,117,194,.75)}
+.card.r-elite{--rc:rgba(240,180,41,.9)}
+.card.r-elite{box-shadow:0 0 0 1px rgba(240,180,41,.22),var(--sh-1)}
 
 /* ============================================================================
    手牌
@@ -200,7 +242,10 @@
   background:var(--ink-750);border-bottom:1px solid var(--line);
 }
 .unit .ua .artimg{position:absolute;inset:0;width:100%;height:100%}
-.unit .ua .glyph{display:none}
+.unit .ua .ico-wrap{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.unit .ua .ico-wrap{overflow:hidden}
+.unit .ua .ico-wrap::before{width:90px}
+.unit .ua .ico{position:relative;width:46px;height:46px;display:block}
 .unit .un{
   width:100%;flex:1;display:grid;place-items:center;padding:.2em .35em;
   font:500 11.5px/1.25 var(--font-ui);color:var(--ink-100);
@@ -216,6 +261,7 @@
   display:grid;place-items:center;font:600 10px var(--font-ui);
   background:rgba(10,10,12,.82);border:1px solid var(--line-3);color:var(--ink-50);
 }
+.unit .ukw i svg{width:11px;height:11px;display:block}
 .unit .ukw i.charge{border-color:var(--accent-line);color:var(--accent-hi)}
 .unit .ukw i.pierce{border-color:rgba(109,158,209,.6);color:#bdd5ec}
 .unit .ukw i.hide{border-color:var(--line-3);color:var(--ink-100)}
@@ -234,17 +280,11 @@
   position:absolute;left:4px;right:4px;bottom:4px;z-index:6;
   display:flex;justify-content:space-between;pointer-events:none;
 }
-.unit .ust .stat{
-  width:26px;height:26px;font-size:12.5px;
-  background:rgba(10,10,12,.86);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-  border-color:var(--line-3);
-}
-.unit .ust .stat.hp{background:rgba(30,14,14,.86);border-color:rgba(194,96,90,.5);color:#f0cdc9}
+.unit .ust .stat{width:27px;height:27px;font-size:13px;border-radius:7px}
 
 /* 单位状态 */
 .unit.taunt .u{border-color:var(--line-3)}
 .unit.hide .u{border-style:dashed}
-.unit.awa .u{background:var(--ink-850)}
 .unit.can .u{cursor:grab;border-color:rgba(105,173,138,.6)}
 .unit.sel .u{border-color:var(--accent-line);transform:translateY(-4px);box-shadow:0 0 0 1px var(--accent-line),var(--sh-2)}
 .unit.tired .u{opacity:.55}
@@ -332,7 +372,119 @@
 .card .tx-s{font-size:.74em;line-height:1.42}
 .card .tx-xs{font-size:.66em;line-height:1.36}
 /* 所有卡面描述都用行内省略号收尾，避免"半句话"被硬切 */
-.card .tx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6;overflow:hidden;word-break:break-word}
-.card .tx-s,.card .tx-xs{-webkit-line-clamp:9}
+.card .tx{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;overflow:hidden;word-break:break-word}
+.card.k-unit .tx{-webkit-line-clamp:4}
+.card .tx-s{-webkit-line-clamp:6}
+.card .tx-xs{-webkit-line-clamp:7}
+.card.k-unit .tx-s{-webkit-line-clamp:5}
+.card.k-unit .tx-xs{-webkit-line-clamp:6}
 /* 兜底：任何情况下溢出都以省略号收尾，而不是硬切 */
 .card .tx{overflow-wrap:anywhere}
+/* ============================================================================
+   awa · GLITCH（黑底白字，单色）
+   只有 3 张 awa 卡（停摆 / 选角 / 即兴演出）和它们召唤的单位用这套。
+   卡面被切成几块，每块一种不同的「错误」：
+     标题栏 — 周期性反白闪烁 + 名称切片错位
+     插画窗 — 动态噪点（电视雪花）+ 扫描线 + 白色撕裂条 + 图标位移重影
+     类型带 — 乱码光标 ░▒▓█ 循环
+     文本框 — 扫描线 + 信号丢失（条纹闪现）+ 文字抖动
+     攻防徽章 — 反白 + 偶发错位
+   噪点贴图由 cardtemplate.ts 运行时生成一次（canvas → data URI，--awa-noise）。
+   动画只动 transform / opacity / background-position / clip-path，小面积；受 prefers-reduced-motion 控制。
+   ============================================================================ */
+.card.awa{
+  background:#050505;color:#fff;
+  --rc:rgba(255,255,255,.9);
+  border-color:#fff;
+  box-shadow:3px 3px 0 rgba(255,255,255,.16),var(--sh-1);
+}
+.card.awa .art{filter:none;background:#000;border-color:#fff}
+.card.awa .artbg{filter:grayscale(1) contrast(1.6) brightness(.55)}
+.card.awa .nm,.card.awa .tx,.card.awa .type{font-family:var(--font-mono)}
+
+/* —— 标题栏：反白闪烁 + 名称切片 —— */
+.card.awa .nm{background:#000;color:#fff;border-bottom:1px solid #fff;animation:gInvert 5.3s steps(1,end) infinite}
+.card.awa .nm>span,.unit.awa .un{position:relative;text-shadow:2px 0 rgba(255,255,255,.5),-2px 0 rgba(255,255,255,.22)}
+.card.awa .nm>span::before,.card.awa .nm>span::after,.unit.awa .un::before,.unit.awa .un::after{
+  content:attr(data-t);position:absolute;left:0;top:0;width:100%;overflow:hidden;white-space:inherit;pointer-events:none;color:inherit;text-shadow:none;
+}
+.card.awa .nm>span::before,.unit.awa .un::before{opacity:0;clip-path:inset(0 0 60% 0);animation:gSliceA 2.9s steps(1,end) infinite}
+.card.awa .nm>span::after,.unit.awa .un::after{opacity:0;clip-path:inset(55% 0 0 0);animation:gSliceB 2.3s steps(1,end) infinite}
+
+/* —— 插画窗：噪点 + 扫描线 + 撕裂条 + 图标重影 —— */
+.card.awa .art::before,.unit.awa .ua::before{
+  content:"";position:absolute;inset:-8px;z-index:2;pointer-events:none;
+  background:var(--awa-noise,none);background-size:64px 64px;opacity:.38;mix-blend-mode:screen;
+  animation:gNoise .36s steps(1,end) infinite;
+}
+.card.awa .art::after,.unit.awa .ua::after{
+  content:"";position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.5) 0 1px,transparent 1px 3px);
+}
+.card.awa .ico-wrap::after,.unit.awa .ua .ico-wrap::after{
+  content:"";position:absolute;left:-6%;right:-6%;top:42%;height:11%;background:#fff;pointer-events:none;opacity:0;
+  animation:gBar 3.7s steps(1,end) infinite;
+}
+.card.awa .ico-wrap,.unit.awa .ua .ico-wrap{isolation:isolate;z-index:4}
+.card.awa .ico-wrap::before,.unit.awa .ua .ico-wrap::before{background:radial-gradient(closest-side,rgba(255,255,255,.18),rgba(255,255,255,0))}
+.card.awa .ico-wrap .gl,.unit.awa .ua .ico-wrap .gl{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;color:#fff}
+.card.awa .gl .ico,.unit.awa .gl .ico{position:relative}
+.gl-r{opacity:.55;clip-path:inset(0 0 55% 0);animation:gSplitR 2.1s steps(1,end) infinite}
+.gl-c{opacity:.4;clip-path:inset(45% 0 0 0);animation:gSplitC 2.6s steps(1,end) infinite}
+.card.awa .ico-wrap>.ico,.unit.awa .ua .ico-wrap>.ico{color:#fff}
+
+/* —— 类型带：乱码光标 —— */
+.card.awa .type{background:#000;color:#fff;border-bottom:1px solid rgba(255,255,255,.6);letter-spacing:.14em}
+.card.awa .type::after{content:"█";margin-left:.4em;animation:gGlyph 1.2s steps(1,end) infinite}
+
+/* —— 文本框：扫描线 + 信号丢失 —— */
+.card.awa .tx{
+  position:relative;color:#f2f2f2;background:#000;border:1px dashed rgba(255,255,255,.55);
+  text-shadow:1px 0 rgba(255,255,255,.4),-1px 0 rgba(255,255,255,.18);animation:gJit 4.1s steps(1,end) infinite;
+}
+.card.awa .tx b{background:#fff;color:#000;padding:0 .12em}
+.card.awa .tx::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:1px;background:rgba(255,255,255,.85);pointer-events:none;
+  animation:gScanLine 2.4s linear infinite;
+}
+.card.awa .tx::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,#fff 0 2px,transparent 2px 7px,#fff 7px 8px,transparent 8px 15px);
+  clip-path:inset(30% 0 52% 0);opacity:0;animation:gDrop 3.3s steps(1,end) infinite;
+}
+
+/* —— 费用 / 攻防：反白 —— */
+.card.awa .cost{color:#000;text-shadow:none}
+.card.awa .cost::before{background:#fff;border-color:#fff}
+.card.awa .stat{background:#fff;color:#000;border-color:#fff;animation:gShiftX 3.9s steps(1,end) infinite}
+.card.awa .stat.hp{background:#000;color:#fff}
+.card.awa .stat .sv{text-shadow:none}
+.card.awa .kw{background:#000;border-color:#fff;color:#fff}
+.card.awa .gem{background:#fff!important}
+.card.awa .type .rar{color:#fff}
+
+/* —— 战场单位 —— */
+.unit.awa .u{background:#050505;border-color:#fff;box-shadow:3px 3px 0 rgba(255,255,255,.16),var(--sh-1)}
+.unit.awa .un{font-family:var(--font-mono);color:#fff;overflow:visible;background:#000}
+
+@keyframes gInvert{0%,92%,100%{background:#000;color:#fff}93%,95%{background:#fff;color:#000}}
+@keyframes gSliceA{0%,100%{opacity:0}8%{opacity:1;clip-path:inset(0 0 60% 0);transform:translate(-4px,0)}12%{opacity:1;clip-path:inset(35% 0 30% 0);transform:translate(5px,0)}16%{opacity:0}58%{opacity:1;clip-path:inset(60% 0 5% 0);transform:translate(-5px,0)}62%{opacity:0}}
+@keyframes gSliceB{0%,100%{opacity:0}30%{opacity:1;clip-path:inset(55% 0 0 0);transform:translate(4px,0)}34%{opacity:1;clip-path:inset(20% 0 55% 0);transform:translate(-5px,0)}38%{opacity:0}80%{opacity:1;clip-path:inset(70% 0 0 0);transform:translate(-4px,0)}84%{opacity:0}}
+@keyframes gNoise{0%{background-position:0 0}20%{background-position:-23px 11px}40%{background-position:17px -29px}60%{background-position:-41px -7px}80%{background-position:9px 33px}}
+@keyframes gBar{0%,100%{opacity:0}40%{opacity:1;transform:translate(-8px,-14px) scaleY(.5)}42%{opacity:1;transform:translate(10px,18px) scaleY(1.4)}44%{opacity:0}77%{opacity:.9;transform:translate(6px,6px) scaleY(.3)}79%{opacity:0}}
+@keyframes gSplitR{0%,100%{transform:translate(-3px,0)}30%{transform:translate(-6px,1px)}55%{transform:translate(2px,-1px)}78%{transform:translate(-7px,0)}}
+@keyframes gSplitC{0%,100%{transform:translate(3px,0)}30%{transform:translate(6px,-1px)}55%{transform:translate(-2px,1px)}78%{transform:translate(7px,0)}}
+@keyframes gGlyph{0%{content:"█"}25%{content:"▓"}50%{content:"▒"}75%{content:"░"}}
+@keyframes gJit{0%,88%,100%{transform:none}89%{transform:translate(-2px,0)}91%{transform:translate(2px,1px)}93%{transform:none}}
+@keyframes gScanLine{from{transform:translateY(0)}to{transform:translateY(5.5em)}}
+@keyframes gDrop{0%,70%,100%{opacity:0}71%,73%{opacity:.85}74%{opacity:0}86%{opacity:.6;clip-path:inset(60% 0 20% 0)}87%{opacity:0}}
+@keyframes gShiftX{0%,90%,100%{transform:none}91%{transform:translateX(-3px)}93%{transform:translateX(2px)}95%{transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .card.awa *,.card.awa *::before,.card.awa *::after,.unit.awa *,.unit.awa *::before,.unit.awa *::after,.gl-r,.gl-c{animation:none!important}
+}
+
+/* ============================================================================
+   性能：用 CSS containment 限定重排 / 重绘范围；长列表里屏幕外的卡不参与渲染
+   ============================================================================ */
+.card,.card-back,.unit .u{contain:layout paint style}
+.dc,.cx-card{content-visibility:auto;contain-intrinsic-size:auto 190px}
