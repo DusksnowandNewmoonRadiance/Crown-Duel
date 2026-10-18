@@ -50,6 +50,14 @@ module.exports=function adminRouter(ctx){
     res.json(out);
   });
 
+  /* ---- DIY 角色管理（列表 / 删除，含内置） ---- */
+  router.get("/api/diy",(req,res)=>res.json(ctx.diyList()));
+  router.delete("/api/diy/:name",(req,res)=>{
+    const out=ctx.diyRemove(String(req.params.name||""));
+    if(!out||!out.ok)return res.status(404).json({error:(out&&out.error)||"删除失败"});
+    res.json(out);
+  });
+
   router.get("/api/announcements",(req,res)=>res.json(Store.announcements()));
   router.post("/api/announcements",(req,res)=>{
     try{

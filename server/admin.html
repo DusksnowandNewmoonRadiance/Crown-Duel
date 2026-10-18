@@ -33,6 +33,13 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
 .msg.ok{color:var(--green)}.msg.err{color:#f0a090}
 .maint-on{color:#f0a090;font-weight:700}
 .cards-ref{max-height:220px;overflow:auto;font-size:12px;font-family:var(--mono);color:#b9c6c6;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--bg2)}
+/* DIY 角色表 */
+#diyTable{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--bg2)}
+#diyTable table{width:100%;border-collapse:collapse;font-size:12.5px}
+#diyTable th,#diyTable td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+#diyTable th{position:sticky;top:0;background:var(--surface-2);color:var(--text-3);font-weight:500}
+#diyTable tr:last-child td{border-bottom:none}
+#diyTable .builtin{color:var(--gold2);font-size:11.5px;margin-left:6px}
 #login{max-width:380px;margin:12vh auto}
 @media(max-width:800px){.row2{grid-template-columns:1fr}}
 </style>
@@ -117,6 +124,15 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
     <div class="inline"><button class="btn btn-gold" id="balSave">保存并生效</button><button class="btn" id="balFmt">格式化</button><input id="balSearch" placeholder="查找卡牌（名称或 id）" style="width:220px"></div>
     <div class="msg" id="balMsg"></div>
     <div class="cards-ref" id="cardsRef"></div>
+  </div>
+
+  <div class="box">
+    <div class="inline" style="justify-content:space-between"><h2>DIY 角色</h2><button class="btn" id="diyRefresh">刷新</button></div>
+    <p class="hint">玩家自制的卡牌师（与正常池分开，只在「允许 DIY」的房间可用）。删除会立即从服务器移除、落盘并广播给在线玩家；
+      <b>内置角色</b>删除后当前进程内不再可用，但服务器重启会重新注册。</p>
+    <div class="inline"><input id="diySearch" placeholder="按名字过滤" style="max-width:240px"><span class="hint" id="diyCount"></span></div>
+    <div class="msg" id="diyMsg"></div>
+    <div id="diyTable"></div>
   </div>
 </div>
 
@@ -234,7 +250,43 @@ $("#balSave").onclick=async()=>{
   let map;try{map=JSON.parse($("#balJson").value||"{}");}catch(e){msg("#balMsg","JSON 格式错误："+e.message);return;}
   try{await api("PUT","/balance",{overrides:map});msg("#balMsg","已保存并生效：新开的对局会使用新数值",true);}catch(e){msg("#balMsg",e.message);}
 };
-async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadReports(),loadModeration()]);}catch(e){}}
+/* ---- DIY 角色 ---- */
+let diyRows=[];
+async function loadDiy(){
+  const d=await api("GET","/diy");
+  diyRows=Array.isArray(d.heroes)?d.heroes:[];
+  renderDiy();
+}
+function renderDiy(){
+  const q=($("#diySearch").value||"").trim().toLowerCase();
+  const rows=diyRows.filter(r=>!q||String(r.name||"").toLowerCase().includes(q));
+  $("#diyCount").textContent=`共 ${diyRows.length} 个${q?`，匹配 ${rows.length} 个`:""}`;
+  if(!rows.length){$("#diyTable").innerHTML=`<p class="hint" style="padding:10px 12px">没有匹配的 DIY 角色</p>`;return;}
+  $("#diyTable").innerHTML=`<table><thead><tr><th>名字</th><th>作者</th><th>血量</th><th>卡数</th><th>创建时间</th><th>操作</th></tr></thead><tbody>${
+    rows.map(r=>`<tr>
+      <td><b>${esc(r.name)}</b>${r.builtin?`<span class="builtin">内置</span>`:""}</td>
+      <td>${esc(r.author||"玩家")}</td>
+      <td>${esc(r.hp)}</td>
+      <td>${esc(r.cards)}</td>
+      <td>${r.createdAt?fmtTime(r.createdAt):"—"}</td>
+      <td><button class="btn btn-danger" data-diy-del="${esc(r.name)}" data-builtin="${r.builtin?1:0}">删除</button></td>
+    </tr>`).join("")
+  }</tbody></table>`;
+}
+$("#diySearch").oninput=renderDiy;
+$("#diyRefresh").onclick=()=>loadDiy().catch(e=>msg("#diyMsg",e.message));
+$("#diyTable").onclick=async e=>{
+  const b=e.target.closest("[data-diy-del]");if(!b)return;
+  const name=b.dataset.diyDel,builtin=b.dataset.builtin==="1";
+  if(!confirm(`确认删除 DIY 角色「${name}」？删除后所有玩家都不能再用它。`))return;
+  if(builtin&&!confirm(`「${name}」是内置示例角色：删除后当前进程内不再可用，服务器重启会重新注册。确定继续？`))return;
+  try{
+    await api("DELETE","/diy/"+encodeURIComponent(name));
+    msg("#diyMsg",`已删除「${name}」`,true);
+    await loadDiy();
+  }catch(err){msg("#diyMsg",err.message);}
+};
+async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadReports(),loadModeration(),loadDiy()]);}catch(e){}}
 $("#refresh").onclick=loadAll;$("#modRefresh").onclick=()=>Promise.all([loadReports(),loadModeration(),loadStatus()]);
 setInterval(()=>{if(!$("#main").hidden)Promise.all([loadStatus(),loadReports(),loadModeration()]).catch(()=>{});},10000);
 if(TOKEN){$("#tok").value=TOKEN;login();}

@@ -565,6 +565,15 @@ const DiyUI={
     this.renderList();
     this.renderPreview();
     this.renderHeroList();
+    this.renderBtns();
+  },
+  /* 「覆盖更新」只对本机上传过的角色显示（内置 / 别人上传的不显示） */
+  renderBtns(){
+    const btn=$("#diyUpdate");if(!btn)return;
+    const name=this.def&&this.def.name;
+    const mine=!!name&&isMineDiy(name)&&Diy.isDiy(name)&&!(Diy.hero(name)||{}).builtin;
+    btn.hidden=!mine;
+    const box=$("#diyInfoBtns");if(box)box.classList.toggle("has-update",mine);
   },
   renderInfo(){
     const d=this.def;
@@ -749,6 +758,7 @@ const DiyUI={
         markMine(name);
         registerDiyDef(v.def,{author:Me.nick||"玩家"});
         toast(`上传成功：「${name}」，建房时选「允许 DIY」即可使用`,true,4000);
+        this.renderBtns();
         await this.loadSummaries();
       }else{
         const errs=(d&&Array.isArray(d.errors)&&d.errors)||[(d&&(d.error||d.msg))||"上传失败"];
@@ -757,6 +767,40 @@ const DiyUI={
       }
     }catch(e){
       toast("上传失败：网络错误",false,4000);
+    }
+    this.busy=false;
+  },
+  /* 覆盖更新：只对自己上传过的角色可用；不能改名（服务端也会拒） */
+  async update(){
+    if(this.busy)return;
+    const name=this.def&&this.def.name;
+    if(!name||!isMineDiy(name)){toast("只能覆盖更新这台浏览器上传的角色",false,4000);return;}
+    /* 覆盖时允许同名，所以用 allowReplace */
+    const v=Diy.validate(this.def,{allowReplace:name});
+    if(!v.ok){this.renderPreview();this.showErrors(v.errors);toast(v.errors[0]||"请先修正错误",false,4000);return;}
+    if(v.def.name!==name){toast("覆盖更新不能改名，请删除后重新上传",false,4000);return;}
+    this.busy=true;
+    try{
+      const r=await fetch("/api/diy/heroes/"+encodeURIComponent(name),{
+        method:"PUT",
+        headers:{"Content-Type":"application/json","x-diy-owner":DiyOwner.get()},
+        body:JSON.stringify({hero:v.def,author:Me.nick||""})
+      });
+      const d=await r.json().catch(()=>({ok:false,error:"服务器返回异常"}));
+      if(r.ok&&d.ok){
+        registerDiyDef(v.def,{author:Me.nick||"玩家"});
+        markMine(name);
+        toast(`已更新「${name}」`,true);
+        this.renderBtns();
+        await this.loadSummaries();
+        refreshAfterDiy();
+      }else{
+        const errs=(d&&Array.isArray(d.errors)&&d.errors)||[(d&&(d.error||d.msg))||"覆盖更新失败"];
+        this.showErrors(errs);
+        toast(errs[0],false,4500);
+      }
+    }catch(e){
+      toast("覆盖更新失败：网络错误",false,4000);
     }
     this.busy=false;
   },
@@ -789,6 +833,7 @@ const DiyUI={
         Diy.unregister(name);
         if(Me.hero===name)Me.hero=HEROES[0];
         if(this.current===name){this.current="";this.def=this.blank();this.render();}
+        else this.renderBtns();
         toast("已删除「"+name+"」",true);
         await this.loadSummaries();
       }else toast((d&&(d.error||d.msg))||"删除失败",false);
@@ -894,6 +939,7 @@ $("#diyList").addEventListener("click",e=>{
 $("#diyAddCard").addEventListener("click",()=>DiyUI.add());
 $("#diyCheck").addEventListener("click",()=>DiyUI.check());
 $("#diyUpload").addEventListener("click",()=>DiyUI.upload());
+$("#diyUpdate").addEventListener("click",()=>DiyUI.update());
 $("#diyExport").addEventListener("click",()=>DiyUI.exportJson());
 $("#diyImport").addEventListener("click",()=>$("#diyImportFile").click());
 $("#diyImportFile").addEventListener("change",e=>{

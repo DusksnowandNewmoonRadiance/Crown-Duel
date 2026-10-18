@@ -1,5 +1,6 @@
 /* DIY 角色服务端测试：目录 / 列表 / 详情 / 上传 / 持久化 / 池分离 / 删除权限 */
 process.env.PORT = "3922"; process.env.HOST = "127.0.0.1";
+process.env.ADMIN_TOKEN = "test-admin-token-123";   // 后台 DIY 管理用固定口令
 const os = require("os"), fs = require("fs"), path = require("path");
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "cd-diy-"));
 const { io } = require("socket.io-client");
@@ -198,7 +199,39 @@ const last = (arr) => arr[arr.length - 1];
     `E搜索=${searching(E)} F搜索=${searching(F)} E房间=${roomCount(E)} F房间=${roomCount(F)}`);
   E.s.emit("match:cancel"); F.s.emit("match:cancel");
 
-  /* ---------- 6) 删除权限 ---------- */
+  /* ---------- 6) 后台 DIY 管理 ---------- */
+  const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+  const adminApi = (method, url, body, token) => fetch(URL + "/admin/api" + url, {
+    method,
+    headers: Object.assign({ "content-type": "application/json" },
+      token === null ? {} : { "x-admin-token": token === undefined ? ADMIN_TOKEN : token }),
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
+
+  check("后台 DIY 列表：无口令 401", (await adminApi("GET", "/diy", undefined, "")).status === 401);
+  const adminList = await adminApi("GET", "/diy");
+  check("后台 DIY 列表：含内置苍蓝",
+    adminList.status === 200 && adminList.body.total >= 1 &&
+    adminList.body.heroes.some((h) => h.name === "苍蓝" && h.builtin === true),
+    adminList.body && adminList.body.total);
+
+  /* 上传一个专用角色，给后台删除用 */
+  const doomed = JSON.parse(JSON.stringify(heroDef));
+  doomed.name = "后台删除测试";
+  doomed.cards = doomed.cards.map((c) => Object.assign({}, c, { id: "adm_" + c.id }));
+  const up2 = await api("POST", "/api/diy/heroes", { hero: doomed, author: "测试员" });
+  const beforeList = await adminApi("GET", "/diy");
+  const del2 = await adminApi("DELETE", "/diy/" + encodeURIComponent("后台删除测试"));
+  const afterList = await adminApi("GET", "/diy");
+  check("后台能删除任意 DIY 角色",
+    up2.status === 200 && del2.status === 200 && del2.body.ok === true,
+    del2.status + " " + (del2.body && del2.body.error));
+  check("后台删除后列表变短且详情 404",
+    beforeList.body.total === afterList.body.total + 1 &&
+    (await api("GET", "/api/diy/heroes/" + encodeURIComponent("后台删除测试"))).status === 404,
+    `${beforeList.body.total} -> ${afterList.body.total}`);
+
+  /* ---------- 7) 删除权限 ---------- */
   const delBuiltin = await api("DELETE", "/api/diy/heroes/" + encodeURIComponent("苍蓝"));
   check("内置角色不能删除", [400, 403].includes(delBuiltin.status), delBuiltin.status + " " + (delBuiltin.body && delBuiltin.body.error));
   const delWrong = await api("DELETE", "/api/diy/heroes/" + encodeURIComponent("测试机师"), undefined, { "x-diy-owner": "someone-else-9999" });

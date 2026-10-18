@@ -9,3 +9,4 @@ docs/pr/
 .ui-audit*.cjs
 .shots.cjs
 .shots/
+screenshots/

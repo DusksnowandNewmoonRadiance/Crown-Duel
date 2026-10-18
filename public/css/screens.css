@@ -1179,3 +1179,6 @@
   .diy{grid-template-columns:1fr}
   .diy-bottom{position:sticky;bottom:0;background:var(--ink-900)}
 }
+/* DIY 工坊：出现「覆盖更新」时按钮排 3 列（追加规则，不改既有） */
+.diy-info-btns.has-update{grid-template-columns:repeat(3,minmax(0,1fr))}
+.diy-info-btns.has-update .btn{padding:8px 2px;font-size:12px}

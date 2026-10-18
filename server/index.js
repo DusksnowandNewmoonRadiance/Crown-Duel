@@ -187,7 +187,10 @@ app.use("/admin",adminRouter({
   reports:()=>Store.reports(),moderation:()=>Store.moderationLists(),
   sanctionPlayer:(id,type,reason)=>sanctionPlayer(id,type,reason),
   resolveReport:(id,action)=>resolveReport(id,action),
-  removeSanction:(id,type)=>removeSanction(id,type)
+  removeSanction:(id,type)=>removeSanction(id,type),
+  /* 后台 DIY 管理：列表与删除（删除会注销注册表 + 落盘 + 广播 diy:list） */
+  diyList:()=>{const heroes=DiyServer.list();return{heroes,total:heroes.length};},
+  diyRemove:name=>DiyServer.adminRemove(name)
 }));
 
 const server=http.createServer(app);

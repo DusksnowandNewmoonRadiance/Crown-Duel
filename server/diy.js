@@ -96,6 +96,17 @@ function remove(name) {
   return true;
 }
 
+/* 运营后台专用：删任意角色（含内置），注销 + 落盘 + 广播
+   注意：内置角色只从本次进程的注册表里移除，重启后 init() 会重新注册 */
+function adminRemove(name) {
+  if (!Diy.isDiy(name)) return { ok: false, error: "DIY 角色不存在" };
+  const builtin = isBuiltin(name);
+  Diy.unregister(name);
+  const removed = remove(name);
+  notifyChange();
+  return { ok: true, name, builtin, removed };
+}
+
 /* ---------- 启动：内置 + 已保存 ---------- */
 function init() {
   db = readFile();
@@ -248,4 +259,4 @@ router.delete("/api/diy/heroes/:name", (req, res) => {
   res.json({ ok: true, name });
 });
 
-module.exports = { router, init, list, save, remove, setChangeHandler, DATA_DIR, FILE };
+module.exports = { router, init, list, save, remove, adminRemove, setChangeHandler, DATA_DIR, FILE };
