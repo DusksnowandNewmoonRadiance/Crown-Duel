@@ -270,7 +270,7 @@ const PROFILES={
     {id:"crown",name:"复制皇冠",cost:5,kind:"spell",art:"♛",text:"弃掉手牌中所有【废料】（至少 2 张），每 2 张获得 1 张随机的精英牌（至多 3 张）。",effect:"crownCopy",n:1,limit:1,rarity:"elite"}
   ]},
   白猫:{faction:"彗星国 · 架子班",style:"销毁敌牌 · 疲劳审判",hp:38,cards:[
-    {id:"kitten",name:"勘误猫",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"部署：消灭一名攻击力不超过 2 的敌方单位（优先攻击力最低者），计入已销毁卡牌。",effect:"whiteProof",n:3,limit:4,rarity:"common"},
+    {id:"kitten",name:"勘误猫",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"部署：选择一个攻击力不超过 2 的敌方单位并消灭，计入已销毁卡牌。",effect:"whiteProof",n:3,limit:4,rarity:"common"},
     {id:"sentinel",name:"卷宗守卫",cost:2,kind:"unit",art:"◈",atk:2,hp:3,text:"嘲讽。每当你销毁一张敌方卡牌，获得 +1/+1。",taunt:true,effect:"whiteSentinel",n:2,limit:4,rarity:"common"},
     {id:"courier",name:"书页窃贼",cost:2,kind:"unit",art:"✦",atk:2,hp:2,text:"部署：销毁敌方牌库顶的 2 张牌。",effect:"whiteDeck1",n:2,limit:3,rarity:"rare"},
     {id:"leaper",name:"断章猎手",cost:3,kind:"unit",art:"✧",atk:3,hp:2,text:"冲锋。部署：对敌方英雄造成 2 点伤害；本局每销毁 3 张敌方卡牌，伤害 +1（至多 7 点）。",charge:true,effect:"whiteStrike",n:2,limit:3,rarity:"rare"},

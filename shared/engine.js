@@ -69,6 +69,7 @@ function targetSpec(card,me,foe){
     case"sacAoe3":return eligible(me.board,1,1,"选择要献祭的己方单位","me");
     case"decreeUkr":return eligible(foe.board,1,1,"选择 1 个敌方单位，造成 2 点伤害","foe");
     case"killTough":return eligible(foe.board.filter(u=>u.health>u.attack&&u.health>0),1,1,"选择 1 个生命值高于攻击力的敌方单位","foe");
+    case"whiteProof":return eligible(foe.board.filter(u=>u.attack<=2),1,1,"选择 1 个攻击力不超过 2 的敌方单位并消灭","foe");
     case"stripTaunt":case"stripTauntDraw":return eligible(foe.board.filter(u=>u.taunt&&u.health>0),1,1,"选择 1 个敌方嘲讽单位","foe");
     case"stunOrKill":return eligible(foe.board,1,1,"选择 1 个敌方单位（眩晕或消灭）","foe");
     case"stunOneDraw":return eligible(foe.board,1,1,"选择 1 个敌方单位眩晕","foe");
@@ -163,6 +164,7 @@ function autoTargets(card,me,foe){
   else if(e==="sacAoe3")sorted=pool.slice().sort((a,b)=>unitValue(a)-unitValue(b));
   else if(e==="pirateCommander")sorted=pool.slice().sort((a,b)=>((a.id==="pirateScout"?1e6:b.attack))-((b.id==="pirateScout"?1e6:a.attack)));
   else if(e==="killTough")sorted=pool.slice().sort((a,b)=>((b.taunt?10:0)+b.health)-((a.taunt?10:0)+a.health));
+  else if(e==="whiteProof")sorted=pool.slice().sort((a,b)=>a.attack-b.attack||a.health-b.health);
   else if(e==="stripTaunt"||e==="stripTauntDraw")sorted=pool.slice().sort((a,b)=>b.health-a.health);
   else if(e==="stunOrKill")sorted=pool.slice().sort((a,b)=>((a.stun>0?10:0)+unitValue(a))-((b.stun>0?10:0)+unitValue(b)));
   else sorted=pool.slice().sort((a,b)=>b.attack-a.attack);
@@ -828,8 +830,8 @@ class Game{
       case"whiteDeck2":this.destroyEnemyCards(s,o,"deck",3,c.name);break;
       case"whiteHand1":this.destroyEnemyCards(s,o,"handOrDeck",1,c.name);break;
       case"whiteProof":{
-        const weak=o.board.filter(u=>u.attack<=2).sort((a,b)=>a.attack-b.attack||a.health-b.health)[0];
-        if(weak)this.destroyBoardUnit(s,o,weak,c.name);
+        const id=T()[0],target=o.board.find(u=>u.uid===id);
+        if(target)this.destroyBoardUnit(s,o,target,c.name);
         break;
       }
       case"whiteMargin":this.forcedRead(s,o,1,c.name);break;
@@ -1682,7 +1684,7 @@ class Game{
 function pubCard(c){
   const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,icon:c.icon,text:c.text,flavor:c.flavor||"",effect:c.effect,
     charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx,rep:c.rep||"",transfer:c.transfer||"",sealed:!!c.sealed,scrap:!!c.scrap,recycle:c.recycle||""};
-  if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
+  if(c.kind==="unit"){x.attack=c.attack??c.atk;x.health=c.health??c.hp;x.maxHealth=c.maxHealth??c.hp;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
   else if(c.lifespan)x.lifespan=c.lifespan;
   return x;
 }

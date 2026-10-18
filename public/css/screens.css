@@ -686,6 +686,7 @@
    商店 / 仓库 / 剧情
    ============================================================================ */
 .shop,.vault,.campaign{max-width:1040px;margin:0 auto;padding:20px 16px 40px;width:100%}
+.campaign{flex:1;min-height:0;overflow-y:auto}
 .shop>.muted,.vault>.muted{font-size:12.5px;line-height:1.7;margin:0 0 16px;color:var(--text-3)}
 .shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .shop-item{
@@ -731,7 +732,7 @@
 .camp-bar.locked .camp-img{opacity:.58;filter:saturate(.55)}
 .camp-bar.nostory .camp-img{opacity:.34;filter:grayscale(.4)}
 .camp-img{
-  position:relative;width:100%;aspect-ratio:4/9;overflow:hidden;
+  position:relative;width:100%;aspect-ratio:3/4;max-height:42dvh;overflow:hidden;
   background:var(--ink-750);
 }
 /* 封面用整幅插画，不用居中小圆徽记 */
@@ -754,7 +755,7 @@
 }
 .camp-txt strong{font-size:14px;font-weight:650;letter-spacing:.01em}
 .camp-txt .muted{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
-.camp-hero-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px}
+.camp-hero-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px}
 .camp-hero-nav .btn{min-width:110px;padding:8px 16px;font-size:12.5px}
 #campPage{font-size:12px;color:var(--text-3);min-width:52px;text-align:center}
 @keyframes campOutL{to{opacity:0;transform:translateX(-20px)}}
