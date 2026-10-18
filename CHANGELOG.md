@@ -1,3 +1,8 @@
+## v3.2.1 — 声音重做（信号链 + 真录音）
+- **信号链重建**：每个声部 → 低通（带扫频包络）→ 音量包络 →〔干声 + 混响送出〕→ 压缩器 → 主音量。混响用噪声脉冲响应现场合成（2.2s、双声道去相关），零音频文件。
+- **音效分层**：撞击 = 低频下坠音体 + 带通噪声瞬态 + 混响尾巴；每次触发 ±3% 音高微调，连击不再像机关枪。
+- **换成真录音**：接入 19 个 **Kenney CC0** 素材（Interface / Impact / UI Audio），覆盖 click / select / draw / play / spell / swing / hit / heal / die / turn / enemy / coin / error / tick / core / satur / emote / match；采样与合成走同一条总线，取不到文件自动降级，断网不哑音。授权见 `public/audio/LICENSE.txt`（CC0 1.0，商用免署名），19 个 OGG 共 155 KB。
+- **音乐**：改用 AudioContext 时钟前瞻排期（不再 setTimeout 抖动），加铺底 pad（根音 + 五度、慢起音、走混响）与 `duel` 的低八度脉冲；音符带 ±7 音分 / ±10ms 人类化。
 # 更新日志
 
 ## v3.3.1 — 比例适配与移动端
