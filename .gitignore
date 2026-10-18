@@ -12,3 +12,6 @@ docs/pr/
 screenshots/
 .shots-batch.cjs
 .ui-*.cjs
+USED/
+__pycache__/
+.tmp/sf/

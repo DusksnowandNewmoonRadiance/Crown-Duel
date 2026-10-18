@@ -13,4 +13,9 @@ public/audio/bgm/*.ogg
   再经 tools/music/master.py 母带与无缝循环处理。不含第三方录音素材。
   GeneralUser GS 允许免费使用其渲染输出（含商业用途），本项目不分发 SF2 本体。
 
+public/audio/bgm/susu.ogg（苏苏 ·《赤色铁流》）
+  原创曲。由 tools/music/susu_theme.py 用 numpy 直接合成音色、卷积混响，
+  ffmpeg 母带后转 OGG；同一份乐谱可导出 tools/music/susu.mid。
+  不使用任何采样、音色库或第三方录音，全部为程序生成的乐音与噪声。
+
 其余声音（选牌、金币、回合、胜负音阶等）由 public/js/audio.js 用 WebAudio 实时合成。

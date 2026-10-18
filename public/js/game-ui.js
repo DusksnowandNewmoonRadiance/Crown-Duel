@@ -48,7 +48,17 @@ const GameUI=(()=>{
     buildHero("foe");buildHero("me");
     setTimer(null);
     fit();
-    Audio2.music("duel");
+    /* 有专属战斗曲的角色参战时换曲；确认对手是谁之前先按剧情/通用曲走 */
+    Audio2.music((opts&&opts.campaign&&opts.campaign.hero)?heroBgm(opts.campaign.hero):"duel");
+  }
+  /* 拿到第一份局面才能确定双方英雄——这时候再把曲子定下来 */
+  /* 角色专属战斗曲：没有对应项就走通用 duel.ogg */
+  const HERO_BGM={苏苏:"susu",绘梨衣:"eriyi"};
+  const heroBgm=h=>HERO_BGM[h]||"duel";
+  function pickMusic(v){
+    /* 自己或对手有专属曲时优先用（苏苏《赤色铁流》/ 绘梨衣的定制曲） */
+    const h=["me","foe"].map(k=>v[k]&&v[k].hero).find(x=>x&&HERO_BGM[x]);
+    Audio2.music(h?HERO_BGM[h]:"duel");
   }
   function stop(silent){
     S.ctl=null;S.queue=[];S.waiters.splice(0).forEach(f=>f());
@@ -99,6 +109,7 @@ const GameUI=(()=>{
     if(u.full||!S.view){
       if(u.seq!==undefined)S.viewSeq=u.seq;
       const first=!S.view;S.view=v;
+      if(first&&v.me&&v.foe)pickMusic(v);
       if(S.cast&&!v.myTurn)S.cast=null;
       render(true);
       if(first&&v.phase==="play"&&v.myTurn)S.turnBanner=v.turn;
