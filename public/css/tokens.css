@@ -1,0 +1,172 @@
+/* ============================================================================
+   皇冠对决 · 设计令牌（极简版）
+   ----------------------------------------------------------------------------
+   方向：中性色底 + 单一强调色 + 平面材质 + 1px 描边。
+   不用装饰性渐变、光晕、噪点、纹章；层级靠「间距 / 字重 / 描边明度」表达。
+   旧变量名（--bg / --panel / --gold / --serif …）全部保留并指向新值，
+   因此 public/js/*、server/admin.html 里的既有引用不会失效。
+   ============================================================================ */
+
+:root{
+  color-scheme:dark;
+
+  /* ---------- 中性色阶（纯中性，无蓝紫偏移） ---------- */
+  --ink-0:#ffffff;
+  --ink-25:#f4f4f5;
+  --ink-50:#e4e4e7;
+  --ink-100:#c9c9ce;
+  --ink-200:#a1a1aa;
+  --ink-300:#7c7c85;
+  --ink-400:#5c5c64;
+  --ink-500:#3f3f46;
+  --ink-600:#2a2a30;
+  --ink-700:#1e1e22;
+  --ink-750:#17171a;
+  --ink-800:#131316;
+  --ink-850:#0f0f11;
+  --ink-900:#0b0b0d;
+  --ink-950:#08080a;
+
+  /* ---------- 表面与线条 ---------- */
+  --bg:var(--ink-900);
+  --surface:var(--ink-800);
+  --surface-2:var(--ink-750);
+  --surface-3:var(--ink-700);
+  --line:rgba(255,255,255,.07);
+  --line-2:rgba(255,255,255,.11);
+  --line-3:rgba(255,255,255,.2);
+
+  /* ---------- 文字 ---------- */
+  --text:var(--ink-25);
+  --text-2:var(--ink-200);
+  --text-3:var(--ink-300);
+  --muted:var(--ink-300);
+  --faint:var(--ink-400);
+
+  /* ---------- 强调色：只用一种，克制使用 ---------- */
+  --accent:#d3b184;
+  --accent-hi:#e6cdaa;
+  --accent-dim:rgba(211,177,132,.12);
+  --accent-line:rgba(211,177,132,.38);
+  --positive:#69ad8a;
+  --negative:#c2605a;
+  --info:#6d9ed1;
+
+  /* ---------- 字体 ---------- */
+  --font-ui:"Inter","Duel UI SC","PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  /* 旧名别名：一律走同一套无衬线，避免出现衬线混排 */
+  --font-display:var(--font-ui);
+  --serif:var(--font-ui);
+  --sans:var(--font-ui);
+  --mono:var(--font-mono);
+
+  /* ---------- 字号 ---------- */
+  --fs-display:40px;
+  --fs-h1:24px;
+  --fs-h2:19px;
+  --fs-h3:15px;
+  --fs-body:14px;
+  --fs-sm:12.5px;
+  --fs-xs:11px;
+
+  /* ---------- 圆角（小、统一） ---------- */
+  --r-1:6px;
+  --r-2:8px;
+  --r-3:10px;
+  --r-4:14px;
+  --r-pill:999px;
+  --r:8px;                      /* 旧名 */
+
+  /* ---------- 阴影：只用两层 ---------- */
+  --sh-1:0 1px 2px rgba(0,0,0,.32);
+  --sh-2:0 16px 40px -20px rgba(0,0,0,.85);
+  --sh-3:0 30px 70px -30px rgba(0,0,0,.9);
+  /* 兼容旧变量（不产生视觉光效） */
+  --sh-4:var(--sh-3);
+  --inner-hi:none;
+  --inner-lo:none;
+  --glow-gold:none;
+  --glow-jade:none;
+  --glow-crimson:none;
+  --ring-gold:0 0 0 2px rgba(211,177,132,.28);
+
+  /* ---------- 材质：纯色，不做渐变堆叠 ---------- */
+  --grad-panel:var(--ink-800);
+  --grad-panel-2:var(--ink-750);
+  --grad-gold:var(--ink-25);
+  --grad-gold-flat:var(--ink-25);
+  --grad-jade:var(--ink-25);
+  --grad-crimson:var(--ink-25);
+  --grad-obsidian:var(--ink-900);
+
+  /* ---------- 动效（短、克制） ---------- */
+  --e-out:cubic-bezier(.2,.7,.3,1);
+  --e-in-out:cubic-bezier(.4,0,.2,1);
+  --e-spring:cubic-bezier(.2,.8,.3,1);
+  --t-fast:.12s;
+  --t-mid:.18s;
+  --t-slow:.24s;
+
+  /* ---------- 层级 ---------- */
+  --z-hand:1;
+  --z-hover:40;
+  --z-drag:90;
+  --z-panel:86;
+  --z-overlay:88;
+  --z-coach:95;
+  --z-modal:100;
+  --z-toast:300;
+  --z-conn:310;
+  --z-sys:400;
+  --z-rotate:500;
+  --z-avg:1000;
+
+  /* ==========================================================================
+     兼容层：旧变量名
+     ========================================================================== */
+  --bg2:var(--ink-850);
+  --panel:var(--ink-800);
+  --panel2:var(--ink-750);
+  --line2:var(--line-2);
+  --gold:var(--accent);
+  --gold2:var(--accent-hi);
+  --red:var(--negative);
+  --green:var(--positive);
+  --blue:var(--info);
+  --purple:#9b86c4;
+
+  /* 稀有度（低饱和，只靠色相区分） */
+  --r-common:#8f8f97;
+  --r-rare:#5b8fc7;
+  --r-special:#9375c2;
+  --r-elite:#c3a267;
+}
+
+/* ============================================================================
+   字体：Inter（拉丁/数字）+ Noto Sans SC 子集（中文）
+   ============================================================================ */
+@font-face{
+  font-family:"Duel UI SC";
+  src:url("../fonts/duel-ui-sc.woff2") format("woff2");
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+  unicode-range:U+2E80-9FFF,U+F900-FAFF,U+FE30-FE4F,U+FF00-FFEF,U+3000-303F;
+}
+@font-face{
+  font-family:"Inter";
+  src:url("../fonts/inter-latin.woff2") format("woff2");
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+  unicode-range:U+0000-00FF,U+2000-206F,U+2190-21BB,U+2122,U+2212,U+2215;
+}
+@font-face{
+  font-family:"Inter";
+  src:url("../fonts/inter-latin-ext.woff2") format("woff2");
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+  unicode-range:U+0100-024F,U+1E00-1EFF,U+20A0-20CF;
+}

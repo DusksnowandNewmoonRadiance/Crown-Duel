@@ -313,7 +313,7 @@ const GameUI=(()=>{
      ============================================================ */
   function buildHero(side){
     $(`#${side}Hero`).innerHTML=`
-      <div class="portrait" data-hero="${side}"><span class="glyph"></span><b class="hpb"></b><b class="armb" hidden></b><span class="htag immune" hidden>🛡 免疫</span></div>
+      <div class="portrait" data-hero="${side}"><span class="por-art"></span><span class="glyph"></span><b class="hpb"></b><b class="armb" hidden></b><span class="htag immune" hidden>免疫</span></div>
       <div class="hname"><span class="nm"></span><small class="hr"></small></div>
       <div class="mana"><div class="gems"></div><b class="mn"></b></div>
       <div class="money" hidden><span class="mt"></span><div class="bar"><i></i></div></div>
@@ -337,22 +337,26 @@ const GameUI=(()=>{
     const box=$(`#${side}Hero`);
     box.style.setProperty("--hcr",V.heroRgb(p.hero));
     const por=box.querySelector(".portrait"),g=por.querySelector(".glyph");
+    const artEl=por.querySelector(".por-art");
+    if(artEl&&window.CardArt&&artEl.dataset.h!==p.hero){
+      artEl.dataset.h=p.hero;artEl.innerHTML=CardArt.portrait(p.hero);por.classList.add("has-art");
+    }
     g.textContent=V.glyph(p.hero);g.classList.toggle("long",p.hero==="045");
     const hpb=por.querySelector(".hpb");hpb.textContent=Math.max(0,p.hp);hpb.classList.toggle("over",p.hp>p.maxHp);hpb.classList.toggle("low",p.hp<=10);
     const ar=por.querySelector(".armb");ar.hidden=!p.armor;ar.textContent=p.armor;
     por.querySelector(".immune").hidden=!p.heroImmune;
     box.querySelector(".nm").textContent=p.name;
-    const lock=S.view.lock?`<span class="lock-tag">∅ 停摆</span>`:"";
+    const lock=S.view.lock?`<span class="lock-tag">停摆</span>`:"";
     let st="";
-    if(p.decay>0)st+=`<span class="lock-tag st-decay" title="每个回合开始时受到 ${p.decay} 点伤害">☠ 衰减 ${p.decay}</span>`;
+    if(p.decay>0)st+=`<span class="lock-tag st-decay" title="每个回合开始时受到 ${p.decay} 点伤害">衰减 ${p.decay}</span>`;
     if(p.turnCap!=null)st+=`<span class="lock-tag st-lock">封锁 ${p.playedTurn}/${p.turnCap}</span>`;
     if(p.regime||p.fedTurn){
       const RT={rus:"新单位冲锋 · 无法获得护甲",ukr:"部署与法术伤害 +1 · 新单位生命 -1",blr:"回合结束 +2 护甲 · 新嘲讽 +1 生命 · 新单位无冲锋"};
       const nm=p.fedTurn?"联邦":C.REGIMES[p.regime];
       const tip=p.fedTurn?"苏三世：本回合三种政体的加成同时生效（代价不生效）":(RT[p.regime]||"");
-      st+=`<span class="lock-tag st-regime r-${p.fedTurn?"all":p.regime}" title="${V.esc(tip)}">☭ ${V.esc(nm)}${p.fedTurn&&p.regime?" · "+V.esc(C.REGIMES[p.regime]):""}</span>`;
+      st+=`<span class="lock-tag st-regime r-${p.fedTurn?"all":p.regime}" title="${V.esc(tip)}">${V.esc(nm)}${p.fedTurn&&p.regime?" · "+V.esc(C.REGIMES[p.regime]):""}</span>`;
     }
-    if(p.hero==="绘梨衣")st+=`<span class="lock-tag st-regime r-all" title="皇冠产出：每个回合开始，手牌获得 1 张【碎纸】">♻ 皇冠产出</span>`;
+    if(p.hero==="绘梨衣")st+=`<span class="lock-tag st-regime r-all" title="皇冠产出：每个回合开始，手牌获得 1 张【碎纸】">皇冠产出</span>`;
     if(p.hero==="白猫")st+=`<button type="button" class="lock-tag st-regime r-all destroy-tag" title="点击查看销毁的卡牌">销毁 ${p.destroyedCards||0} · 查看牌名</button>`;
     if(p.noSpell)st+=`<span class="lock-tag st-lock">禁法术</span>`;
     if((p.nextCap!=null||p.nextNoSpell)&&p.turnCap==null&&!p.noSpell)st+=`<span class="lock-tag st-next">下回合受封锁</span>`;
@@ -375,12 +379,13 @@ const GameUI=(()=>{
     if(u.deathDmg>0)kw+=`<i class="death" title="亡语：对敌方英雄造成 ${u.deathDmg} 点伤害">亡</i>`;
     if(u.lifespan>0)kw+=`<i class="fleet" title="限时：下个回合开始时消散">限</i>`;
     let badge="";
-    if(u.stun>0)badge=`<span class="badge stun">💫 眩晕</span>`;
+    if(u.stun>0)badge=`<span class="badge stun">眩晕</span>`;
     else if(u.strikes>1)badge=`<span class="badge multi">×${Math.max(0,u.atkLeft)}/${u.strikes}</span>`;
     else if(side==="me"&&u.fresh&&!u.charge&&u.atkLeft<=0&&S.view.myTurn)badge=`<span class="badge zz">Zz</span>`;
     const def=u.hero&&C.cardDef(u.hero,u.id);
     const atkB=def&&u.attack>def.atk?" buff":"",hpB=u.health<u.maxHealth?" dmg":(def&&u.maxHealth>def.hp?" buff":"");
-    return`<div class="u"><div class="ukw">${kw}</div><div class="ua">${V.esc(u.art)}</div><div class="un">${V.esc(u.name)}</div>${badge}<div class="ust"><b class="stat atk${atkB}">${u.attack}</b><b class="stat hp${hpB}">${u.health}</b></div></div>`;
+    const uart=window.CardArt?CardArt.unitArt(u):"";
+    return`<div class="u"><div class="ukw">${kw}</div><div class="ua">${uart}<span class="glyph">${V.esc(u.art)}</span></div><div class="un">${V.esc(u.name)}</div>${badge}<div class="ust"><b class="stat atk${atkB}">${u.attack}</b><b class="stat hp${hpB}">${u.health}</b></div></div>`;
   }
   function unitFlags(u,side){
     const v=S.view;let f="";
@@ -477,7 +482,7 @@ const GameUI=(()=>{
     const v=S.view,box=$("#foeHand"),n=v.foe.handCount;
     const sp=Math.min(46,(780-60)/Math.max(1,n-1)),total=(n-1)*sp+60,start=(816-total)/2,mid=(n-1)/2;
     let html="";
-    for(let i=0;i<n;i++){const c=v.foe.hand[i]||{};html+=`<div class="card-back${c.costUp?" up":""}" style="left:${start+i*sp}px;transform:rotate(${(mid-i)*3}deg) translateY(${Math.abs(i-mid)*-2}px)">♛</div>`;}
+    for(let i=0;i<n;i++){const c=v.foe.hand[i]||{};html+=`<div class="card-back${c.costUp?" up":""}" style="left:${start+i*sp}px;transform:rotate(${(mid-i)*3}deg) translateY(${Math.abs(i-mid)*-2}px)">${V.backInner()}<span class="glyph">♛</span></div>`;}
     if(box._sig!==html){box.innerHTML=html;box._sig=html;}
   }
 
@@ -1100,3 +1105,4 @@ const GameUI=(()=>{
   return{start,stop,push,idle,fit,showChat,notice,gtoast,openCoach(){S.opts.tutorial=true;S.opts.forceCoach=true;maybeCoach();},
     get view(){return S.view;},get mode(){return S.mode;},get opts(){return S.opts;},get active(){return!!S.ctl;}};
 })();
+

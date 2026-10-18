@@ -1,0 +1,329 @@
+/* ============================================================================
+   皇冠对决 · 卡牌层（极简）
+   卡面 / 战场单位 / 英雄徽章 / 卡背
+   卡面 = 平面底色 + 1px 描边 + 一块插画；不做内发光、斜切、流光
+   ============================================================================ */
+
+/* ============================================================================
+   卡面
+   ============================================================================ */
+.card{
+  --hcr:160,160,168;
+  position:relative;width:11em;height:15.4em;font-size:12px;
+  border-radius:.72em;padding:.46em;
+  display:flex;flex-direction:column;text-align:center;overflow:hidden;
+  color:var(--text);
+  background:var(--ink-800);
+  border:1px solid var(--line-2);
+  box-shadow:var(--sh-1);
+  user-select:none;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast);
+  isolation:isolate;
+}
+
+/* 费用 */
+.card .cost{
+  position:absolute;left:.42em;top:.42em;z-index:6;
+  width:2.1em;height:2.1em;border-radius:50%;
+  display:grid;place-items:center;
+  font:600 1.15em/1 var(--font-ui);font-variant-numeric:tabular-nums;
+  color:var(--ink-50);
+  background:rgba(10,10,12,.82);
+  border:1px solid rgba(255,255,255,.22);
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.card.costup .cost{border-color:rgba(194,96,90,.8);color:#f0c6c1}
+.card.costdown .cost{border-color:rgba(105,173,138,.8);color:#c9e6d8}
+
+/* 插画窗 */
+.card .art{
+  position:relative;flex:none;height:4.3em;margin-bottom:.42em;
+  border-radius:.44em;overflow:hidden;
+  background:var(--ink-750);
+  border:1px solid var(--line);
+}
+.card .art .artimg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.card .art .glyph{display:none}
+
+/* 名字 */
+.card .nm{
+  font:600 1.02em/1.2 var(--font-ui);letter-spacing:0;color:var(--ink-25);
+  display:flex;align-items:center;justify-content:center;
+  min-height:2.1em;padding:0 .15em;
+}
+/* 类型行 */
+.card .type{
+  font-size:.68em;line-height:1.3;color:var(--ink-300);
+  margin:0 0 .34em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.card .type .rar{font-weight:600}
+
+/* 说明 */
+.card .tx{
+  flex:1;min-height:0;font-size:.82em;line-height:1.5;
+  color:var(--ink-200);overflow:hidden;padding:0 .16em;
+}
+.card .tx b{color:var(--ink-25);font-weight:600}
+.card .tx .flv{display:block;color:var(--ink-400);font-style:normal;margin-top:.25em;font-size:.95em}
+.card .tx:has(.flv:first-child){display:flex;align-items:center;justify-content:center}
+
+/* 攻击 / 生命 */
+.card .stats{display:flex;justify-content:space-between;align-items:flex-end;margin-top:.16em}
+.stat{
+  width:1.95em;height:1.95em;border-radius:50%;
+  display:grid;place-items:center;
+  font:600 1.05em/1 var(--font-ui);font-variant-numeric:tabular-nums;
+  color:var(--ink-50);
+  background:var(--ink-700);
+  border:1px solid var(--line-2);
+}
+.stat.atk{color:var(--ink-25)}
+.stat.hp{background:rgba(194,96,90,.14);border-color:rgba(194,96,90,.34);color:#eec9c5}
+.stat.hp.dmg{color:#f5b9b2}
+.stat.buff{color:#bfe4d1;border-color:rgba(105,173,138,.45);background:rgba(105,173,138,.12)}
+
+/* 关键字 */
+.card .kws{
+  position:absolute;right:.36em;top:.36em;z-index:6;
+  display:flex;flex-direction:column;gap:.16em;align-items:flex-end;
+}
+.kw{
+  font-style:normal;font:500 .68em/1 var(--font-ui);
+  padding:.32em .45em;border-radius:.34em;
+  background:rgba(10,10,12,.8);
+  border:1px solid var(--line-3);
+  color:var(--ink-50);
+  white-space:nowrap;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+}
+.kw.charge{border-color:rgba(211,177,132,.6);color:var(--accent-hi)}
+.kw.taunt{border-color:rgba(255,255,255,.28)}
+.kw.pierce{border-color:rgba(109,158,209,.6);color:#bdd5ec}
+.kw.hide{border-color:rgba(255,255,255,.2);color:var(--ink-100)}
+.kw.core{border-color:rgba(147,117,194,.65);color:#d3c4e8}
+.kw.multi{border-color:rgba(194,96,90,.65);color:#eec9c5}
+
+/* 稀有度小点 */
+.card .gem{
+  position:absolute;left:50%;bottom:.5em;z-index:5;
+  width:.42em;height:.42em;transform:translateX(-50%);border-radius:50%;
+}
+.gem.r-common{background:var(--r-common)}
+.gem.r-rare{background:var(--r-rare)}
+.gem.r-special{background:var(--r-special)}
+.gem.r-elite{background:var(--r-elite)}
+.card .rar{font-weight:600}
+.rar.r-common{color:var(--r-common)}
+.rar.r-rare{color:var(--r-rare)}
+.rar.r-special{color:var(--r-special)}
+.rar.r-elite{color:var(--r-elite)}
+
+/* 状态变体 */
+.card.core{border-color:rgba(147,117,194,.5)}
+.card.awa{background:var(--ink-850)}
+.card.awa .art{filter:grayscale(1) contrast(1.05)}
+.card.awa .nm,.card.awa .tx{font-family:var(--font-mono)}
+.card.awa .type{color:var(--ink-400)}
+.card.cant{opacity:.55}
+
+/* 稀有度描边 */
+.card.r-common{border-color:var(--line-2)}
+.card.r-rare{border-color:rgba(91,143,199,.42)}
+.card.r-special{border-color:rgba(147,117,194,.45)}
+.card.r-elite{border-color:rgba(195,162,103,.55)}
+
+/* ============================================================================
+   手牌
+   ============================================================================ */
+.hcard{
+  position:absolute;top:14px;width:132px;height:185px;
+  transform-origin:50% 120%;
+  transform:translateY(var(--ty,0px)) rotate(var(--rot,0deg));
+  transition:left .2s var(--e-out),transform .16s var(--e-out),top .16s var(--e-out),filter .16s;
+  cursor:grab;z-index:1;
+}
+.hcard .card{position:absolute;inset:0}
+.hcard.play .card{border-color:rgba(105,173,138,.55)}
+.hcard.sel{z-index:50;transform:translateY(-62px) scale(1.1) rotate(0deg)}
+.hcard.sel .card{border-color:var(--accent-line);box-shadow:0 0 0 1px var(--accent-line),var(--sh-2)}
+@media (hover:hover){
+  .hcard:not(.drag):hover{transform:translateY(-54px) scale(1.07) rotate(0deg);z-index:40}
+  .hcard:not(.drag):hover .card{border-color:var(--line-3)}
+}
+.hcard.drag{transition:none;z-index:90;cursor:grabbing}
+.hcard.enter{animation:drawIn .22s var(--e-out)}
+.hcard.dying{opacity:0;transition:opacity .16s}
+@keyframes drawIn{from{opacity:0;transform:translate(40px,-16px) scale(.94)}}
+.hcard.sealed{opacity:.55}
+.hcard.sealed::after{
+  content:"封存";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  padding:2px 8px;border:1px solid rgba(194,96,90,.6);border-radius:var(--r-1);
+  color:#e2a29c;font:600 12px var(--font-ui);background:rgba(10,10,12,.8);
+}
+
+/* ============================================================================
+   卡背
+   ============================================================================ */
+.card-back{
+  position:relative;width:11em;height:15.4em;font-size:12px;
+  border-radius:.72em;overflow:hidden;
+  background:var(--ink-850);
+  border:1px solid var(--line-2);
+  box-shadow:var(--sh-1);
+  display:grid;place-items:center;
+  color:var(--ink-500);
+}
+.card-back .artimg{position:absolute;inset:0;width:100%;height:100%}
+.card-back .glyph{display:none}
+.card-back.up{border-color:rgba(194,96,90,.4)}
+
+/* ============================================================================
+   战场单位
+   ============================================================================ */
+.unit{
+  --hcr:160,160,168;
+  position:relative;flex:none;width:112px;height:150px;
+  transition:width .2s var(--e-out),margin .2s var(--e-out),opacity .2s;
+}
+.unit .u{
+  position:absolute;inset:0;border-radius:var(--r-3);overflow:hidden;
+  background:var(--ink-800);
+  border:1px solid var(--line-2);
+  box-shadow:var(--sh-1);
+  display:flex;flex-direction:column;align-items:center;
+  transition:border-color var(--t-fast),box-shadow var(--t-fast),transform var(--t-fast) var(--e-out);
+  isolation:isolate;
+}
+.unit .ua{
+  position:relative;width:100%;height:64%;flex:none;overflow:hidden;
+  background:var(--ink-750);border-bottom:1px solid var(--line);
+}
+.unit .ua .artimg{position:absolute;inset:0;width:100%;height:100%}
+.unit .ua .glyph{display:none}
+.unit .un{
+  width:100%;flex:1;display:grid;place-items:center;padding:.2em .35em;
+  font:500 11.5px/1.25 var(--font-ui);color:var(--ink-100);
+  text-align:center;overflow:hidden;
+}
+/* 关键字 */
+.unit .ukw{
+  position:absolute;left:5px;top:5px;z-index:5;
+  display:flex;flex-direction:row;flex-wrap:wrap;max-width:48px;gap:3px;
+}
+.unit .ukw i{
+  font-style:normal;width:17px;height:17px;border-radius:4px;
+  display:grid;place-items:center;font:600 10px var(--font-ui);
+  background:rgba(10,10,12,.82);border:1px solid var(--line-3);color:var(--ink-50);
+}
+.unit .ukw i.charge{border-color:var(--accent-line);color:var(--accent-hi)}
+.unit .ukw i.pierce{border-color:rgba(109,158,209,.6);color:#bdd5ec}
+.unit .ukw i.hide{border-color:var(--line-3);color:var(--ink-100)}
+.unit .ukw i.death{border-color:rgba(194,96,90,.6);color:#eec9c5}
+.unit .ukw i.fleet{border-color:rgba(147,117,194,.6);color:#d3c4e8}
+/* 角标 */
+.unit .badge{
+  position:absolute;right:5px;top:5px;z-index:5;
+  font:500 10px var(--font-ui);padding:1px 5px;border-radius:4px;
+  background:rgba(10,10,12,.82);border:1px solid var(--line-2);color:var(--ink-100);
+}
+.unit .badge.stun{color:#d3c4e8;border-color:rgba(147,117,194,.5)}
+.unit .badge.multi{color:#eec9c5;border-color:rgba(194,96,90,.5)}
+/* 攻防 */
+.unit .ust{
+  position:absolute;left:4px;right:4px;bottom:4px;z-index:6;
+  display:flex;justify-content:space-between;pointer-events:none;
+}
+.unit .ust .stat{
+  width:26px;height:26px;font-size:12.5px;
+  background:rgba(10,10,12,.86);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  border-color:var(--line-3);
+}
+.unit .ust .stat.hp{background:rgba(30,14,14,.86);border-color:rgba(194,96,90,.5);color:#f0cdc9}
+
+/* 单位状态 */
+.unit.taunt .u{border-color:var(--line-3)}
+.unit.hide .u{border-style:dashed}
+.unit.awa .u{background:var(--ink-850)}
+.unit.can .u{cursor:grab;border-color:rgba(105,173,138,.6)}
+.unit.sel .u{border-color:var(--accent-line);transform:translateY(-4px);box-shadow:0 0 0 1px var(--accent-line),var(--sh-2)}
+.unit.tired .u{opacity:.55}
+.unit.tgt .u{cursor:crosshair;border-color:rgba(194,96,90,.7)}
+.unit.hot .u{transform:scale(1.04);border-color:rgba(194,96,90,.9);box-shadow:0 0 0 1px rgba(194,96,90,.6),var(--sh-2)}
+.unit.dim .u{opacity:.35}
+.unit.choose .u{cursor:pointer;border-color:var(--accent-line);box-shadow:0 0 0 1px var(--accent-line)}
+.unit.picked .u{transform:translateY(-4px);border-color:#fff;box-shadow:0 0 0 1px rgba(255,255,255,.8),var(--sh-2)}
+.unit.enter .u{animation:pop .22s var(--e-out)}
+.unit.slam .u{animation:slam .6s var(--e-out) both}
+.unit.dying{width:0!important;margin:0 -6px!important;opacity:0;pointer-events:none}
+.unit.dying .u{opacity:0;transition:opacity .1s}
+.unit.hit .u{animation:hitA .3s}
+@keyframes pop{from{opacity:0;transform:scale(.94)}}
+@keyframes hitA{0%{border-color:rgba(255,255,255,.8)}60%{border-color:rgba(194,96,90,.7)}}
+@keyframes slam{0%{opacity:0;transform:translateY(-40px)}60%{opacity:1;transform:translateY(4px)}100%{transform:none}}
+
+/* ============================================================================
+   英雄徽章 / 头像
+   ============================================================================ */
+.crest{
+  position:relative;display:grid;place-items:center;flex:none;
+  border-radius:50%;overflow:hidden;
+  background:var(--ink-750);
+  border:1px solid var(--line-2);
+  font:600 1em var(--font-ui);color:var(--ink-200);
+}
+.crest .artimg{position:absolute;inset:0;width:100%;height:100%}
+.crest .glyph{display:none}
+
+.portrait{
+  position:relative;width:112px;height:112px;border-radius:50%;
+  background:var(--ink-750);
+  border:1px solid var(--line-2);
+  display:grid;place-items:center;
+  box-shadow:var(--sh-1);
+  transition:border-color var(--t-fast),box-shadow var(--t-fast),transform var(--t-fast);
+}
+.portrait .por-art{position:absolute;inset:0;border-radius:50%;overflow:hidden;display:block}
+.portrait .por-art .artimg{width:100%;height:100%;display:block}
+.portrait .glyph{position:relative;z-index:1;font:600 34px var(--font-ui);color:var(--ink-100)}
+.portrait.has-art .glyph{display:none}
+/* 生命 */
+.portrait .hpb{
+  position:absolute;right:-6px;bottom:-4px;z-index:4;
+  min-width:38px;height:32px;padding:0 8px;
+  display:grid;place-items:center;
+  font:600 15px var(--font-ui);font-variant-numeric:tabular-nums;color:var(--ink-25);
+  background:var(--ink-700);
+  border:1px solid var(--line-3);
+  border-radius:var(--r-pill);
+  box-shadow:var(--sh-1);
+}
+.portrait .hpb.over{color:var(--accent)}
+.portrait .hpb.low{border-color:rgba(194,96,90,.6);color:#eec9c5}
+/* 护甲 */
+.portrait .armb{
+  position:absolute;left:-6px;bottom:-4px;z-index:4;
+  min-width:32px;height:32px;padding:0 7px;
+  display:grid;place-items:center;
+  font:600 13.5px var(--font-ui);font-variant-numeric:tabular-nums;color:var(--ink-100);
+  background:var(--ink-700);border:1px solid var(--line-3);
+  border-radius:var(--r-pill);box-shadow:var(--sh-1);
+}
+.portrait.tgt{cursor:crosshair;border-color:rgba(194,96,90,.75);box-shadow:0 0 0 3px rgba(194,96,90,.16)}
+.portrait.hot{transform:scale(1.03);border-color:rgba(194,96,90,.95);box-shadow:0 0 0 4px rgba(194,96,90,.2)}
+.portrait.hit{animation:hitA .3s}
+.htag{
+  position:absolute;top:-8px;left:50%;transform:translateX(-50%);z-index:6;
+  font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:var(--r-1);white-space:nowrap;
+  background:var(--ink-700);border:1px solid var(--line-3);color:var(--ink-100);
+}
+
+/* ============================================================================
+   小尺寸场景
+   ============================================================================ */
+.dc .card{font-size:11px;cursor:pointer;transition:border-color var(--t-fast),transform var(--t-fast)}
+.dc .card:hover{transform:translateY(-2px);border-color:var(--line-3)}
+.dc.zero .card{opacity:.5}
+.cx-card .card{font-size:12px}
+.pile .card-back{font-size:3.6px}
+.cardview .card,.cv-card .card{font-size:19px}
+

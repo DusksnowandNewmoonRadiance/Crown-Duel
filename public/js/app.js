@@ -61,7 +61,9 @@ function confirmBox(title,text,yes){
     $("#cfYes").onclick=()=>done(true);$("#cfNo").onclick=()=>done(false);
   });
 }
-const crest=(hero,cls)=>`<span class="crest ${cls||""}" style="--hcr:${V.heroRgb(hero)}">${V.esc(V.glyph(hero))}</span>`;
+/* 卡牌师徽章：程序化 SVG 头像（cardart.js），不可用时退回字形 */
+const crestArt=(hero)=>window.CardArt?CardArt.portrait(hero):V.esc(V.glyph(hero));
+const crest=(hero,cls)=>`<span class="crest ${cls||""}" style="--hcr:${V.heroRgb(hero)}">${crestArt(hero)}</span>`;
 const stars=n=>"★".repeat(n)+"☆".repeat(3-n);
 
 /* ============================================================
@@ -86,12 +88,14 @@ const Account={
   async api(path,body){
     const b=Object.assign({},body||{});
     if(this.token&&!b.token)b.token=this.token;
-    const r=await fetch("/api"+path,{method:body?"POST":"GET",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(b):undefined});
+    /* GET 请求把 token 放在查询串里（服务端 tok() 同时支持 body/query） */
+    const qs=body?"":(b.token?"?token="+encodeURIComponent(b.token):"");
+    const r=await fetch("/api"+path+qs,{method:body?"POST":"GET",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(b):undefined});
     try{return await r.json();}catch(e){return{ok:false,msg:"网络错误"};}
   },
   async refresh(){
     if(!this.token){this.me=null;renderGold();renderHome();return;}
-    const r=await this.api("/me",{});
+    const r=await this.api("/me");
     if(r.ok&&r.me){this.me=r.me;renderGold();renderHome();}
     else{this.token="";store.del("token");this.me=null;renderGold();renderHome();}
   },
@@ -113,11 +117,12 @@ const Account={
 };
 function renderGold(){
   const g=Account.gold;
+  const coin=`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg>`;
   $("#homeGold").hidden=!Account.me;
-  $("#homeGold").textContent="🪙 "+g;
-  const gp=$("#shopGold");if(gp)gp.textContent="🪙 "+g;
-  const gv=$("#vaultGold");if(gv)gv.textContent="🪙 "+g;
-  const gc=$("#campGold");if(gc)gc.textContent="🪙 "+g;
+  $("#homeGold").innerHTML=coin+g;
+  const gp=$("#shopGold");if(gp)gp.innerHTML=coin+g;
+  const gv=$("#vaultGold");if(gv)gv.innerHTML=coin+g;
+  const gc=$("#campGold");if(gc)gc.innerHTML=coin+g;
   const a=$("#homeAuthTxt"),d=$("#homeAuth");
   if(a&&d){a.textContent=Account.me?(Account.me.nick||Account.me.user):"登录";d.title=Account.me?"退出登录":"登录/注册";}
   const hb=$("#homeBind");
@@ -458,7 +463,7 @@ const Net={
     s.on("game:notice",d=>GameUI.notice(d.text,d.ok));
     s.on("toast",d=>toast(d.text,true,3500));
     s.on("announce",d=>Live.onAnnounce(d));
-    s.on("broadcast",d=>sysMsg("bc","📣 "+d.text,{ms:15000}));
+    s.on("broadcast",d=>sysMsg("bc",d.text,{ms:15000}));
     s.on("maintenance",m=>Live.setMaint(m));
     s.on("content",()=>Live.loadContent(false));
     s.on("build",d=>Live.checkBuild(d.build));
@@ -622,7 +627,7 @@ function renderLobby(){
   box.innerHTML=L.rooms.map(r=>{
     const full=r.players.length>=2,playing=r.status!=="waiting";
     const can=!full&&!playing;
-    return`<div class="room-card"><div class="rc-top"><span class="rc-name">${r.locked?"🔒 ":""}${V.esc(r.name)}</span><span class="rc-code">#${V.esc(r.code)}</span><span class="tag ${playing?"play":"wait"}">${playing?"对局中":full?"已满":"等待中"}</span></div>
+    return`<div class="room-card"><div class="rc-top"><span class="rc-name">${r.locked?"[私] ":""}${V.esc(r.name)}</span><span class="rc-code">#${V.esc(r.code)}</span><span class="tag ${playing?"play":"wait"}">${playing?"对局中":full?"已满":"等待中"}</span></div>
       <div class="rc-players">${r.players.map(p=>`<span style="--hcr:${V.heroRgb(p.hero)}"><i>${V.esc(p.hero)}</i><b class="reportable-name" data-report-id="${V.esc(p.id)}" data-report-name="${V.esc(p.nick)}" title="点击举报">${V.esc(p.nick)}</b></span>`).join("")}${r.players.length<2?`<span class="muted">空位</span>`:""}</div>
       ${can?`<button class="btn btn-primary" data-join="${V.esc(r.id)}">加入</button>`:""}</div>`;
   }).join("");
@@ -648,7 +653,7 @@ function renderRoom(){
     const el=$("#seat"+i);
     if(!s){el.className="seat empty-seat";el.style.removeProperty("--hcr");el.innerHTML=`<div style="font-size:30px">＋</div><div>等待对手加入…</div><div class="small">把房间号 <b style="color:var(--gold2)">${V.esc(r.code)}</b> 发给朋友</div>`;return;}
     el.className="seat";el.style.setProperty("--hcr",V.heroRgb(s.hero));
-    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)} · ${V.esc(C.HERO_INFO[s.hero].title)}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"✔ 已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
+    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)} · ${V.esc(C.HERO_INFO[s.hero].title)}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
   });
   const me=r.seats[r.you];
   const both=r.seats.every(Boolean);
@@ -718,7 +723,7 @@ const Live={
   setMaint(m){
     this.maint=m||{on:false};
     const old=$("#sysMaint");if(old)old.remove();
-    if(this.maint.on&&!m.restarting)sysMsg("maint","🔧 "+this.maint.message,{id:"sysMaint",sticky:true});
+    if(this.maint.on&&!m.restarting)sysMsg("maint",this.maint.message,{id:"sysMaint",sticky:true});
     if(m&&m.restarting)sysMsg("maint","服务器正在重启更新，几秒后会自动重新连接…",{id:"sysMaint",sticky:true});
     const lm=$("#lobbyMaint");lm.hidden=!this.maint.on;lm.textContent="🔧 "+(this.maint.message||"");
     $("#btnQuick").disabled=$("#btnCreate").disabled=!!this.maint.on;
@@ -742,7 +747,7 @@ const Live={
     const seen=this.seen();const cur=this.news.find(n=>n.id===id)||this.news[0];this.cur=cur.id;
     this.markSeen(cur.id+"@"+cur.updatedAt);
     const fmt=t=>new Date(t).toLocaleDateString("zh-CN",{year:"numeric",month:"long",day:"numeric"});
-    $("#newsList").innerHTML=this.news.map(n=>`<button class="news-item${n.id===cur.id?" on":""}" data-id="${V.esc(n.id)}">${!seen.has(n.id+"@"+n.updatedAt)&&n.id!==cur.id?'<span class="red-dot"></span>':""}<b><span class="ntag t${V.esc(n.type)}">${V.esc(n.type)}</span>${n.pinned?"📌 ":""}${V.esc(n.title)}</b><small>${fmt(n.createdAt)}</small></button>`).join("");
+    $("#newsList").innerHTML=this.news.map(n=>`<button class="news-item${n.id===cur.id?" on":""}" data-id="${V.esc(n.id)}">${!seen.has(n.id+"@"+n.updatedAt)&&n.id!==cur.id?'<span class="red-dot"></span>':""}<b><span class="ntag t${V.esc(n.type)}">${V.esc(n.type)}</span>${n.pinned?"[置顶] ":""}${V.esc(n.title)}</b><small>${fmt(n.createdAt)}</small></button>`).join("");
     $("#newsDetail").innerHTML=`<h3>${V.esc(cur.title)}</h3><div class="when"><span class="ntag t${V.esc(cur.type)}">${V.esc(cur.type)}</span>${new Date(cur.createdAt).toLocaleString("zh-CN",{hour12:false})}${cur.updatedAt>cur.createdAt+60000?" · 已编辑":""}</div><div class="txt">${V.esc(cur.body)}</div>`;
     $("#newsDetail").scrollTop=0;
   },
@@ -751,7 +756,7 @@ const Live={
     this.loadNews(false).then(()=>{
       if(!d||!d.latest)return;
       if(d.latest.popup&&!this.inGame())this.openNews(this.news.find(n=>n.id===d.latest.id));
-      else sysMsg("bc",`📢 新公告：${d.latest.title}`,{action:"查看",onAction:()=>this.openNews(this.news.find(n=>n.id===d.latest.id))});
+      else sysMsg("bc",`新公告：${d.latest.title}`,{action:"查看",onAction:()=>this.openNews(this.news.find(n=>n.id===d.latest.id))});
     });
   }
 };
@@ -794,7 +799,7 @@ window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;}};
    商店
    ============================================================ */
 async function renderShop(){
-  const r=await Account.api("/shop",{});
+  const r=await Account.api("/shop");
   if(!r.ok||!r.items){toast("商店加载失败",false);return;}
   const inv=Account.me.inv||[];
   $("#shopList").innerHTML=r.items.map(it=>{
@@ -804,7 +809,7 @@ async function renderShop(){
         <div class="shop-name">${V.esc(it.name)}</div>
         <div class="shop-kind">${it.kind==="card"?"剧情卡":it.kind==="pack"?"卡包":"升级券"}</div>
         <div class="shop-desc">${V.esc(it.desc)}</div>
-        <div class="shop-price">🪙 ${it.price}</div>
+        <div class="shop-price"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg>${it.price}</div>
         <button class="btn btn-gold" data-id="${V.esc(it.id)}" ${Account.gold<it.price?"disabled":""}>购买${owned?"（拥有 "+owned+"）":""}</button>
       </div>
     </div>`;
@@ -821,15 +826,15 @@ $("#shopList").addEventListener("click",async e=>{
    仓库：所有角色共用一个仓库（方块网格），放入时选角色+存档位
    ============================================================ */
 const Vault={item:null,hero:"八幡",slot:0};
-const VAULT_ICON={villageHorn:"📯",militiaCaptain:"⚔",campaignPack:"🎁",upgradeToken:"🎫"};
+const VAULT_ICON={villageHorn:`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flag"/></svg>`,militiaCaptain:`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-swords"/></svg>`,campaignPack:`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cards"/></svg>`,upgradeToken:`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-bolt"/></svg>`};
 function renderVault(){
   const inv=Account.me.inv||[];
   const list=$("#vaultList");
-  if(!inv.length){list.innerHTML='<p class="muted">仓库是空的。去商店买点东西吧。</p>';return;}
+  if(!inv.length){list.innerHTML='<div class="empty">仓库是空的<br><b>去商店</b>买点东西吧</div>';return;}
   list.innerHTML=inv.map(x=>{
     const it=SHOP_ITEMS[x.id];
     return`<button class="vault-cell" data-id="${V.esc(x.id)}" title="${it?V.esc(it.name):V.esc(x.id)}">
-      <span class="vault-icon">${VAULT_ICON[x.id]||"▫"}</span>
+      <span class="vault-icon">${VAULT_ICON[x.id]||""}</span>
       <span class="vault-name">${it?V.esc(it.name):V.esc(x.id)}</span>
       <span class="vault-qty">×${x.qty}</span>
     </button>`;
@@ -883,10 +888,10 @@ function renderCampaign(){
     return`<button class="camp-bar ${unlocked?"":"locked"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
       <div class="camp-img" style="--hcr:${V.heroRgb(h)}">
         <img class="camp-photo" alt="" hidden data-hero-img="${V.esc(h)}">
-        <span class="crest" style="--hcr:${V.heroRgb(h)}">${V.esc(V.glyph(h))}</span>
+        <span class="crest" style="--hcr:${V.heroRgb(h)}">${crestArt(h)}</span>
         <span class="camp-photo-fallback">${V.esc(info.title)}</span>
       </div>
-      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${unlocked?"★ 剧情已解锁":"🔒 未解锁"}</span></div>
+      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${unlocked?"★ 已解锁":"未解锁"}</span></div>
     </button>`;
   }).join("");
   /* 预留图片接口：img.camp-photo 有 src 时自动替换徽记（后续接角色立绘） */
@@ -1108,3 +1113,7 @@ $("#rewardAgain").addEventListener("click",()=>{closeModal("#mReward");const s=w
 $("#rewardUpgrade").addEventListener("click",()=>{closeModal("#mReward");openUpgrade();});
 window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;},Account,Campaign,renderGold,onCampaignEvent};
 })();
+
+
+
+

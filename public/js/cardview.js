@@ -31,7 +31,7 @@ const CardView=(()=>{
     // 不抛异常，避免把整个手牌区（及对局流程）拖死。
     if(!c||c.id===undefined||c.kind===undefined){
       return '<div class="card k-spell r-common"><span class="cost">?</span>'+
-        '<div class="art"><span>?</span></div>'+
+        '<div class="art"><span class="glyph">?</span></div>'+
         '<div class="nm">数据缺失</div>'+
         '<div class="tx">这张卡的数据异常，请刷新页面</div></div>';
     }
@@ -57,9 +57,12 @@ const CardView=(()=>{
       +(rar?` · <span class="rar r-${rar}">${C.RARITY[rar].name}</span>`:"");
     const gem=rar?`<i class="gem r-${rar}" title="${C.RARITY[rar].name}"></i>`:"";
     const body=richText(c.text)+(c.flavor?`<i class="flv">${esc(c.flavor)}</i>`:"");
-    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art"><span>${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${body}</div>${gem}${stats}</div>`;
+    /* 卡面插画：程序化 SVG（见 cardart.js），glyph 只作为兜底文字保留 */
+    const artwork=window.CardArt?CardArt.art(c):"";
+    return`<div class="${cls.join(" ")}" style="--hcr:${heroRgb(c.hero)}">${kwChips(c)}<span class="cost">${c.cost}</span><div class="art">${artwork}<span class="glyph">${esc(c.art)}</span></div><div class="nm">${esc(c.name)}</div><div class="type">${type}</div><div class="tx">${body}</div>${gem}${stats}</div>`;
   }
-  function back(costUp){return`<div class="card-back${costUp?" up":""}">♛</div>`;}
+  function backInner(){return window.CardArt?CardArt.back():"";}
+  function back(costUp){return`<div class="card-back${costUp?" up":""}">${backInner()}<span class="glyph">♛</span></div>`;}
 
   /* 预览时展示的关键字说明 */
   function keywordNotes(c){
@@ -100,5 +103,5 @@ const CardView=(()=>{
     if(c.stun>0)out.push({name:"眩晕",desc:"下个回合无法攻击。"});
     return out.map(k=>`<div><b>${esc(k.name)}</b>${esc(k.desc)}</div>`).join("");
   }
-  return{esc,rgb,heroRgb,glyph,card,back,keywordNotes,richText};
+  return{esc,rgb,heroRgb,glyph,card,back,backInner,keywordNotes,richText};
 })();
