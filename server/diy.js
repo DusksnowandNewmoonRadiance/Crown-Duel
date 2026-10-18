@@ -114,7 +114,7 @@ function init() {
   let builtin = 0, saved = 0, skipped = 0;
 
   for (const raw of Builtin.heroes) {
-    const v = Diy.validate(raw, { allowReplace: raw && raw.name });
+    const v = Diy.validate(raw, { builtin: true, allowReplace: raw && raw.name });
     if (!v.ok) { console.warn("[Diy] 内置角色校验失败，跳过：", (v.errors || []).join("；")); skipped++; continue; }
     const r = Diy.register(v.def, { builtin: true, author: "官方示例", createdAt: 0 });
     if (!r.ok) { console.warn("[Diy] 内置角色注册失败，跳过：", r.error); skipped++; continue; }

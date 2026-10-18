@@ -82,8 +82,106 @@
     return str(s).replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
   }
 
+
+  /* 内置角色专用机制：只允许官方内置角色使用，玩家上传不可用。
+     这些都是为某个内置角色（目前是苍蓝）写死的私有实现，
+     不保证对其他角色语义正确，因此不对外开放。 */
+  const BUILTIN_EFFECTS = {
+    /* 通用引擎机制，但与通用 CATALOG 的写法不同（部署抽 1） */
+    draw: "部署：抽 1 张牌",
+    believerDeath: "信徒亡语：获得 1 点费用",
+    vaultDeath: "不朽堡垒亡语：将 2 张【神罚】洗入敌方牌库",
+    warChariotDeploy: "赤血战车：失去 1 点费用上限，亡语使手牌费用 -1",
+    mechPriest: "机械神甫：部署时召唤 1 个苍蓝机械眼",
+    mechEye: "机械眼：回合开始随机攻击",
+    ascetic: "苦修者：敌方抽到神罚时你抽牌",
+    azureDevelop: "尘封故事：开发 1 张苍蓝牌",
+    azureSynth: "碎质合成：4 点单体伤害 + 1 护甲",
+    azureStar: "永恒虚星：获得 10 点护甲",
+    azureDescend: "机械神降：回复 5 并复制牌库 1 张",
+    divineWrath: "神怒：将 2 张神罚洗入敌方牌库",
+    divineBarrier: "神谕壁垒：按敌方神罚数获得护甲",
+    divinePull: "圣光牵引：临时策反 +1/+4",
+    divineEcho: "神罚共鸣：往两边牌库塞神罚",
+    divinePunish: "神罚：抽到时自伤 1 并抽 1",
+    summonMechEyeMax: "机械狂潮：铺满机械眼",
+    summonMechDef: "机动防御：召唤 2/10 机械眼",
+    holySmite: "圣光惩戒：2 点（有神罚则 4 点）",
+    purgeOrder: "净除指令：消灭 1 个单位并塞 2 张神罚",
+    punishArrival: "神罚降临：召唤圣光巨像",
+    sacrifice: "献祭：消灭友方单位抽 2 张",
+    disaster: "妄想天灾：按失去的费用上限换临时费用",
+    symbiosis: "共生：给友方单位加亡语",
+    extremeMission: "极限使命：拿无畏伤痛",
+    fearless: "无畏伤痛：全军 +2/-3 并开发",
+    shatteredImage: "破碎映像：开发并失去 1 点费用上限",
+    lavaFortress: "熔岩骑士堡垒：部署群体伤害",
+    wizardThunder: "大巫师[雷]：与火合成巫师议会",
+    wizardFire: "大巫师[火]：与雷合成巫师议会",
+    wizardCouncil: "巫师议会：回合结束敌方全体 -1 攻",
+    scoutDream: "侦察者的梦境：三选一开发",
+    scoutDeploy: "侦察者：部署自伤 3",
+    spyGhostDeploy: "间谍鬼：策反低费单位",
+    dreamCast: "入梦：眩晕 1 个单位",
+    confess: "（保留）",
+  };
+
+  /* 内置角色的宽松校验：允许私有机制、私有字段、超规格数值（80 费/999 攻） */
+  function validateBuiltin(raw, opts) {
+    const errors = [];
+    const def = { schema: SCHEMA, name: "", faction: "", style: "", hp: 30, color: "#5ab4ff", cards: [] };
+    def.name = cleanText(raw.name, LIMITS.name[1]);
+    if (!def.name) errors.push("缺少角色名");
+    else if (C.PROFILES[def.name] && !(opts.allowReplace && opts.allowReplace === def.name)) errors.push(`角色名「${def.name}」已被占用`);
+    def.faction = cleanText(raw.faction, LIMITS.faction[1]) || "DIY 工坊";
+    def.style = cleanText(raw.style, LIMITS.style[1]) || "玩家自制角色";
+    def.hp = int(raw.hp) || 30;
+    def.color = HEX_RE.test(str(raw.color)) ? str(raw.color) : "#5ab4ff";
+
+    const cards = Array.isArray(raw.cards) ? raw.cards : [];
+    const seen = new Set();
+    cards.forEach((c, i) => {
+      const at = `第 ${i + 1} 张卡`;
+      if (!c || typeof c !== "object") { errors.push(`${at} 不是对象`); return; }
+      const id = str(c.id);
+      if (!id) { errors.push(`${at} 缺少 id`); return; }
+      if (seen.has(id)) { errors.push(`${at} 的 id 重复：${id}`); return; }
+      seen.add(id);
+      const kind = c.kind === "spell" ? "spell" : "unit";
+      const effect = str(c.effect) || "";
+      if (effect && !CATALOG[effect] && !BUILTIN_EFFECTS[effect]) {
+        errors.push(`${at} 使用了不存在的机制：${effect}`);
+      }
+      const card = {
+        id,
+        name: cleanText(c.name, LIMITS.cardName[1]) || id,
+        cost: int(c.cost),
+        kind,
+        art: cleanText(c.art, 2) || (kind === "unit" ? "◆" : "✧"),
+        text: String(c.text == null ? "" : c.text).slice(0, 200),
+        effect: effect || undefined,
+        onDraw: !!c.onDraw || undefined,
+        azure: !!c.azure || undefined,
+        taunt: !!c.taunt || undefined,
+        charge: !!c.charge || undefined,
+        n: int(c.n) || 1,
+        limit: int(c.limit) || 1,
+        rarity: ["common", "rare", "special", "elite"].includes(c.rarity) ? c.rarity : "common",
+      };
+      if (kind === "unit") { card.atk = int(c.atk); card.hp = int(c.hp); }
+      def.cards.push(card);
+    });
+    const caps = def.cards.reduce((s, c) => s + (Number.isFinite(c.limit) ? c.limit : 0), 0);
+    if (caps < LIMITS.deckSize) errors.push(`所有卡牌的携带上限合计 ${caps}，不足 ${LIMITS.deckSize} 张，无法组出合法卡组`);
+    /* 内置角色可以自带一套官方推荐卡组 */
+    if (Array.isArray(raw.deck)) def.deck = raw.deck.map((x) => String(x)).slice(0, LIMITS.deckSize);
+    return { ok: errors.length === 0, errors, def };
+  }
+
   function validate(raw, opts) {
     opts = opts || {};
+    /* 内置角色走宽松通道：可以用私有机制与超规格数值 */
+    if (opts.builtin) return validateBuiltin(raw, opts);
     const errors = [];
     const def = { schema: SCHEMA, name: "", faction: "", style: "", hp: 30, color: "#5ab4ff", cards: [] };
 
@@ -121,7 +219,11 @@
       const kind = c.kind === "spell" ? "spell" : "unit";
 
       let effect = str(c.effect) || "";
-      if (effect && !CATALOG[effect]) { errors.push(`${at} 使用了未开放的机制：${effect}`); effect = ""; }
+      if (effect && !CATALOG[effect]) {
+        if (BUILTIN_EFFECTS[effect]) errors.push(`${at}：${effect} 是内置角色专用机制，玩家上传不可使用（可用机制见说明书）`);
+        else errors.push(`${at} 使用了未开放的机制：${effect}`);
+        effect = "";
+      }
       if (kind === "spell" && !effect) errors.push(`${at} 是法术牌，必须选择一种机制`);
       if (c.onDraw && kind !== "spell") errors.push(`${at}：只有法术牌可以标记「抽到时自动施放」`);
 
@@ -170,6 +272,9 @@
       faction: def.faction, style: def.style, hp: def.hp, cards,
       diy: true, color: def.color,
     };
+    if (Array.isArray(def.deck) && def.deck.length === C.DECK_SIZE && !C.deckError(def.name, def.deck)) {
+      C.DECK_PRESETS[def.name] = { "官方推荐": def.deck.slice() };
+    }
     if (C.COLORS) C.COLORS[def.name] = def.color;
     if (C.HERO_INFO) C.HERO_INFO[def.name] = { difficulty: 2, title: def.faction, tip: def.style + "（玩家自制角色，仅能在允许 DIY 的房间里使用）" };
     return C.PROFILES[def.name];
@@ -223,7 +328,7 @@
   const catalog = () => Object.keys(CATALOG).map((id) => Object.assign({ id }, CATALOG[id]));
 
   return {
-    SCHEMA, LIMITS, CATALOG, ID_RE,
+    SCHEMA, LIMITS, CATALOG, BUILTIN_EFFECTS, ID_RE,
     validate, register, unregister, isDiy, hero, list, names, summary, catalog,
     /* 供服务器保存/恢复 */
     exportDef: (name) => (registry.get(name) ? registry.get(name).def : null),

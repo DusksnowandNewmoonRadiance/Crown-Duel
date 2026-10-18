@@ -11,3 +11,4 @@ docs/pr/
 .shots/
 screenshots/
 .shots-batch.cjs
+.ui-*.cjs

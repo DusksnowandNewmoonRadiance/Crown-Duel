@@ -72,7 +72,7 @@ const last = (arr) => arr[arr.length - 1];
   check("列表只给摘要（cards 是数量不是卡表）", !!canglan && typeof canglan.cards === "number" && !Array.isArray(canglan.cards), canglan && typeof canglan.cards);
 
   const detail = await api("GET", "/api/diy/heroes/" + encodeURIComponent("苍蓝"));
-  check("详情返回 17 张卡", detail.status === 200 && detail.body.hero.cards.length === 17, detail.body && detail.body.hero.cards.length);
+  check("详情返回 41 张卡（作者原版）", detail.status === 200 && detail.body.hero.cards.length === 41, detail.body && detail.body.hero.cards.length);
   check("详情 meta 标注内置", !!(detail.body && detail.body.meta && detail.body.meta.builtin === true && detail.body.meta.author === "官方示例"));
   check("不存在的角色 404", (await api("GET", "/api/diy/heroes/" + encodeURIComponent("没有这个角色"))).status === 404);
 

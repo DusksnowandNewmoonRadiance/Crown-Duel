@@ -8,7 +8,8 @@ const $$=s=>[...document.querySelectorAll(s)];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 /* 内置示例角色（苍蓝）先注册，之后 HEROES 才是纯原版池 */
 if(Diy&&DiyBuiltin)for(const raw of DiyBuiltin.heroes||[]){
-  const v=Diy.validate(raw,{allowReplace:raw&&raw.name});
+  /* 内置角色允许私有机制，必须走 builtin 通道 */
+  const v=Diy.validate(raw,{builtin:true,allowReplace:raw&&raw.name});
   if(v.ok)Diy.register(v.def,{builtin:true,author:"官方示例"});
   else console.warn("内置 DIY 角色不可用：",raw&&raw.name,(v.errors||[]).join("；"));
 }
@@ -475,7 +476,8 @@ function unmarkMine(name){store.set("diyMine",JSON.stringify(diyMine().filter(n=
 /* 校验并注册一份角色定义（返回是否成功） */
 function registerDiyDef(raw,meta){
   if(!Diy)return false;
-  const v=Diy.validate(raw,{allowReplace:raw&&raw.name});
+  /* 只有标记为内置的角色才允许私有机制；玩家上传的角色一律走通用白名单 */
+  const v=Diy.validate(raw,{builtin:!!(meta&&meta.builtin),allowReplace:raw&&raw.name});
   if(!v.ok){console.warn("DIY 角色校验失败：",raw&&raw.name,(v.errors||[]).join("；"));return false;}
   const r=Diy.register(v.def,meta||{});
   if(!r.ok){console.warn("DIY 角色注册失败：",v.def.name,r.error);return false;}
