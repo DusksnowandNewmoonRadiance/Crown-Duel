@@ -10,22 +10,56 @@
 <meta name="theme-color" content="#0b1014">
 <meta name="description" content="皇冠对决：10 位卡牌师、快节奏的网页卡牌对战，支持单人练习与联机大厅。">
 <title>皇冠对决</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1014'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23e2b467'%3E♛%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23080c12'/%3E%3Ctext x='32' y='46' font-size='40' text-anchor='middle' fill='%23e4c489'%3E♛%3C/text%3E%3C/svg%3E">
+<link rel="preload" href="fonts/duel-ui-sc.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/screens.css">
+<link rel="stylesheet" href="css/stage.css">
 </head>
 <body>
+
+<!-- ======================= 图标精灵 ======================= -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><defs>
+  <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3 8.5l3.6 2.4L12 5l5.4 5.9L21 8.5l-1.7 9.2a1 1 0 0 1-1 .8H5.7a1 1 0 0 1-1-.8L3 8.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 21h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-swords" viewBox="0 0 24 24"><path d="M4 20l5.2-5.2M20 20l-5.2-5.2M14.8 14.8L20 4l-2-1.2-4.4 9.6M9.2 14.8L4 4l2-1.2 4.4 9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.2 16.8l1.8 1.8M16.8 16.8l-1.8 1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h3v3H8zM13 13h3v3h-3z" fill="currentColor" opacity=".75"/><path d="M13 8h3M8 13v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-cards" viewBox="0 0 24 24"><rect x="8" y="3.5" width="11" height="15" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(8 13.5 11)"/><rect x="4.5" y="6" width="11" height="15" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5" transform="rotate(-8 10 13.5)"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5C10 5 6.6 4.6 4 5.4v13c2.6-.8 6-.4 8 1.1 2-1.5 5.4-1.9 8-1.1v-13c-2.6-.8-6-.4-8 1.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.5v13" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-shop" viewBox="0 0 24 24"><path d="M5 8h14l-1.2 11.2a1 1 0 0 1-1 .8H7.2a1 1 0 0 1-1-.8L5 8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-vault" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 12h5M17.5 9.5v5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M6 4h10a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H8a2 2 0 0 1-2-2V4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 9h6M9 13h6M9 17h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 4.5c4-2 8 2 12 0v9c-4 2-8-2-12 0V4.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 1 0-12 0v5l-1.6 2.2A.6.6 0 0 0 4.9 18h14.2a.6.6 0 0 0 .5-.8L18 15z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 21h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><path d="M5 9.5h3L12 6v12L8 14.5H5v-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.2" y="5.5" width="17.6" height="13" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 7.5L12 13l7.5-5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 6l4 4" stroke="currentColor" stroke-width="1.5"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 8.2v7.6M9.8 10.4h4.4M9.8 13.6h4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 3L6 13.5h5L10.5 21 18 10.5h-5L13.5 3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 6h14M5 11h14M5 16h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="19" cy="16" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 7.6V12l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-flagline" viewBox="0 0 24 24"><path d="M6 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M6 5h11l-2 3 2 3H6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+</defs></svg>
 
 <!-- ======================= 主页 ======================= -->
 <section class="screen" id="scrHome">
   <header class="topbar">
-    <div class="brand-mini"><span class="crown">♛</span> 皇冠对决</div>
+    <div class="brand-mini"><span class="crown"><svg class="ic" viewBox="0 0 24 24"><use href="#i-crown"/></svg></span> 皇冠对决</div>
     <div class="topbar-r">
-      <button class="chip gold-chip" id="homeGold" title="金币" hidden>🪙 0</button>
+      <button class="chip gold-chip" id="homeGold" title="金币" hidden><svg class="ic" viewBox="0 0 24 24"><use href="#i-coin"/></svg> 0</button>
       <button class="chip" id="homeAuth" title="登录/注册"><span class="dot"></span><span id="homeAuthTxt">登录</span></button>
-      <button class="chip" id="homeBind" title="绑定邮箱（用于找回密码）" hidden>✉ 绑邮箱</button>
-      <button class="chip news-btn" id="homeNews" title="公告">📢 公告<span class="red-dot" hidden></span></button>
-      <button class="chip" id="homeNick" title="修改昵称"><span class="dot"></span><span id="homeNickTxt">设置昵称</span> ✎</button>
-      <button class="icon-btn" id="homeSound" title="声音">♪</button>
+      <button class="chip" id="homeBind" title="绑定邮箱（用于找回密码）" hidden><svg class="ic" viewBox="0 0 24 24"><use href="#i-mail"/></svg> 绑邮箱</button>
+      <button class="chip news-btn" id="homeNews" title="公告"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bell"/></svg> 公告<span class="red-dot" hidden></span></button>
+      <button class="chip" id="homeNick" title="修改昵称"><span class="dot"></span><span id="homeNickTxt">设置昵称</span> <svg class="ic" viewBox="0 0 24 24"><use href="#i-edit"/></svg></button>
+      <button class="icon-btn" id="homeSound" title="声音"><svg class="ic" viewBox="0 0 24 24"><use href="#i-sound"/></svg></button>
     </div>
   </header>
   <main class="home">
@@ -36,15 +70,15 @@
         <p class="tagline">10 位风格迥异的卡牌师 · 一局 10 分钟的快节奏对决</p>
       </div>
       <div class="home-actions">
-        <button class="btn btn-gold btn-xl" id="btnOnline"><span class="bi">⚔</span><span><b>联机对战</b><small>进入大厅，与真人对决</small></span></button>
-        <button class="btn btn-primary btn-xl" id="btnSolo"><span class="bi">♟</span><span><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span></button>
+        <button class="btn btn-gold btn-xl" id="btnOnline"><span class="bi"><svg class="ic" viewBox="0 0 24 24"><use href="#i-swords"/></svg></span><span><b>联机对战</b><small>进入大厅，与真人对决</small></span></button>
+        <button class="btn btn-primary btn-xl" id="btnSolo"><span class="bi"><svg class="ic" viewBox="0 0 24 24"><use href="#i-board"/></svg></span><span><b>单人练习</b><small>和电脑对战，熟悉卡组</small></span></button>
         <div class="home-actions-row">
-          <button class="btn" id="btnDeck">编辑卡组</button>
-          <button class="btn" id="btnCodex">图鉴</button>
-          <button class="btn" id="btnCampaign">剧情模式</button>
-          <button class="btn" id="btnShop">商店</button>
-          <button class="btn" id="btnVault">仓库</button>
-          <button class="btn" id="btnRules">玩法说明</button>
+          <button class="btn" id="btnDeck"><svg class="ic" viewBox="0 0 24 24"><use href="#i-cards"/></svg> 编辑卡组</button>
+          <button class="btn" id="btnCodex"><svg class="ic" viewBox="0 0 24 24"><use href="#i-book"/></svg> 图鉴</button>
+          <button class="btn" id="btnCampaign"><svg class="ic" viewBox="0 0 24 24"><use href="#i-flag"/></svg> 剧情模式</button>
+          <button class="btn" id="btnShop"><svg class="ic" viewBox="0 0 24 24"><use href="#i-shop"/></svg> 商店</button>
+          <button class="btn" id="btnVault"><svg class="ic" viewBox="0 0 24 24"><use href="#i-vault"/></svg> 仓库</button>
+          <button class="btn" id="btnRules"><svg class="ic" viewBox="0 0 24 24"><use href="#i-scroll"/></svg> 玩法说明</button>
         </div>
         <div class="ver" id="verLabel"></div>
       </div>
@@ -63,7 +97,7 @@
     <button class="btn btn-ghost" id="lobbyBack">‹ 返回</button>
     <div class="brand-mini">联机大厅</div>
     <div class="topbar-r">
-      <button class="chip news-btn" id="lobbyNews">📢<span class="red-dot" hidden></span></button>
+      <button class="chip news-btn" id="lobbyNews"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bell"/></svg><span class="red-dot" hidden></span></button>
       <span class="net-dot" id="netDot" title="连接状态"></span>
       <span class="muted" id="lobbyOnline">在线 0</span>
     </div>
@@ -73,8 +107,8 @@
       <div class="me-card" id="lobbyMe"></div>
       <div class="maint-box" id="lobbyMaint" hidden></div>
       <div class="lobby-tools">
-        <button class="btn btn-gold" id="btnQuick">⚡ 快速匹配</button>
-        <button class="btn btn-primary" id="btnCreate">＋ 创建房间</button>
+        <button class="btn btn-gold" id="btnQuick"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bolt"/></svg> 快速匹配</button>
+        <button class="btn btn-primary" id="btnCreate"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg> 创建房间</button>
         <form class="join-code" id="joinCodeForm"><input id="joinCode" inputmode="numeric" maxlength="8" placeholder="输入房间号"><button class="btn" type="submit">加入</button></form>
       </div>
       <div class="room-list" id="roomList"></div>
@@ -127,7 +161,7 @@
       <div class="dk-label">卡组列表</div>
       <div class="dk-list" id="dkList"></div>
       <div class="dk-side-btns">
-        <button class="btn btn-primary" id="dkNew">＋ 新建卡组</button>
+        <button class="btn btn-primary" id="dkNew"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg> 新建卡组</button>
         <button class="btn" id="dkImport">导入代码</button>
       </div>
     </aside>
@@ -169,7 +203,7 @@
   <header class="topbar">
     <button class="btn btn-ghost" id="shopBack">‹ 返回</button>
     <div class="brand-mini">商店</div>
-    <div class="topbar-r"><span class="chip gold-chip" id="shopGold">🪙 0</span></div>
+    <div class="topbar-r"><span class="chip gold-chip" id="shopGold"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg> 0</span></div>
   </header>
   <main class="shop">
     <p class="muted">用金币购买剧情卡与卡包。登录后普通模式胜利可获得 20 金币。</p>
@@ -182,7 +216,7 @@
   <header class="topbar">
     <button class="btn btn-ghost" id="vaultBack">‹ 返回</button>
     <div class="brand-mini">仓库</div>
-    <div class="topbar-r"><span class="chip gold-chip" id="vaultGold">🪙 0</span></div>
+    <div class="topbar-r"><span class="chip gold-chip" id="vaultGold"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg> 0</span></div>
   </header>
   <main class="vault">
     <p class="muted">所有角色共用一个仓库。点击物品方块，选择要放入的角色与存档位。</p>
@@ -195,7 +229,7 @@
   <header class="topbar">
     <button class="btn btn-ghost" id="campBack">‹ 返回</button>
     <div class="brand-mini">剧情模式</div>
-    <div class="topbar-r"><span class="chip gold-chip" id="campGold">🪙 0</span></div>
+    <div class="topbar-r"><span class="chip gold-chip" id="campGold"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg> 0</span></div>
   </header>
   <main class="campaign">
     <!-- 角色长条列表：一页横铺 4 条（4:9 竖长条），预留图片接口 -->
@@ -279,10 +313,10 @@
     <!-- 右：控制 -->
     <div id="sideR">
       <div class="side-btns">
-        <button class="round-btn" id="gMenu" title="菜单">☰</button>
-        <button class="round-btn" id="gFull" title="全屏" hidden>⛶</button>
-        <button class="round-btn" id="gLog" title="战斗记录">☷</button>
-        <button class="round-btn" id="gChat" title="聊天">💬<span class="badge-n" id="chatBadge" hidden></span></button>
+        <button class="round-btn" id="gMenu" title="菜单"><svg class="ic" viewBox="0 0 24 24"><use href="#i-menu"/></svg></button>
+        <button class="round-btn" id="gFull" title="全屏" hidden><svg class="ic" viewBox="0 0 24 24"><use href="#i-expand"/></svg></button>
+        <button class="round-btn" id="gLog" title="战斗记录"><svg class="ic" viewBox="0 0 24 24"><use href="#i-log"/></svg></button>
+        <button class="round-btn" id="gChat" title="聊天"><svg class="ic" viewBox="0 0 24 24"><use href="#i-chat"/></svg><span class="badge-n" id="chatBadge" hidden></span></button>
       </div>
       <div class="pile foe" id="foePile"></div>
       <div class="turn-box">
@@ -295,7 +329,7 @@
     </div>
 
     <div id="chatPanel" hidden>
-      <header title="拖动标题栏移动聊天窗口"><b>聊天</b><button class="btn btn-ghost" id="chatReport" type="button" title="举报对手">⚑ 举报</button><label class="mute"><input type="checkbox" id="chatMute">屏蔽对手</label><button class="x" id="chatClose" title="关闭">✕</button></header>
+      <header title="拖动标题栏移动聊天窗口"><b>聊天</b><button class="btn btn-ghost" id="chatReport" type="button" title="举报对手"><svg class="ic" viewBox="0 0 24 24"><use href="#i-flagline"/></svg> 举报</button><label class="mute"><input type="checkbox" id="chatMute">屏蔽对手</label><button class="x" id="chatClose" title="关闭">✕</button></header>
       <div id="chatLog"></div>
       <div id="chatQuick"></div>
       <form id="chatForm"><input id="chatIn" maxlength="60" placeholder="输入消息，回车发送" autocomplete="off" enterkeyhint="send"><button class="btn btn-gold" type="submit">发送</button></form>
@@ -491,17 +525,17 @@
 <div class="modal" id="mRules" hidden><div class="panel wide rules">
   <h2>玩法说明</h2>
   <div class="rules-grid">
-    <div class="rule"><i>♥</i><div><b>目标</b><p>把对手的生命值打到 0。部分卡牌师还有特殊胜利方式（如猪瘟鱼偷够 300 元后「逃跑」）。</p></div></div>
-    <div class="rule"><i>◆</i><div><b>费用</b><p>每个回合费用上限 +1（最多 10），并回满。打出卡牌需要消耗左上角数字的费用。</p></div></div>
-    <div class="rule"><i>✋</i><div><b>出牌</b><p>把<span class="hl">发光</span>的手牌拖到战场松手；或点一下选中，再点一下打出。需要选目标的牌会提示你点选。</p></div></div>
-    <div class="rule"><i>⚔</i><div><b>攻击</b><p>把<span class="hl">发光</span>的单位拖向敌方单位或英雄。交战时双方互相造成等于攻击力的伤害。</p></div></div>
-    <div class="rule"><i>⛨</i><div><b>嘲讽</b><p>对手场上有嘲讽单位时，必须先攻击它（「无视嘲讽」的单位除外）。</p></div></div>
-    <div class="rule"><i>➹</i><div><b>冲锋</b><p>普通单位打出后下回合才能攻击；带「冲锋」的单位当回合就能攻击。</p></div></div>
-    <div class="rule"><i>⟳</i><div><b>调度</b><p>开局可以把不想要的起手牌换掉。先手 4 张、后手 5 张，先手第一回合不抽牌。</p></div></div>
-    <div class="rule"><i>⏱</i><div><b>联机计时</b><p>联机每回合 75 秒，超时自动结束回合。断线 60 秒内重新打开网页即可回到对局。</p></div></div>
-    <div class="rule"><i>⛨</i><div><b>护甲</b><p>先于生命值吸收伤害，但会在<span class="hl">你的下个回合开始时清空</span>，主要用来抵挡对手回合的攻击。</p></div></div>
-    <div class="rule"><i>☠</i><div><b>衰减 · 亡语 · 限时</b><p><b>衰减</b>：每个回合开始时受到层数等同的伤害，护甲挡不住。<b>亡语</b>：单位被消灭时触发。<b>限时</b>：只存在到你的下个回合开始。</p></div></div>
-    <div class="rule"><i>⛁</i><div><b>疲劳</b><p>牌库抽空后，每次抽牌受到递增的伤害。手牌上限 10 张，超出的牌会被弃掉。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-crown"/></svg></i><div><b>目标</b><p>把对手的生命值打到 0。部分卡牌师还有特殊胜利方式（如猪瘟鱼偷够 300 元后「逃跑」）。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-coin"/></svg></i><div><b>费用</b><p>每个回合费用上限 +1（最多 10），并回满。打出卡牌需要消耗左上角数字的费用。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-cards"/></svg></i><div><b>出牌</b><p>把<span class="hl">发光</span>的手牌拖到战场松手；或点一下选中，再点一下打出。需要选目标的牌会提示你点选。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-swords"/></svg></i><div><b>攻击</b><p>把<span class="hl">发光</span>的单位拖向敌方单位或英雄。交战时双方互相造成等于攻击力的伤害。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-shield"/></svg></i><div><b>嘲讽</b><p>对手场上有嘲讽单位时，必须先攻击它（「无视嘲讽」的单位除外）。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-bolt"/></svg></i><div><b>冲锋</b><p>普通单位打出后下回合才能攻击；带「冲锋」的单位当回合就能攻击。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-board"/></svg></i><div><b>调度</b><p>开局可以把不想要的起手牌换掉。先手 4 张、后手 5 张，先手第一回合不抽牌。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-clock"/></svg></i><div><b>联机计时</b><p>联机每回合 75 秒，超时自动结束回合。断线 60 秒内重新打开网页即可回到对局。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-vault"/></svg></i><div><b>护甲</b><p>先于生命值吸收伤害，但会在<span class="hl">你的下个回合开始时清空</span>，主要用来抵挡对手回合的攻击。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-log"/></svg></i><div><b>衰减 · 亡语 · 限时</b><p><b>衰减</b>：每个回合开始时受到层数等同的伤害，护甲挡不住。<b>亡语</b>：单位被消灭时触发。<b>限时</b>：只存在到你的下个回合开始。</p></div></div>
+    <div class="rule"><i><svg class="ic" viewBox="0 0 24 24"><use href="#i-vault"/></svg></i><div><b>疲劳</b><p>牌库抽空后，每次抽牌受到递增的伤害。手牌上限 10 张，超出的牌会被弃掉。</p></div></div>
   </div>
   <div class="panel-acts"><button class="btn" id="rulesCoach">重看新手引导</button><button class="btn btn-gold" data-close>明白了</button></div>
 </div></div>
@@ -525,6 +559,7 @@
 <script src="/shared/engine.js"></script>
 <script src="/shared/ai.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/cardart.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/cardfx.js"></script>
 <script src="js/cardview.js"></script>
@@ -534,3 +569,6 @@
 <script src="js/app.js"></script>
 </body>
 </html>
+
+
+
