@@ -35,12 +35,13 @@
 .card.costup .cost{border-color:rgba(194,96,90,.8);color:#f0c6c1}
 .card.costdown .cost{border-color:rgba(105,173,138,.8);color:#c9e6d8}
 
-/* 插画窗 */
+/* 插画窗：满幅到卡边，让卡面读起来像一张海报而不是贴了个图标 */
 .card .art{
-  position:relative;flex:none;height:4.3em;margin-bottom:.42em;
-  border-radius:.44em;overflow:hidden;
+  position:relative;flex:none;height:4.7em;
+  margin:-.46em -.46em .4em;
+  border-radius:0;overflow:hidden;
   background:var(--ink-750);
-  border:1px solid var(--line);
+  border-bottom:1px solid var(--line-2);
 }
 .card .art .artimg{position:absolute;inset:0;width:100%;height:100%;display:block}
 .card .art .glyph{display:none}
@@ -288,25 +289,26 @@
 .portrait.has-art .glyph{display:none}
 /* 生命 */
 .portrait .hpb{
-  position:absolute;right:-6px;bottom:-4px;z-index:4;
-  min-width:38px;height:32px;padding:0 8px;
+  position:absolute;right:-8px;bottom:-6px;z-index:4;
+  min-width:46px;height:38px;padding:0 9px;
   display:grid;place-items:center;
-  font:600 15px var(--font-ui);font-variant-numeric:tabular-nums;color:var(--ink-25);
-  background:var(--ink-700);
+  font:600 19px var(--font-ui);letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:var(--ink-0);
+  background:var(--ink-750);
   border:1px solid var(--line-3);
   border-radius:var(--r-pill);
-  box-shadow:var(--sh-1);
+  box-shadow:var(--sh-2);
 }
 .portrait .hpb.over{color:var(--accent)}
 .portrait .hpb.low{border-color:rgba(194,96,90,.6);color:#eec9c5}
 /* 护甲 */
 .portrait .armb{
-  position:absolute;left:-6px;bottom:-4px;z-index:4;
-  min-width:32px;height:32px;padding:0 7px;
+  position:absolute;left:-8px;bottom:-6px;z-index:4;
+  min-width:34px;height:34px;padding:0 8px;
   display:grid;place-items:center;
-  font:600 13.5px var(--font-ui);font-variant-numeric:tabular-nums;color:var(--ink-100);
-  background:var(--ink-700);border:1px solid var(--line-3);
-  border-radius:var(--r-pill);box-shadow:var(--sh-1);
+  font:600 14px var(--font-ui);font-variant-numeric:tabular-nums;color:var(--ink-100);
+  background:var(--ink-750);border:1px solid var(--line-3);
+  border-radius:var(--r-pill);box-shadow:var(--sh-2);
 }
 .portrait.tgt{cursor:crosshair;border-color:rgba(194,96,90,.75);box-shadow:0 0 0 3px rgba(194,96,90,.16)}
 .portrait.hot{transform:scale(1.03);border-color:rgba(194,96,90,.95);box-shadow:0 0 0 4px rgba(194,96,90,.2)}

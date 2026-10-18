@@ -193,8 +193,9 @@ $("#bindGo").addEventListener("click",async()=>{
    主页
    ============================================================ */
 function heroTile(h,on){
-  const info=C.HERO_INFO[h],p=C.PROFILES[h];
-  return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}${crest(h)}<strong>${V.esc(h)}</strong><small>${V.esc(info.title)}</small><span class="stars" title="上手难度">${stars(info.difficulty)}</span></button>`;
+  const info=C.HERO_INFO[h];
+  const idx=String(HEROES.indexOf(h)+1).padStart(2,"0");
+  return`<button class="htile${on?" on":""}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}"><span class="htile-art">${crest(h)}</span><span class="htile-veil"></span><span class="htile-no">${idx}</span>${info.difficulty===1?`<span class="badge">新手推荐</span>`:""}<span class="htile-tx"><strong>${V.esc(h)}</strong><small>${V.esc(info.title)}</small><span class="stars" title="上手难度">${stars(info.difficulty)}</span></span></button>`;
 }
 function deckSelectHTML(h){
   const act=Decks.active(h).id;
@@ -206,10 +207,9 @@ function renderHome(){
   $("#heroGrid").innerHTML=HEROES.map(h=>heroTile(h,h===cur)).join("");
   const p=C.PROFILES[cur],info=C.HERO_INFO[cur];
   const d=$("#heroDetail");d.style.setProperty("--hcr",V.heroRgb(cur));
-  d.innerHTML=`${crest(cur)}<div><h3>${V.esc(cur)}<small>${V.esc(info.title)}</small></h3>
-    <div class="meta"><span>阵营 <b>${V.esc(p.faction)}</b></span><span>风格 <b>${V.esc(p.style)}</b></span><span>生命 <b>${p.hp}</b></span><span>难度 <b style="color:var(--gold)">${stars(info.difficulty)}</b></span></div>
+  d.innerHTML=`<div class="hd-top">${crest(cur)}<div class="hd-id"><div class="hd-k">${V.esc(p.faction)} · ${V.esc(p.style)}</div><h3>${V.esc(cur)}<small>${V.esc(info.title)}</small></h3></div><div class="hd-nums"><div class="hd-n"><b>${p.hp}</b><span>生命</span></div><div class="hd-n"><b class="st">${stars(info.difficulty)}</b><span>难度</span></div></div></div>
     <p class="tip">${V.esc(info.tip)}</p>
-    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div></div>`;
+    <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div>`;
   $("#homeNickTxt").textContent=Me.nick||"设置昵称";
   $("#homeSound").classList.toggle("off",!Audio2.musicOn&&!Audio2.sfxOn);
 }
@@ -881,15 +881,14 @@ function renderCampaign(){
   $("#campPrev").hidden=Campaign.page===0;
   $("#campNext").hidden=start+per>=HEROES.length;
   $("#campPage").textContent=`${Campaign.page+1} / ${Math.ceil(HEROES.length/per)}`;
-  /* 竖长条 4:9：图片区在上（预留 img 接口，暂无图片时用徽记+角色介绍顶替），文字在下 */
+  /* 竖长条 4:9：整幅封面（CardArt.cover）在上，姓名在下的窄条 */
   list.innerHTML=slice.map(h=>{
-    const info=C.HERO_INFO[h],cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
+    const cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
     const unlocked=cam&&cam.unlocked;
     return`<button class="camp-bar ${unlocked?"":"locked"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
       <div class="camp-img" style="--hcr:${V.heroRgb(h)}">
         <img class="camp-photo" alt="" hidden data-hero-img="${V.esc(h)}">
-        <span class="crest" style="--hcr:${V.heroRgb(h)}">${crestArt(h)}</span>
-        <span class="camp-photo-fallback">${V.esc(info.title)}</span>
+        <span class="crest camp-crest" style="--hcr:${V.heroRgb(h)}">${window.CardArt?CardArt.cover(h):crestArt(h)}</span>
       </div>
       <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${unlocked?"★ 已解锁":"未解锁"}</span></div>
     </button>`;
