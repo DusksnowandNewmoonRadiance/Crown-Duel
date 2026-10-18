@@ -109,6 +109,16 @@ const Decks=(()=>{
       const json=JSON.stringify({h:d.hero,n:d.name,c:d.cards});
       return"CD1."+btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
     },
+    /* 只取英雄名：用于导入前判断「本机还没有这个 DIY 角色」 */
+    peekHero(code){
+      try{
+        let b=String(code||"").trim();
+        if(!b.startsWith("CD1."))return null;
+        b=b.slice(4).replace(/-/g,"+").replace(/_/g,"/");while(b.length%4)b+="=";
+        const o=JSON.parse(decodeURIComponent(escape(atob(b))));
+        return o&&typeof o.h==="string"?o.h:null;
+      }catch(e){return null;}
+    },
     decode(code){
       code=String(code||"").trim();
       if(!code.startsWith("CD1."))throw new Error("不是有效的卡组代码");
@@ -331,11 +341,33 @@ const Decks=(()=>{
     try{await navigator.clipboard.writeText(code);host.toast("卡组代码已复制，可以发给朋友或自己备份",true);}
     catch(e){window.prompt("复制这段卡组代码：",code);}
   }
+  /* 导入前补注册：分享过来的卡组可能用了本机还没拉到的 DIY 角色 */
+  async function ensureHero(hero){
+    if(!hero||C.PROFILES[hero])return true;
+    const D=window.DuelDiy;
+    if(!D)return false;
+    try{
+      const r=await fetch("/api/diy/heroes/"+encodeURIComponent(hero));
+      if(!r.ok)return false;
+      const j=await r.json();
+      const v=D.validate(j.hero,{allowReplace:hero});
+      if(!v.ok)return false;
+      const reg=D.register(v.def,{author:(j.meta&&j.meta.author)||"玩家",builtin:!!(j.meta&&j.meta.builtin)});
+      if(!reg.ok)return false;
+      if(typeof window.refreshAfterDiy==="function")window.refreshAfterDiy();
+      return true;
+    }catch(e){return false;}
+  }
   async function importCode(){
     const code=window.prompt("粘贴卡组代码：");
     if(!code)return;
     try{
-      const d=api.decode(code);
+      const hero=api.peekHero(code);
+    if(hero&&!C.PROFILES[hero]){
+      const ok=await ensureHero(hero);
+      if(!ok){host.toast("这个卡组用了本机没有的 DIY 角色「"+hero+"」，请先让房主/服主上传该角色",false);return;}
+    }
+    const d=api.decode(code);
       if(!(await guard()))return;
       startWork({hero:d.hero,name:d.name,cards:d.cards},{fresh:true,dirty:true});
       renderAll();
