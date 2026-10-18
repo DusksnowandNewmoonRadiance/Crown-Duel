@@ -729,6 +729,7 @@
 }
 .camp-bar:hover{background:var(--surface);border-color:var(--line-2);border-color:rgba(255,255,255,.22)}
 .camp-bar.locked .camp-img{opacity:.58;filter:saturate(.55)}
+.camp-bar.nostory .camp-img{opacity:.34;filter:grayscale(.4)}
 .camp-img{
   position:relative;width:100%;aspect-ratio:4/9;overflow:hidden;
   background:var(--ink-750);

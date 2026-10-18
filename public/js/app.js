@@ -885,12 +885,15 @@ function renderCampaign(){
   list.innerHTML=slice.map(h=>{
     const cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
     const unlocked=cam&&cam.unlocked;
-    return`<button class="camp-bar ${unlocked?"":"locked"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
+    /* 目前只有部分角色写了剧情章节，没写的不要显示成「已解锁」让人点进去 */
+    const story=!!C.campaignOf(h);
+    const sub=!story?"剧情未开放":(unlocked?"★ 已解锁":"未解锁");
+    return`<button class="camp-bar ${story?(unlocked?"":"locked"):"locked nostory"}" data-hero="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}">
       <div class="camp-img" style="--hcr:${V.heroRgb(h)}">
         <img class="camp-photo" alt="" hidden data-hero-img="${V.esc(h)}">
-        <span class="crest camp-crest" style="--hcr:${V.heroRgb(h)}">${window.CardArt?CardArt.cover(h):crestArt(h)}</span>
+        <span class="crest camp-crest" style="--hcr:${V.heroRgb(h)}">${window.CardArt&&CardArt.cover?CardArt.cover(h):crestArt(h)}</span>
       </div>
-      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${unlocked?"★ 已解锁":"未解锁"}</span></div>
+      <div class="camp-txt"><strong>${V.esc(h)}</strong><span class="muted">${sub}</span></div>
     </button>`;
   }).join("");
   /* 预留图片接口：img.camp-photo 有 src 时自动替换徽记（后续接角色立绘） */
@@ -902,12 +905,24 @@ function renderCampaign(){
 }
 $("#campHeroList").addEventListener("click",e=>{
   const b=e.target.closest("button[data-hero]");if(!b)return;
-  const cam=Account.me&&Account.me.campaign&&Account.me.campaign[b.dataset.hero];
+  const hero=b.dataset.hero;
+  /* 没写章节的角色直接拦在外面：以前是先藏列表再渲染，一抛错整页就白了 */
+  if(!C.campaignOf(hero)){toast("该角色的剧情章节还没开放",false);return;}
+  const cam=Account.me&&Account.me.campaign&&Account.me.campaign[hero];
   if(!cam||!cam.unlocked){toast("先用该角色赢得一场普通对局解锁剧情",false);return;}
-  Campaign.hero=b.dataset.hero;
+  Campaign.hero=hero;
   const list=$("#campHeroList");list.classList.remove("out-l","out-r","in-l","in-r");Campaign._busy=false;
-  $("#campListWrap").hidden=true;
-  renderCampaignDetail();$("#campDetail").hidden=false;
+  try{
+    renderCampaignDetail();
+    $("#campListWrap").hidden=true;
+    $("#campDetail").hidden=false;
+  }catch(err){
+    /* 渲染失败就退回列表，绝不留一块空白 */
+    console.warn("[campaign]",err);
+    $("#campDetail").hidden=true;
+    $("#campListWrap").hidden=false;
+    toast("剧情数据读取失败，请刷新页面重试",false);
+  }
 });
 /* 翻页：点击按钮，带滑入/滑出动画 */
 function flipCampaign(dir){
@@ -927,8 +942,10 @@ $("#campNext").addEventListener("click",()=>flipCampaign(1));
 $("#campDetailBack").addEventListener("click",()=>{$("#campDetail").hidden=true;$("#campListWrap").hidden=false;renderCampaign();});
 function renderCampaignDetail(){
   const cam=C.campaignOf(Campaign.hero);
+  if(!cam||!cam.chapters||!cam.chapters.ch1)return;
   const ch=cam.chapters.ch1;
-  const data=Account.me.campaign[Campaign.hero];
+  const data=(Account.me.campaign&&Account.me.campaign[Campaign.hero])||{slots:[]};
+  if(!data.slots||!data.slots.length)data.slots=[{},{},{}];
   $("#campChapter").innerHTML=`<h2>${V.esc(ch.title)}</h2>
     <p class="muted">${V.esc((cam.intro||[])[0]||"")}</p>
     <p>胜利条件：撑过 <b>${ch.survive[0]}</b> 回合（1★）· <b>${ch.survive[1]}</b>（2★）· <b>${ch.survive[2]}</b>（3★）</p>
@@ -956,8 +973,8 @@ let campGame=null;
 function startCampaign(hero,slot){
   if(campGame)campGame.dispose();
   const cam=C.campaignOf(hero),ch=cam.chapters.ch1;
-  const data=Account.me.campaign[hero],s=data.slots[slot];
-  const deck=s.deck.slice();
+  const data=Account.me.campaign[hero],s=(data.slots&&data.slots[slot])||{};
+  const deck=(s.deck||[]).slice();
   /* 若不足 30 张，用该角色初始弱卡补足，保证可玩 */
   const base=C.campaignInitialDeck(hero,slot);
   for(const id of base){if(deck.length>=30)break;deck.push(id);}
