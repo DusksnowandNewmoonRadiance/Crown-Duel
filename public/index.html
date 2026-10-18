@@ -251,14 +251,14 @@
     <div class="topbar-r"><span class="chip gold-chip" id="campGold"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-coin"/></svg> 0</span></div>
   </header>
   <main class="campaign">
-    <!-- 角色长条列表：一页横铺 4 条（4:9 竖长条），预留图片接口 -->
+    <!-- 翻页始终在角色封面上方，矮屏也能操作 -->
     <div id="campListWrap">
-      <div class="camp-hero-list" id="campHeroList"></div>
       <div class="camp-hero-nav">
         <button class="btn btn-ghost" id="campPrev" hidden>‹ 上一页</button>
         <span class="muted" id="campPage"></span>
         <button class="btn btn-ghost" id="campNext" hidden>下一页 ›</button>
       </div>
+      <div class="camp-hero-list" id="campHeroList"></div>
     </div>
     <!-- 关卡与存档位 -->
     <div id="campDetail" hidden>
@@ -670,6 +670,5 @@
 <script src="js/app.js"></script>
 </body>
 </html>
-
 
 

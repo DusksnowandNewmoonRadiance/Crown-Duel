@@ -1707,7 +1707,7 @@ function renderCampaign(){
   $("#campPrev").hidden=Campaign.page===0;
   $("#campNext").hidden=start+per>=HEROES.length;
   $("#campPage").textContent=`${Campaign.page+1} / ${Math.ceil(HEROES.length/per)}`;
-  /* 竖长条 4:9：整幅封面（CardArt.cover）在上，姓名在下的窄条 */
+  /* 较短的竖版封面，翻页按钮固定在列表上方 */
   list.innerHTML=slice.map(h=>{
     const cam=Account.me&&Account.me.campaign&&Account.me.campaign[h];
     const unlocked=cam&&cam.unlocked;
@@ -1955,7 +1955,6 @@ $("#rewardAgain").addEventListener("click",()=>{closeModal("#mReward");const s=w
 $("#rewardUpgrade").addEventListener("click",()=>{closeModal("#mReward");openUpgrade();});
 window.__cd={Me,Net,GameUI,Live,startSolo,get solo(){return solo;},Account,Campaign,renderGold,onCampaignEvent,DiyUI,Diy,diyHeroes,pickHero,applyDiySummaries};
 })();
-
 
 
 

@@ -8,10 +8,10 @@ function game(){
   g.players[0].energy=g.players[0].maxEnergy=10;
   return g;
 }
-function play(g,id){
+function play(g,id,targets=[]){
   const c=g.clone(Cards.cardDef("白猫",id),"白猫");
   g.players[0].hand.push(c);
-  const r=g.playCard(0,c.uid,[]);
+  const r=g.playCard(0,c.uid,targets);
   assert.equal(r.ok,true,r.error);
 }
 
@@ -37,10 +37,24 @@ function play(g,id){
   const g=game(),o=g.players[1],s=g.players[0];
   const victim=g.clone(Cards.cardDef("白猫","sentinel"),"字母");
   victim.attack=1;o.board.push(victim);
-  play(g,"kitten");
+  play(g,"kitten",[victim.uid]);
   assert.equal(o.board.length,0,"勘误猫应销毁低攻单位");
   assert.equal(s.destroyedLog[0].name,victim.name);
   assert.equal(s.destroyedLog[0].zone,"战场");
+}
+{
+  const g=game(),o=g.players[1],s=g.players[0];
+  const low=g.clone(Cards.cardDef("白猫","sentinel"),"字母");low.attack=1;
+  const chosen=g.clone(Cards.cardDef("白猫","sentinel"),"字母");chosen.attack=2;
+  const ineligible=g.clone(Cards.cardDef("白猫","sentinel"),"字母");ineligible.attack=3;
+  o.board.push(low,chosen,ineligible);
+  const card=g.clone(Cards.cardDef("白猫","kitten"),"白猫");s.hand.push(card);
+  const spec=require("../shared/engine.js").targetSpec(card,s,o);
+  assert.deepEqual(spec.eligible,[low.uid,chosen.uid],"只能点选攻击力不超过 2 的敌方单位");
+  assert.equal(g.playCard(0,card.uid,[ineligible.uid]).ok,false,"非法目标应被拒绝");
+  assert.equal(g.playCard(0,card.uid,[]).ok,false,"有合法目标时需要点选");
+  assert.equal(g.playCard(0,card.uid,[chosen.uid]).ok,true);
+  assert.deepEqual(o.board.map(u=>u.uid),[low.uid,ineligible.uid],"应销毁玩家点选的单位");
 }
 {
   const g=game(),o=g.players[1],s=g.players[0];
