@@ -102,7 +102,7 @@ function playError(card,me,foe){
   if(e==="stripTauntDraw"&&!foe.board.some(u=>u.taunt&&u.health>0))return"敌方没有嘲讽单位";
   if(e==="stunOrKill"&&!foe.board.length)return"敌方没有单位可以眩晕";
   if(e==="stunOneDraw"&&!foe.board.length)return"敌方没有单位可以眩晕";
-  if(e==="cometStrike"&&me.hp<=40)return`彗星陨击需要你的英雄血量高于 40（不含护甲，当前 ${me.hp}）`;
+  if(e==="cometStrike"&&me.hp<=42)return`彗星陨击需要你的英雄血量高于 42（不含护甲，当前 ${me.hp}）`;
   if(e==="reshuffleDraw"&&!me.hand.length)return"调节：你手牌为空";
   if(/^(rebel|takeover)/.test(e)&&foe.board.length&&me.board.length>=MAX_BOARD)return"你的战场已满，无法接收策反的单位";
   if(e==="sacAoe3"&&!me.board.length)return"你没有可以献祭的单位";
@@ -1111,9 +1111,9 @@ class Game{
         break;}
       case"luckyCoin":if(this.lock!==null)this.note("停摆：无法增加费用",s);else{s.energy+=1;this.note("海盗的幸运币：获得 1 点费用",s);}break;
       case"cometStrike":{
-        // 彗星陨击：英雄血量（不含护甲）高于 40 时，对敌方英雄造成 40 点伤害
-        if(s.hp>40){this.damageHero(o,40);this.note("彗星陨击：紫色彗星划过，对敌方英雄造成 40 点伤害！",s);}
-        else this.note("彗星陨击：血量不足 40，未能召唤彗星",s);
+        // 彗星陨击：英雄血量（不含护甲）高于 42 时，对敌方英雄造成 35 点伤害
+        if(s.hp>42){this.damageHero(o,35);this.note("彗星陨击：紫色彗星划过，对敌方英雄造成 35 点伤害！",s);}
+        else this.note("彗星陨击：血量不足 42，未能召唤彗星",s);
         break;}
       case"draw2heal6":this.draw(s,2);this.heal(s,6);this.note("星光祝福：抽 2 张牌，恢复 6 点生命",s);break;
       case"armor3Draw1":this.armor(s,3);this.draw(s,1);this.note("彗星尾迹：获得 3 点护甲，抽 1 张牌",s);break;

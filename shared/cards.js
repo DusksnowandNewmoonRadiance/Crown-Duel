@@ -117,7 +117,7 @@ const PROFILES={
     {id:"cometTutor",name:"彗星预言",cost:3,kind:"spell",art:"☄",text:"从牌库中将【彗星陨击】加入手牌。如果没有，改为抽 2 张牌。",effect:"cometTutor",n:0,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"starcore",name:"星核卫士",cost:5,kind:"unit",art:"▥",atk:3,hp:12,text:"嘲讽。部署：选择你手牌中的 1 张牌，其费用变为 0。",taunt:true,effect:"starCoreZero",n:0,limit:1,rarity:"elite"},
     {id:"tune",name:"调节",cost:2,kind:"spell",art:"⇄",text:"将你的手牌全部洗入牌库并洗牌，然后抽取等同于洗入数量 +1 的牌。",effect:"reshuffleDraw",n:0,limit:4,rarity:"common"},
-    {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 40，对敌方英雄造成 40 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
+    {id:"cometStrike",name:"彗星陨击",cost:8,kind:"spell",art:"☄",text:"如果你的英雄血量（不含护甲）高于 42，对敌方英雄造成 35 点伤害。",effect:"cometStrike",n:0,limit:1,rarity:"elite"}
   ]},
   "核弹":{faction:"凹槽帝国",style:"禁忌召唤 · 超强单卡",hp:30,cards:[
     {id:"refugee",name:"旧大陆难民",cost:1,kind:"unit",art:"◇",atk:1,hp:3,text:"嘲讽。",taunt:true,n:3,limit:3,rarity:"rare"},
