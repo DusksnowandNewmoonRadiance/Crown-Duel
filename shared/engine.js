@@ -300,7 +300,7 @@ class Game{
   }
   _drawHeal(p){
     const n=p.board.filter(u=>u.effect==="drawHeal"&&u.health>0).length;
-    if(!n)return;this.heal(p,2*n);this.note(`彗星观察者×${n}：恢复 ${2*n} 点生命`,p);
+    if(!n)return;this.heal(p,n);this.note(`彗星观察者×${n}：恢复 ${n} 点生命`,p);
   }
 
   /* ---------- 伤害 / 治疗 ---------- */

@@ -260,13 +260,17 @@ function openSolo(){
   $("#soloChange").onclick=()=>pickHero(h=>{Me.hero=h;renderHome();openSolo();});
   if(Solo.opp===me)Solo.opp="";
   $("#soloOpp").innerHTML=`<button class="rand${!Solo.opp?" on":""}" data-v="">随机对手</button>`+HEROES.filter(h=>h!==me).map(h=>`<button data-v="${V.esc(h)}" class="${Solo.opp===h?"on":""}" style="color:${Solo.opp===h?"":C.COLORS[h]}">${V.esc(h)}</button>`).join("");
-  /* 始终显示敌方卡组；有多套预设的对手可指定具体卡组。 */
+  /* 只有真正有多套预设的对手才给选择；只有一套的一律用默认卡组。 */
   const presets=Solo.opp?C.presets(Solo.opp):null;
   const deckChoices=presets?Object.keys(presets):[];
-  const chosen=deckChoices.includes(Solo.oppDeck)?Solo.oppDeck:"random";
-  const randomLabel=!Solo.opp?"随对手随机":deckChoices.length?"随机":"默认卡组";
-  $("#soloOppDeck").innerHTML=`<button data-v="random" class="${chosen==="random"?"on":""}">${randomLabel}</button>`+
-    deckChoices.map(name=>`<button data-v="${V.esc(name)}" class="${chosen===name?"on":""}">${V.esc(name)}</button>`).join("");
+  if(deckChoices.length<2){
+    Solo.oppDeck="random";
+    $("#soloOppDeck").innerHTML=`<button data-v="random" class="on">${Solo.opp?"默认卡组":"随对手随机"}</button>`;
+  }else{
+    const chosen=deckChoices.includes(Solo.oppDeck)?Solo.oppDeck:"random";
+    $("#soloOppDeck").innerHTML=`<button data-v="random" class="${chosen==="random"?"on":""}">随机</button>`+
+      deckChoices.map(name=>`<button data-v="${V.esc(name)}" class="${chosen===name?"on":""}">${V.esc(name)}</button>`).join("");
+  }
   $$("#soloLevel button").forEach(b=>b.classList.toggle("on",b.dataset.v===Solo.level));
   openModal("#mSolo");
 }
