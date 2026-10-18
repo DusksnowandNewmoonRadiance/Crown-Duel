@@ -134,10 +134,11 @@ const ownerOf = (req) => {
   const v = String(req.headers["x-diy-owner"] || req.query.owner || "");
   return OWNER_RE.test(v) ? v : "";
 };
-function rateLimited(ip) {
+function rateLimited(ip, bucket) {
+  const key = (bucket || "post") + "|" + (ip || "");
   const t = now();
-  const rec = uploads.get(ip);
-  if (!rec || t - rec.start >= UPLOAD_WINDOW) { uploads.set(ip, { count: 1, start: t }); return false; }
+  const rec = uploads.get(key);
+  if (!rec || t - rec.start >= UPLOAD_WINDOW) { uploads.set(key, { count: 1, start: t }); return false; }
   rec.count++;
   return rec.count > UPLOAD_LIMIT;
 }
@@ -191,6 +192,45 @@ router.post("/api/diy/heroes", (req, res) => {
   save(v.def, { author, owner, createdAt: now() });
   notifyChange();
   res.json({ ok: true, name: v.def.name, owner });
+});
+
+/* 覆盖更新：只有作者本人能改自己的角色；不许改名（改名请走「删 + 传」） */
+router.put("/api/diy/heroes/:name", (req, res) => {
+  if (rateLimited(req.ip || "", "put")) return res.status(429).json({ ok: false, error: "上传太频繁了，一分钟内最多 5 次" });
+  const name = String(req.params.name || "");
+  if (!Diy.isDiy(name)) return res.status(404).json({ ok: false, error: "DIY 角色不存在" });
+  if (isBuiltin(name)) return res.status(403).json({ ok: false, error: "内置角色不能覆盖更新" });
+  const entry = entryOf(name);
+  const owner = ownerOf(req);
+  if (!entry || !owner || owner !== entry.owner) return res.status(403).json({ ok: false, error: "只能更新自己上传的角色" });
+
+  const body = req.body || {};
+  const raw = body.hero && typeof body.hero === "object" ? body.hero : body;
+  const rawName = typeof (raw && raw.name) === "string" ? raw.name.trim() : "";
+  /* 改名会让 registry / 卡组里的 key 全部失效，这里直接拒掉 */
+  if (rawName !== name) {
+    return res.status(400).json({ ok: false, errors: [`不能改名（${rawName || "空"} → ${name}）：请删除后重新上传`] });
+  }
+
+  const v = Diy.validate(raw, { allowReplace: name });
+  if (!v.ok) return res.status(400).json({ ok: false, errors: v.errors });
+
+  const author = clean(body.author, 24) || entry.author || "玩家";
+  const oldDef = Diy.exportDef(name);
+  Diy.unregister(name);
+  const reg = Diy.register(v.def, { author, owner, createdAt: entry.createdAt });
+  if (!reg.ok) {
+    /* 注册失败就把旧定义恢复回去，别把角色弄丢 */
+    if (oldDef) {
+      const back = Diy.register(oldDef, { author: entry.author, owner, createdAt: entry.createdAt });
+      if (!back.ok) console.error(`[Diy] 覆盖失败且回滚失败：${name}`, back.error);
+    }
+    return res.status(400).json({ ok: false, errors: [reg.error] });
+  }
+  save(v.def, { author, owner, createdAt: entry.createdAt });   // save() 会保留原 createdAt
+  Diy.setMeta(name, { updatedAt: now() });
+  notifyChange();
+  res.json({ ok: true, name, updated: true });
 });
 
 /* 删除：内置禁止；只能删自己上传的（x-diy-owner 比对） */

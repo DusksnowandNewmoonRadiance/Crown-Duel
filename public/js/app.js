@@ -511,6 +511,8 @@ function applyDiySummaries(list){
     unmarkMine(n);
     if(Me.hero===n)Me.hero=HEROES[0];
   }
+  /* 告诉卡组页「服务端目前有哪些 DIY 名字」，它据此判断卡组是不是真该清掉 */
+  window.__cdDiyNames=alive;
   refreshAfterDiy();
 }
 /* DIY 角色集合变了：刷新所有可能显示选角的地方 */
@@ -520,6 +522,7 @@ function refreshAfterDiy(){
   if(Net&&Net.inLobby)renderLobby();
   if(Net&&Net.room)renderRoom();
   if(!$("#scrDiy").hidden)DiyUI.renderHeroList();
+  try{if(typeof Decks!=="undefined"&&Decks.refresh)Decks.refresh();}catch(e){console.warn("卡组页刷新失败：",e&&e.message);}
 }
 
 const DiyUI={

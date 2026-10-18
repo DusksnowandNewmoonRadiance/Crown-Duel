@@ -93,12 +93,38 @@ const last = (arr) => arr[arr.length - 1];
   check("上传后广播 diy:list", A.diy.some((m) => (m.heroes || []).some((h) => h.name === "测试机师")));
   check("hello 回包带 diyHeroes", Array.isArray(A.hello.diyHeroes) && A.hello.diyHeroes.some((h) => h.name === "苍蓝"));
 
+  /* ---------- 2b) 覆盖更新 PUT：只有作者本人能改 ---------- */
+  const beforeMeta = (await api("GET", "/api/diy/heroes/" + encodeURIComponent("测试机师"))).body.meta;
+  const patched = JSON.parse(JSON.stringify(heroDef));
+  patched.hp = 34;
+  const putOk = await api("PUT", "/api/diy/heroes/" + encodeURIComponent("测试机师"), { hero: patched, author: "测试员" });
+  check("本人 PUT 覆盖成功", putOk.status === 200 && putOk.body.ok === true && putOk.body.updated === true, putOk.status + " " + JSON.stringify(putOk.body));
+  const afterPut = await api("GET", "/api/diy/heroes/" + encodeURIComponent("测试机师"));
+  check("PUT 后详情变化（血量 30→34）", afterPut.status === 200 && afterPut.body.hero.hp === 34, afterPut.body && afterPut.body.hero.hp);
+  check("PUT 后广播 diy:list 带新血量", A.diy.some((m) => (m.heroes || []).some((h) => h.name === "测试机师" && h.hp === 34)));
+
+  const putOther = await api("PUT", "/api/diy/heroes/" + encodeURIComponent("测试机师"), { hero: patched }, { "x-diy-owner": "someone-else-9999" });
+  check("别人的角色 PUT 403", putOther.status === 403, putOther.status + " " + (putOther.body && putOther.body.error));
+
+  const builtinDef = JSON.parse(JSON.stringify(detail.body.hero));
+  builtinDef.hp = 40;
+  const putBuiltin = await api("PUT", "/api/diy/heroes/" + encodeURIComponent("苍蓝"), { hero: builtinDef });
+  check("内置角色 PUT 403", putBuiltin.status === 403, putBuiltin.status + " " + (putBuiltin.body && putBuiltin.body.error));
+
+  const renamed = JSON.parse(JSON.stringify(patched));
+  renamed.name = "测试机师2";
+  const putRename = await api("PUT", "/api/diy/heroes/" + encodeURIComponent("测试机师"), { hero: renamed });
+  check("PUT 改名被拒绝 400", putRename.status === 400 && Array.isArray(putRename.body.errors), putRename.status + " " + (putRename.body && (putRename.body.errors || [])[0]));
+
   /* ---------- 3) 持久化 ---------- */
   const file = path.join(process.env.DATA_DIR, "diy-heroes.json");
   const saved = JSON.parse(fs.readFileSync(file, "utf8"));
   const entry = saved.heroes.find((e) => e.def && e.def.name === "测试机师");
   check("落盘文件结构 v=1 + heroes[]", saved.v === 1 && Array.isArray(saved.heroes), "v=" + saved.v + " heroes=" + saved.heroes.length);
   check("落盘内容含完整定义与作者", !!entry && entry.def.cards.length === 10 && entry.author === "测试员" && !!entry.createdAt, entry && entry.author);
+  check("PUT 后落盘是新数值且保留 createdAt（重启也会是新版本）",
+    !!entry && entry.def.hp === 34 && entry.createdAt === beforeMeta.createdAt && entry.updatedAt >= entry.createdAt,
+    entry && `hp=${entry.def.hp} created=${entry.createdAt === beforeMeta.createdAt} updated=${entry.updatedAt >= entry.createdAt}`);
   check("内存注册表与文件一致", Diy.isDiy("测试机师") && Diy.list().length === saved.heroes.length + 1, Diy.list().map((x) => x.name).join(","));
 
   /* ---------- 3b) 真重启 + 坏数据容错：另起一个进程读同一个 DATA_DIR ---------- */
