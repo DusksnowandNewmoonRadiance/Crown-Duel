@@ -276,7 +276,7 @@ const PROFILES={
     {id:"rally",name:"末页催读",cost:3,kind:"spell",art:"✧",text:"强制对手抽 2 张牌并销毁抽到的牌；牌库为空时每次抽牌触发疲劳。你获得 3 点护甲。",effect:"whiteForce2",n:1,limit:3,rarity:"rare"},
     {id:"shelter",name:"缺页追击",cost:4,kind:"spell",art:"◈",text:"对敌方英雄造成 3 点伤害；本局每销毁 2 张敌方卡牌，伤害 +1（至多 10 点）。",effect:"whiteBurst",n:1,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"pollute",name:"废稿雨",cost:4,kind:"spell",art:"☣",text:"随机将敌方牌库中的 2 张非垃圾牌变成【垃圾】。",effect:"whiteCorruptDeck",n:2,limit:2,rarity:"special"},
-    {id:"mend",name:"修补书脊",cost:3,kind:"spell",art:"✥",text:"你的英雄恢复 6 点生命，并获得 2 点护甲。",effect:"whiteMend",n:2,limit:2,rarity:"rare"},
+    {id:"mend",name:"修补书脊",cost:3,kind:"spell",art:"✥",text:"你的英雄恢复 6 点生命，并获得 2 点护甲。",effect:"whiteMend",n:2,limit:2,rarity:"special"},
     {id:"shredstorm",name:"碎稿风暴",cost:4,kind:"spell",art:"❖",text:"对所有敌方单位造成 3 点伤害；因此被消灭的单位计入已销毁卡牌。",effect:"whiteAoe",n:2,limit:2,rarity:"special",fx:"sp_storm"},
     {id:"flood",name:"垃圾洪流",cost:6,kind:"spell",art:"▧",text:"敌方抽 5 张牌，将成功进入手牌的牌全部变成【垃圾】；手牌已满时，新抽到的牌直接销毁。牌库为空则触发疲劳。",effect:"whiteDrawJunk5",n:1,limit:2,rarity:"special"},
     {id:"night",name:"全卷焚尽",cost:6,kind:"spell",art:"♨",text:"随机销毁敌方手牌的 1 张牌，再销毁其牌库顶的 4 张牌；每销毁一张，额外造成 1 点伤害。",effect:"whiteNight",n:1,limit:1,rarity:"elite"}
@@ -604,8 +604,9 @@ function checkOverrides(map){
   }
   for(const h in PROFILES){
     let sum=0;PROFILES[h].cards.forEach(c=>{
-      const o=map[h+":"+c.id]||{},base=BASE[h+":"+c.id];
-      sum+=o.limit!==undefined?o.limit:(RARITY[o.rarity]?RARITY[o.rarity].limit:base.limit);
+      // DIY 角色不在 BASE 里（BASE 只收录原版卡），这里要兜底，否则后台热更新会 500
+      const o=map[h+":"+c.id]||{},base=BASE[h+":"+c.id]||{};
+      sum+=o.limit!==undefined?o.limit:(RARITY[o.rarity]?RARITY[o.rarity].limit:(base.limit!==undefined?base.limit:c.limit));
     });
     if(sum<DECK_SIZE)errs.push(`${h}：所有卡牌的携带上限加起来只有 ${sum}，不足 ${DECK_SIZE} 张`);
   }

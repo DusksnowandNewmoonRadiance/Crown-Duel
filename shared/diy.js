@@ -214,13 +214,11 @@
   };
   const catalog = () => Object.keys(CATALOG).map((id) => Object.assign({ id }, CATALOG[id]));
 
-  module.exports = {
+  return {
     SCHEMA, LIMITS, CATALOG, ID_RE,
     validate, register, unregister, isDiy, hero, list, names, summary, catalog,
     /* 供服务器保存/恢复 */
     exportDef: (name) => (registry.get(name) ? registry.get(name).def : null),
     setMeta: (name, meta) => { const r = registry.get(name); if (r) Object.assign(r, meta); return !!r; },
   };
-
-  return module.exports;
 });

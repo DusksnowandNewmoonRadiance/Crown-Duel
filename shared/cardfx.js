@@ -68,6 +68,9 @@ const ELITE={
   "七星:doomsday":{pattern:"flash",palette:"shadow",glyph:"⌛",target:"foe"},
   "七星:stasisfield":{pattern:"pillar",palette:"teal",glyph:"❖",target:"foe"},
   "七星:cometfall":{pattern:"slash",palette:"white",glyph:"☄",target:"foe"},
+  "七星:starlightPray":{pattern:"rise",palette:"azure",glyph:"✶",target:"me"},
+  "七星:starcore":{pattern:"spiral",palette:"steel",glyph:"◉",target:"meBoard"},
+  "七星:cometStrike":{pattern:"pillar",palette:"frost",glyph:"☄",target:"foe"},
   "七星:gravityFold":{native:true,label:"引力折叠（原有动画）"},
   /* 核弹 */
   "核弹:superman":{native:true,label:"超人降临（原有动画）"},
@@ -77,7 +80,9 @@ const ELITE={
   "猪瘟鱼:vaultfill":{pattern:"rain",palette:"gold",glyph:"$",target:"me"},
   /* 八幡 */
   "八幡:king":{pattern:"flash",palette:"amber",glyph:"♛",target:"meBoard"},
-  "八幡:submarine":{pattern:"rift",palette:"teal",glyph:"⛴",target:"foe"},
+  "八幡:wallbreaker":{pattern:"slash",palette:"ember",glyph:"⛨",target:"foeBoard"},
+  "八幡:pirateDiscover":{pattern:"orbit",palette:"gold",glyph:"⚓",target:"me"},
+  "八幡:luckycoin":{pattern:"flash",palette:"steel",glyph:"◎",target:"me"},
   "八幡:fireship":{native:true,label:"火船（原有动画）"},
   "八幡:finish":{native:true,label:"海盗大斩杀（原有动画）"},
   /* 045 */
