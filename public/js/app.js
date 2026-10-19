@@ -1417,7 +1417,7 @@ function renderTournament(){
     return `<div class="tournament-player${own?" own":""}${win?" advanced":""}"><b>${V.esc(p.nick)}${own?"（你）":""}</b><span>${V.esc(p.hero)}${win?" · 晋级":""}${p.connected?"":" · 离线"}</span></div>`;
   };
   const final=t.winners.map(id=>t.players.find(p=>p.id===id)).map(p=>p?`<div class="tournament-player${p.id===t.you?" own":""}${p.id===t.champion?" advanced":""}"><b>${V.esc(p.nick)}</b><span>${V.esc(p.hero)}${p.id===t.champion?" · 冠军":""}</span></div>`:`<div class="tournament-player empty">待定</div>`).join("");
-  $("#tournamentBracket").innerHTML=`<div class="tournament-round"><h3>半决赛</h3><div class="tournament-pair">${slot(0)}<strong>VS</strong>${slot(1)}</div><div class="tournament-pair">${slot(2)}<strong>VS</strong>${slot(3)}</div></div><div class="tournament-round"><h3>决赛</h3><div class="tournament-pair">${final}</div></div>`;
+  $("#tournamentBracket").innerHTML=`<div class="tournament-semis"><h3>半决赛</h3><div class="tournament-match">${slot(0)}<strong>VS</strong>${slot(1)}</div><div class="tournament-match">${slot(2)}<strong>VS</strong>${slot(3)}</div></div><div class="tournament-final"><h3>决赛</h3><div class="tournament-pair">${final}</div></div>`;
   $("#tournamentLeave").textContent=stage==="done"?"‹ 返回大厅":stage==="waiting"?"‹ 取消报名（退费）":"‹ 退出比赛";
 }
 $("#tournamentLeave").addEventListener("click",()=>{
