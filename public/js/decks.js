@@ -266,7 +266,7 @@ const Decks=(()=>{
      ============================================================ */
   let host=null;                 // {toast, confirm, onClose, onChange}
   let W=null;                    // 正在编辑的卡组 {id,hero,name,cards,virtual,dirty}
-  let hero=null,kind="all",cost="all",rar="all",query="",tab="pool";
+  let hero=null,kind="all",cost="all",rar="all",keyword="all",query="",tab="pool";
 
   const stateOf=d=>{
     const err=C.deckError(d.hero,d.cards);
@@ -347,11 +347,16 @@ const Decks=(()=>{
       if(kind!=="all"&&c.kind!==kind)return false;
       if(cost!=="all"&&(cost==="6"?c.cost<6:c.cost!==+cost))return false;
       if(rar!=="all"&&c.rarity!==rar)return false;
+      if(keyword!=="all"&&!V.keywordKeys(c).includes(keyword))return false;
       if(q&&!(c.name.toLowerCase().includes(q)||String(c.text||"").toLowerCase().includes(q)||String(c.flavor||"").toLowerCase().includes(q)||String(C.cardCode(hero,c.id)||"").toLowerCase()===q))return false;
       return true;
     }).sort((a,b)=>a.cost-b.cost||(a.kind<b.kind?1:-1)||a.name.localeCompare(b.name,"zh"));
   }
   function renderPool(){
+    const counts={};cardsOf(hero).forEach(c=>V.keywordKeys(c).forEach(key=>counts[key]=(counts[key]||0)+1));
+    $("#dkKeyword").innerHTML='<option value="all">全部词条</option>'+Object.entries(C.KEYWORDS).filter(([key])=>counts[key]).map(([key,word])=>`<option value="${V.esc(key)}">${V.esc(word.name)}（${counts[key]}）</option>`).join("");
+    if(keyword!=="all"&&!counts[keyword])keyword="all";
+    $("#dkKeyword").value=keyword;
     $$("#dkKind button").forEach(b=>b.classList.toggle("on",b.dataset.v===kind));
     $$("#dkCost button").forEach(b=>b.classList.toggle("on",b.dataset.v===cost));
     $$("#dkRar button").forEach(b=>b.classList.toggle("on",b.dataset.v===rar));
@@ -363,6 +368,21 @@ const Decks=(()=>{
         <div class="dc-ctrl"><button data-a="-" ${n<=0?"disabled":""} aria-label="减少">−</button><span>${n}<small> / ${c.limit}</small></span><button data-a="+" ${atLimit||full?"disabled":""} aria-label="增加">＋</button></div></div>`;
     }).join(""):`<div class="empty" style="grid-column:1/-1">没有符合条件的卡牌</div>`;
   }
+  function openCardPreview(id){
+    const c=cardsOf(W.hero).find(x=>x.id===id);if(!c)return;
+    const card=Object.assign({hero:W.hero},c),rarity=C.RARITY[c.rarity],notes=V.keywordNotes(card);
+    $("#dkPreviewCard").innerHTML=V.card(card);
+    $("#dkPreviewInfo").innerHTML=`<h2>${V.esc(c.name)}</h2><div class="meta">
+      <span>代码 ${V.esc(C.cardCode(W.hero,c.id)||"—")}</span><span>${V.esc(rarity?rarity.name:c.rarity)}</span>
+      <span>${c.kind==="unit"?"单位":"法术"}</span><span>${c.cost} 费</span><span>阵营 ${V.esc(C.PROFILES[W.hero].faction||W.hero)}</span>
+      ${c.kind==="unit"?`<span>攻击 ${c.atk} / 生命 ${c.hp}</span>`:""}<span>携带上限 ${c.limit}</span></div>
+      <h3>效果</h3><p>${V.richText(c.text||"无")}</p>
+      ${c.flavor?`<h3>描述</h3><p>${V.esc(c.flavor)}</p>`:""}
+      ${notes?`<h3>词条说明</h3><div class="cv-notes">${notes}</div>`:""}`;
+    $("#mDeckCard").hidden=false;
+    $("#mDeckCard .panel").scrollTop=0;
+  }
+  function closeCardPreview(){$("#mDeckCard").hidden=true;}
   function renderCurrent(){
     const name=$("#dkName");
     if(document.activeElement!==name)name.value=W.name;
@@ -525,15 +545,17 @@ const Decks=(()=>{
     $("#dkKind").addEventListener("click",e=>{const b=e.target.closest("button");if(b){kind=b.dataset.v;renderPool();}});
     $("#dkCost").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cost=b.dataset.v;renderPool();}});
     $("#dkRar").addEventListener("click",e=>{const b=e.target.closest("button");if(b){rar=b.dataset.v;renderPool();}});
+    $("#dkKeyword").addEventListener("change",e=>{keyword=e.target.value;renderPool();});
     $("#dkCards").addEventListener("click",e=>{
       const row=e.target.closest(".dc");if(!row)return;
       const b=e.target.closest("button[data-a]");
       if(b){if(b.disabled)return;b.dataset.a==="-"?sub(row.dataset.id):add(row.dataset.id);return;}
-      if(e.target.closest(".card"))add(row.dataset.id);
+      if(e.target.closest(".card")||e.target.closest(".dc-code"))openCardPreview(row.dataset.id);
     });
     $("#dkItems").addEventListener("click",e=>{
-      const b=e.target.closest("button[data-a]");const row=e.target.closest(".dk-row");if(!b||!row||b.disabled)return;
-      b.dataset.a==="-"?sub(row.dataset.id):add(row.dataset.id);
+      const b=e.target.closest("button[data-a]");const row=e.target.closest(".dk-row");if(!row)return;
+      if(b){if(!b.disabled)(b.dataset.a==="-"?sub(row.dataset.id):add(row.dataset.id));return;}
+      openCardPreview(row.dataset.id);
     });
     $("#dkName").addEventListener("input",e=>{
       const v=e.target.value.replace(/[<>]/g,"").slice(0,NAME_MAX);
@@ -551,10 +573,13 @@ const Decks=(()=>{
     $("#dkExport").addEventListener("click",exportCode);
     $("#dkTabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){tab=b.dataset.t;renderAll();}});
     $("#decksBack").addEventListener("click",()=>close());
+    $("#mDeckCard").addEventListener("click",e=>{if(e.target===$("#mDeckCard")||e.target.closest("[data-close]"))closeCardPreview();});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#mDeckCard").hidden)closeCardPreview();});
     window.addEventListener("beforeunload",e=>{if(W&&W.dirty&&!$("#scrDecks").hidden){e.preventDefault();e.returnValue="";}});
   }
 
   async function close(force){
+    closeCardPreview();
     if(!force&&!(await guard()))return;
     W=null;host.onClose();
   }
@@ -565,7 +590,7 @@ const Decks=(()=>{
     if(!h||!C.PROFILES[h])h=vanillaHeroes()[0]||allHeroes()[0];
     const d=deckId&&api.get(deckId);
     if(d)startWork(d);else pickInitial(h);
-    kind="all";cost="all";rar="all";query="";$("#dkSearch").value="";tab="pool";
+    kind="all";cost="all";rar="all";keyword="all";query="";$("#dkSearch").value="";tab="pool";
     renderAll();
   }
   return Object.assign(api,{open,close,get dirty(){return!!(W&&W.dirty);}});

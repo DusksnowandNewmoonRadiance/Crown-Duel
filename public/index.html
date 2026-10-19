@@ -190,6 +190,7 @@
         <div class="seg-inline" id="dkKind"><button data-v="all" class="on">全部</button><button data-v="unit">单位</button><button data-v="spell">法术</button></div>
         <div class="seg-inline" id="dkRar"><button data-v="all" class="on">全部稀有度</button><button data-v="common" class="r-common">普通</button><button data-v="rare" class="r-rare">稀有</button><button data-v="special" class="r-special">特殊</button><button data-v="elite" class="r-elite">精英</button></div>
         <div class="seg-inline" id="dkCost"><button data-v="all" class="on">全部费用</button><button data-v="0">0</button><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6+</button></div>
+        <select id="dkKeyword" aria-label="按词条筛选卡牌"><option value="all">全部词条</option></select>
       </div>
       <div class="dk-cards" id="dkCards"></div>
     </section>
@@ -280,7 +281,7 @@
     <div class="topbar-r"></div>
   </header>
   <nav class="cx-tabs" id="cxTabs">
-    <button data-t="people" class="on">人物</button><button data-t="world">世界观</button><button data-t="cards">卡牌</button>
+    <button data-t="people" class="on">人物</button><button data-t="world">世界观</button><button data-t="cards">卡牌</button><button data-t="keywords">词条</button>
   </nav>
   <main class="cx-main">
     <div class="cx-panel" data-t="people">
@@ -296,6 +297,7 @@
     <div class="cx-panel" data-t="cards" hidden>
       <div class="cx-ctrl" id="cxFilters">
         <input id="cxCardQ" type="search" placeholder="搜索卡牌名称或效果" autocomplete="off">
+        <div id="cxActiveKeyword" hidden></div>
         <div class="cx-frow"><label>角色</label><div class="cx-chips" id="cxFHero"></div></div>
         <div class="cx-frow"><label>花费</label><div class="cx-chips" id="cxFCost"></div></div>
         <div class="cx-frow"><label>类型</label><div class="cx-chips" id="cxFKind"></div></div>
@@ -303,6 +305,10 @@
         <div class="cx-fbar"><span class="muted small" id="cxCardCount"></span><button class="btn btn-ghost" id="cxReset">清除筛选</button></div>
       </div>
       <div class="cx-cards" id="cxCards"></div>
+    </div>
+    <div class="cx-panel" data-t="keywords" hidden>
+      <div class="cx-ctrl"><input id="cxKeywordQ" type="search" placeholder="搜索词条名称或解释" autocomplete="off"><span class="muted small" id="cxKeywordCount"></span></div>
+      <div class="cx-keyword-grid" id="cxKeywords"></div>
     </div>
   </main>
 </section>
@@ -540,6 +546,12 @@
     <div class="cv-card" id="cvCard"></div>
     <div class="cv-info" id="cvInfo"></div>
   </div>
+</div></div>
+
+<div class="modal dk-preview" id="mDeckCard" hidden><div class="panel wide dk-preview-panel" role="dialog" aria-modal="true" aria-label="卡牌详情">
+  <button class="x-btn" data-close aria-label="关闭">✕</button>
+  <div class="dk-preview-card" id="dkPreviewCard"></div>
+  <div class="dk-preview-info" id="dkPreviewInfo"></div>
 </div></div>
 
 <div class="modal" id="mConfirm" hidden><div class="panel">

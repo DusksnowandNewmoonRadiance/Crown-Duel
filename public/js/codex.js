@@ -10,7 +10,8 @@ const Codex=(()=>{
   let L=null,host=null,bound=false,loading=null;
   let tab="people";
   const F={q:"",fac:new Set(),tier:new Set(),playable:false};
-  const K={hero:new Set(),cost:new Set(),kind:new Set(),rar:new Set(),q:""};
+  const K={hero:new Set(),cost:new Set(),kind:new Set(),rar:new Set(),q:"",keyword:""};
+  let keywordQuery="";
   const FX=window.DuelCardFX;
   const COSTS=["0","1","2","3","4","5","6","7+"];
 
@@ -156,6 +157,7 @@ const Codex=(()=>{
       if(d===except||!K[d].size)continue;
       if(!K[d].has(DIMS[d](it)))return false;
     }
+    if(K.keyword&&!V.keywordKeys(it.c).includes(K.keyword))return false;
     const q=K.q.trim().toLowerCase();
     if(q&&!(it.c.name.toLowerCase().includes(q)||String(it.c.text||"").toLowerCase().includes(q)||String(it.c.flavor||"").toLowerCase().includes(q)))return false;
     return true;
@@ -167,12 +169,15 @@ const Codex=(()=>{
     return `<button class="chip${on?" on":""}${n===0&&!on?" zero":""}${extra||""}" data-d="${dim}" data-v="${V.esc(val)}">${V.esc(label)}<small>${n}</small></button>`;
   }
   function renderCards(){
+    const selected=K.keyword&&C.KEYWORDS[K.keyword];
+    $("#cxActiveKeyword").hidden=!selected;
+    $("#cxActiveKeyword").innerHTML=selected?`<button class="chip on" id="cxClearKeyword">词条：${V.esc(selected.name)} ×</button>`:"";
     $("#cxFHero").innerHTML=HEROES.map(h=>chip("hero",h,h,"")).join("");
     $("#cxFCost").innerHTML=COSTS.map(c=>chip("cost",c,c==="7+"?"7+":c+" 费")).join("");
     $("#cxFKind").innerHTML=chip("kind","unit","单位")+chip("kind","spell","法术");
     $("#cxFRar").innerHTML=C.RARITY_ORDER.map(r=>chip("rar",r,C.RARITY[r].name+" · 上限 "+C.RARITY[r].limit," r-"+r)).join("");
     const items=allCards().filter(it=>matches(it,null));
-    const active=["hero","cost","kind","rar"].some(d=>K[d].size)||K.q.trim();
+    const active=["hero","cost","kind","rar"].some(d=>K[d].size)||K.q.trim()||K.keyword;
     $("#cxCardCount").textContent=`共 ${items.length} 张${active?`（全部 ${allCards().length} 张）`:""}`;
     $("#cxReset").hidden=!active;
     $("#cxCards").innerHTML=items.length?items.map(({h,c})=>{
@@ -181,6 +186,15 @@ const Codex=(()=>{
       return`<button class="cx-card" data-h="${V.esc(h)}" data-id="${V.esc(c.id)}">${V.card(Object.assign({hero:h},c))}
         <small><span class="rar r-${c.rarity}">${r?r.name:""}</span> 上限 ${c.limit}${rec?`<span class="fxm r-${c.rarity}">特效</span>`:""}</small></button>`;
     }).join(""):`<div class="empty" style="grid-column:1/-1">没有符合全部条件的卡牌，试试清除一些筛选</div>`;
+  }
+  function renderKeywords(){
+    const all=allCards(),q=keywordQuery.trim().toLowerCase();
+    const items=Object.entries(C.KEYWORDS).filter(([,word])=>!q||(word.name+" "+word.desc).toLowerCase().includes(q));
+    $("#cxKeywordCount").textContent=`${items.length} / ${Object.keys(C.KEYWORDS).length} 个词条`;
+    $("#cxKeywords").innerHTML=items.map(([key,word])=>{
+      const cards=all.filter(({c})=>V.keywordKeys(c).includes(key));
+      return `<button class="cx-keyword" data-key="${V.esc(key)}"><span class="cx-keyword-head"><b>${V.esc(word.name)}</b><small>${cards.length} 张卡牌</small></span><span>${V.esc(word.desc)}</span><small>${V.esc(cards.slice(0,6).map(({c})=>c.name).join("、"))}${cards.length>6?"…":""}</small></button>`;
+    }).join("")||'<div class="empty">没有匹配的词条</div>';
   }
 
   /* ---- 卡牌详情 + 特效预览 ---- */
@@ -241,6 +255,7 @@ const Codex=(()=>{
     $$("#scrCodex .cx-panel").forEach(p=>p.hidden=p.dataset.t!==t);
     if(t==="world")renderWorld();
     if(t==="cards")renderCards();
+    if(t==="keywords")renderKeywords();
     if(t==="people"){renderFilters();renderPeople();}
   }
   function bind(){
@@ -276,8 +291,11 @@ const Codex=(()=>{
       set.has(v)?set.delete(v):set.add(v);
       Audio2.sfx("click");renderCards();
     });
-    $("#cxReset").addEventListener("click",()=>{["hero","cost","kind","rar"].forEach(d=>K[d].clear());K.q="";$("#cxCardQ").value="";renderCards();});
+    $("#cxReset").addEventListener("click",()=>{["hero","cost","kind","rar"].forEach(d=>K[d].clear());K.q="";K.keyword="";$("#cxCardQ").value="";renderCards();});
+    $("#cxActiveKeyword").addEventListener("click",()=>{K.keyword="";renderCards();});
     $("#cxCardQ").addEventListener("input",e=>{K.q=e.target.value;renderCards();});
+    $("#cxKeywordQ").addEventListener("input",e=>{keywordQuery=e.target.value;renderKeywords();});
+    $("#cxKeywords").addEventListener("click",e=>{const b=e.target.closest("button[data-key]");if(!b)return;K.keyword=b.dataset.key;setTab("cards");});
     $("#cxCards").addEventListener("click",e=>{const b=e.target.closest(".cx-card");if(b){Audio2.sfx("select");openCard(b.dataset.h,b.dataset.id);}});
     $("#mCardView").addEventListener("click",e=>{const m=$("#mCardView");if(e.target===m||e.target.closest("[data-close]"))m.hidden=true;});
     addEventListener("resize",()=>{if(!$("#mCardView").hidden)layoutPreview();});

@@ -297,8 +297,8 @@ class Game{
       this.note(`${label}：销毁敌方${zone}中的【${card.name}】`,s);
     }
     for(const u of s.board.filter(x=>x.effect==="whiteSentinel"&&x.health>0)){
-      u.attack++;u.health++;u.maxHealth++;
-      this.note(`${u.name}：因销毁敌牌获得 +1/+1`,s);
+      u.attack++;u.health+=2;u.maxHealth+=2;
+      this.note(`${u.name}：因销毁敌牌获得 +1/+2`,s);
     }
   }
   forcedRead(s,o,n,label){
@@ -362,8 +362,8 @@ class Game{
     if(this.phase==="over")return;
     const owner=this.opp(caster);
     for(const u of owner.board.filter(x=>x.effect==="whiteSpellPunish"&&x.health>0)){
-      this.damageHero(caster,1);
-      this.note(`${u.name}：敌方使用法术，对敌方英雄造成 1 点伤害`,owner);
+      this.damageHero(caster,2);
+      this.note(`${u.name}：敌方使用法术，对敌方英雄造成 2 点伤害`,owner);
       if(this.phase==="over")break;
     }
   }
@@ -863,7 +863,7 @@ class Game{
         break;
       }
       case"whiteFinal":{
-        const n=Math.min(18,4+s.destroyedCards);
+        const n=Math.min(18,4+2*s.destroyedCards);
         this.damageHero(o,n);this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，造成 ${n} 点伤害`,s);
         break;
       }
