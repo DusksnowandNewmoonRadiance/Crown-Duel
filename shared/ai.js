@@ -57,11 +57,12 @@ function deckMode(p){
 
 const BURN={hero99:99,damage5:5,damage6:6,damage7:7,damage5draw:5,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2,
   };
-function burnOf(s,c){
+function burnOf(s,c,o){
   if(c.effect==="whiteFinal")return Math.min(18,4+(s.destroyedCards||0));
   if(c.effect==="whiteStrike")return Math.min(7,2+Math.floor((s.destroyedCards||0)/3));
   if(c.effect==="whiteBurst")return Math.min(10,3+Math.floor((s.destroyedCards||0)/2));
   if(c.effect==="whiteNight")return 5;
+  if(c.effect==="whiteJunkBlast")return o?o.hand.filter(x=>x.effect==="whiteJunk").length+o.deck.filter(x=>x.effect==="whiteJunk").length:0;
   if(c.effect==="runaway")return s.money>=ESCAPE_TARGET?9999:2;
   if(c.effect==="unitDamageHero")return s.board.length;
   if(c.effect==="finish")return s.board.length*2;
@@ -89,15 +90,15 @@ function canBreakWall(s,o){
 }
 function isLethal(s,o){
   let en=s.energy,dmg=0;
-  const burns=s.hand.filter(c=>burnOf(s,c)>0&&!playError(c,s,o)).sort((a,b)=>burnOf(s,b)/(b.cost||1)-burnOf(s,a)/(a.cost||1));
-  for(const c of burns)if(c.cost<=en){en-=c.cost;dmg+=burnOf(s,c);}
+  const burns=s.hand.filter(c=>burnOf(s,c,o)>0&&!playError(c,s,o)).sort((a,b)=>burnOf(s,b,o)/(b.cost||1)-burnOf(s,a,o)/(a.cost||1));
+  for(const c of burns)if(c.cost<=en){en-=c.cost;dmg+=burnOf(s,c,o);}
   if(faceReach(s,o)+dmg>=o.hp+o.armor)return true;
   /* 能拆/策反嘲讽墙时，按"无墙"的伤害判断可否斩杀（字母策动过墙） */
   if(canBreakWall(s,o)&&faceReachAll(s,o)+dmg>=o.hp+o.armor)return true;
   return false;
 }
 function scoreCard(s,o,c,lethal,stage){
-  const e=c.effect,myN=s.board.length,enN=o.board.length,burn=burnOf(s,c);
+  const e=c.effect,myN=s.board.length,enN=o.board.length,burn=burnOf(s,c,o);
   /* 同一英雄可能有两套预设（苏苏：俄布海 / 白俄罗斯铁壁），打法按自带卡组走 */
   const mode=deckMode(s);
   /* 剧情·土匪AI：stage0 前期不铺场不打高费 */
@@ -126,11 +127,14 @@ function scoreCard(s,o,c,lethal,stage){
     if(e==="baimaoDeploy")sc-=3;
     if(e==="whiteAsh")sc+=Math.min(5,Math.floor((s.destroyedCards||0)/2))*2;
     if(e==="whiteEngine")sc+=o.deck.length>=4?6:-2;
-    if(e==="whiteBoard")sc+=enN?Math.max(...o.board.map(unitValue))*.8:-2;
+    if(e==="whiteBoard")sc+=enN?Math.max(...o.board.map(unitValue))*.8+o.board.filter(u=>u.attack===Math.max(...o.board.map(x=>x.attack))).length*2:-2;
     if(e==="whiteProof")sc+=o.board.some(u=>u.attack<=2)?5:0;
     if(e==="whiteSentinel")sc+=o.deck.length+o.hand.length?2:0;
     if(e==="whiteMargin")sc+=o.deck.length<=3?5:1;
     if(e==="whiteCorruptHand")sc+=o.hand.filter(x=>x.effect!=="whiteJunk").length?5:-2;
+    if(e==="whiteSpellPunish")sc+=Math.min(5,o.hand.filter(x=>x.kind==="spell").length)*1.2;
+    if(e==="whiteJunkTax")sc+=Math.min(4,o.hand.filter(x=>x.effect==="whiteJunk").length+o.deck.filter(x=>x.effect==="whiteJunk").length)*1.5;
+    if(e==="whiteCorruptCredit")sc+=o.hand.filter(x=>x.effect!=="whiteJunk").length+o.deck.filter(x=>x.effect!=="whiteJunk").length>0?4:0;
     if(e==="whiteMedic")sc+=Math.min(4,Math.max(0,s.maxHp-s.hp))*1.2;
     if(e==="whiteDeck1"||e==="whiteDeck2"||e==="whiteHand1")sc+=(o.deck.length+o.hand.length)?3:-2;
     if(lethal&&burn>0)sc+=300;
@@ -167,6 +171,7 @@ function scoreCard(s,o,c,lethal,stage){
     else if(e==="whiteForce1"||e==="whiteForce2")sc+=o.deck.length===0?12+(o.fatigue||0)*3:o.deck.length<=3?6:1;
     else if(e==="whiteDrawJunk5")sc+=o.deck.length===0?18:o.hand.length>=MAX_HAND-3?12:8;
     else if(e==="whiteAoe")sc+=enN?enN*2.5+o.board.filter(u=>u.health<=3).length*2:-100;
+    else if(e==="whiteJunkBlast")sc+=burn?burn*1.2:-100;
     else if(e==="whiteCorruptDeck")sc+=o.deck.filter(x=>x.effect!=="whiteJunk").length>=2?7:0;
     else if(e==="whiteMend")sc+=Math.min(6,Math.max(0,s.maxHp-s.hp))*1.1+2;
     else if(/^white/.test(e)){

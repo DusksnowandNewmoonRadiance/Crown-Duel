@@ -270,26 +270,30 @@ const PROFILES={
     {id:"crown",name:"复制皇冠",cost:5,kind:"spell",art:"♛",text:"弃掉手牌中所有【废料】（至少 2 张），每 2 张获得 1 张随机的精英牌（至多 3 张）。",effect:"crownCopy",n:1,limit:1,rarity:"elite"}
   ]},
   白猫:{faction:"彗星国 · 架子班",style:"销毁敌牌 · 疲劳审判",hp:38,cards:[
-    {id:"kitten",name:"勘误猫",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"部署：消灭一名攻击力不超过 2 的敌方单位（优先攻击力最低者），计入已销毁卡牌。",effect:"whiteProof",n:3,limit:4,rarity:"common"},
+    {id:"kitten",name:"勘误猫",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"部署：消灭一名攻击力不超过 2 的敌方单位（优先攻击力最低者），计入已销毁卡牌。",effect:"whiteProof",n:2,limit:4,rarity:"common"},
     {id:"sentinel",name:"卷宗守卫",cost:2,kind:"unit",art:"◈",atk:2,hp:3,text:"嘲讽。每当你销毁一张敌方卡牌，获得 +1/+1。",taunt:true,effect:"whiteSentinel",n:2,limit:4,rarity:"common"},
-    {id:"courier",name:"书页窃贼",cost:2,kind:"unit",art:"✦",atk:2,hp:2,text:"部署：销毁敌方牌库顶的 2 张牌。",effect:"whiteDeck1",n:2,limit:3,rarity:"rare"},
-    {id:"leaper",name:"断章猎手",cost:3,kind:"unit",art:"✧",atk:3,hp:2,text:"冲锋。部署：对敌方英雄造成 2 点伤害；本局每销毁 3 张敌方卡牌，伤害 +1（至多 7 点）。",charge:true,effect:"whiteStrike",n:2,limit:3,rarity:"rare"},
-    {id:"guardian",name:"页边催读官",cost:4,kind:"unit",art:"◆",atk:3,hp:6,text:"嘲讽。部署及你的回合开始时：强制对手抽 1 张牌，立即销毁抽到的牌；牌库为空则触发疲劳。",taunt:true,effect:"whiteMargin",n:2,limit:2,rarity:"special"},
-    {id:"ash",name:"灰烬化身",cost:4,kind:"unit",art:"♢",atk:3,hp:4,text:"部署：本局每销毁 2 张敌方卡牌，获得 +1/+1（至多 +5/+5）。",effect:"whiteAsh",n:2,limit:2,rarity:"special"},
+    {id:"courier",name:"书页窃贼",cost:2,kind:"unit",art:"✦",atk:2,hp:2,text:"部署：销毁敌方牌库顶的 2 张牌。",effect:"whiteDeck1",n:1,limit:3,rarity:"rare"},
+    {id:"leaper",name:"断章猎手",cost:3,kind:"unit",art:"✧",atk:3,hp:2,text:"冲锋。部署：对敌方英雄造成 2 点伤害；本局每销毁 3 张敌方卡牌，伤害 +1（至多 7 点）。",charge:true,effect:"whiteStrike",n:1,limit:3,rarity:"rare"},
+    {id:"guardian",name:"页边催读官",cost:4,kind:"unit",art:"◆",atk:3,hp:6,text:"嘲讽。部署及你的回合开始时：强制对手抽 1 张牌，立即销毁抽到的牌；牌库为空则触发疲劳。",taunt:true,effect:"whiteMargin",n:1,limit:2,rarity:"special"},
+    {id:"ash",name:"灰烬化身",cost:4,kind:"unit",art:"♢",atk:3,hp:4,text:"嘲讽。部署：本局每销毁 2 张敌方卡牌，获得 +1/+1（至多 +5/+5）。",taunt:true,effect:"whiteAsh",n:2,limit:2,rarity:"special"},
     {id:"engine",name:"碎页机关",cost:4,kind:"unit",art:"▤",atk:1,hp:5,text:"你的回合开始时，销毁敌方牌库顶的 2 张牌。",effect:"whiteEngine",n:2,limit:2,rarity:"special"},
     {id:"reserve",name:"档案拆解者",cost:5,kind:"unit",art:"✩",atk:5,hp:5,text:"部署：销毁敌方牌库顶的 3 张牌。",effect:"whiteDeck2",n:1,limit:2,rarity:"special"},
     {id:"inspector",name:"禁书搜查官",cost:5,kind:"unit",art:"◎",atk:5,hp:4,text:"部署：随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 1 张牌。",effect:"whiteHand1",n:1,limit:2,rarity:"special"},
     {id:"editor",name:"涂改员",cost:3,kind:"unit",art:"✎",atk:3,hp:3,text:"部署：随机将敌方手牌中的 1 张非垃圾牌变成【垃圾】。",effect:"whiteCorruptHand",n:2,limit:3,rarity:"rare"},
-    {id:"medic",name:"纸缝医师",cost:3,kind:"unit",art:"✚",atk:2,hp:4,text:"部署：你的英雄恢复 4 点生命。",effect:"whiteMedic",n:2,limit:2,rarity:"special"},
-    {id:"meteor",name:"终稿裁决",cost:7,kind:"unit",art:"☄",atk:6,hp:6,text:"部署：消灭攻击力最高的敌方单位，计入已销毁卡牌。",effect:"whiteBoard",n:1,limit:1,rarity:"elite"},
+    {id:"spellpunish",name:"错字追责官",cost:3,kind:"unit",art:"✎",atk:2,hp:4,text:"每当敌方使用一张法术牌，对敌方英雄造成 1 点伤害。",effect:"whiteSpellPunish",n:1,limit:3,rarity:"rare"},
+    {id:"junktax",name:"废稿收费站",cost:3,kind:"unit",art:"▧",atk:1,hp:5,text:"敌方【垃圾】的费用 +2。",effect:"whiteJunkTax",n:1,limit:2,rarity:"special"},
+    {id:"corruptcredit",name:"销毁登记员",cost:4,kind:"unit",art:"▤",atk:3,hp:4,text:"你的卡牌将敌方卡牌变成【垃圾】时，原牌也计入已销毁卡牌。",effect:"whiteCorruptCredit",n:2,limit:2,rarity:"special"},
+    {id:"medic",name:"纸缝医师",cost:3,kind:"unit",art:"✚",atk:2,hp:4,text:"部署：你的英雄恢复 4 点生命。",effect:"whiteMedic",n:1,limit:2,rarity:"special"},
+    {id:"meteor",name:"终稿裁决",cost:7,kind:"unit",art:"☄",atk:6,hp:6,text:"部署：消灭所有攻击力最高的敌方单位，均计入已销毁卡牌。",effect:"whiteBoard",n:1,limit:1,rarity:"elite"},
     {id:"sovereign",name:"白猫·空白终章",cost:6,kind:"unit",art:"♛",atk:6,hp:6,text:"部署：对敌方英雄造成 4 点伤害；本局每销毁 1 张敌方卡牌，伤害 +1（至多 18 点）。",effect:"whiteFinal",n:1,limit:1,rarity:"elite"},
     {id:"spark",name:"撕掉一页",cost:1,kind:"spell",art:"✦",text:"销毁敌方牌库顶的 2 张牌，抽 1 张牌。",effect:"whiteDeckDraw",n:4,limit:4,rarity:"common"},
     {id:"surge",name:"强制翻页",cost:2,kind:"spell",art:"⇧",text:"销毁敌方牌库顶的 2 张牌，再强制对手抽 1 张并销毁抽到的牌；牌库为空则触发疲劳。",effect:"whiteForce1",n:2,limit:3,rarity:"rare"},
     {id:"insight",name:"没收手稿",cost:3,kind:"spell",art:"◎",text:"随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 2 张牌。抽 1 张牌。",effect:"whiteConfiscate",n:1,limit:2,rarity:"special"},
     {id:"rally",name:"末页催读",cost:3,kind:"spell",art:"✧",text:"强制对手抽 2 张牌并销毁抽到的牌；牌库为空时每次抽牌触发疲劳。你获得 3 点护甲。",effect:"whiteForce2",n:1,limit:3,rarity:"rare"},
     {id:"shelter",name:"缺页追击",cost:4,kind:"spell",art:"◈",text:"对敌方英雄造成 3 点伤害；本局每销毁 2 张敌方卡牌，伤害 +1（至多 10 点）。",effect:"whiteBurst",n:1,limit:2,rarity:"special",fx:"sp_strike"},
+    {id:"junkblast",name:"废稿结算",cost:4,kind:"spell",art:"▧",text:"对敌方英雄造成等同于其手牌和牌库中【垃圾】数量的伤害。",effect:"whiteJunkBlast",n:2,limit:2,rarity:"special",fx:"sp_strike"},
     {id:"pollute",name:"废稿雨",cost:4,kind:"spell",art:"☣",text:"随机将敌方牌库中的 2 张非垃圾牌变成【垃圾】。",effect:"whiteCorruptDeck",n:2,limit:2,rarity:"special"},
-    {id:"mend",name:"修补书脊",cost:3,kind:"spell",art:"✥",text:"你的英雄恢复 6 点生命，并获得 2 点护甲。",effect:"whiteMend",n:2,limit:2,rarity:"special"},
+    {id:"mend",name:"修补书脊",cost:3,kind:"spell",art:"✥",text:"你的英雄恢复 6 点生命，并获得 2 点护甲。",effect:"whiteMend",n:1,limit:2,rarity:"special"},
     {id:"shredstorm",name:"碎稿风暴",cost:4,kind:"spell",art:"❖",text:"对所有敌方单位造成 3 点伤害；因此被消灭的单位计入已销毁卡牌。",effect:"whiteAoe",n:2,limit:2,rarity:"special",fx:"sp_storm"},
     {id:"flood",name:"垃圾洪流",cost:6,kind:"spell",art:"▧",text:"敌方抽 5 张牌，将成功进入手牌的牌全部变成【垃圾】；手牌已满时，新抽到的牌直接销毁。牌库为空则触发疲劳。",effect:"whiteDrawJunk5",n:1,limit:2,rarity:"special"},
     {id:"night",name:"全卷焚尽",cost:6,kind:"spell",art:"♨",text:"随机销毁敌方手牌的 1 张牌，再销毁其牌库顶的 4 张牌；每销毁一张，额外造成 1 点伤害。",effect:"whiteNight",n:1,limit:1,rarity:"elite"}
@@ -346,7 +350,7 @@ const HERO_INFO={
   八幡:{difficulty:1,title:"OCC 冠军 · 八幡军区",tip:"海盗快速铺场，再用【复仇主义】让它们死后反伤；最后用【海盗大斩杀】按场上单位数打脸。"},
   "045":{difficulty:2,title:"普鲁士国领袖",tip:"高层名片调用资源，【开发他人卡组】复制对手牌库里的好牌，召唤各具特色的架子班成员。"},
   下水:{difficulty:2,title:"架子班 · 炮兵",tip:"火炮越多越强。携带 4 张【饱和炮击】，场上火炮数量决定每次覆盖的伤害。"},
-  白猫:{difficulty:3,title:"彗星高层 · 架子班",tip:"用【撕掉一页】压缩敌方牌库；【涂改员】【废稿雨】【垃圾洪流】把对手的牌变成【垃圾】，满手牌时再抽到的牌会被销毁。【碎稿风暴】清理敌方战场，【纸缝医师】【修补书脊】帮你撑到疲劳阶段。"}
+  白猫:{difficulty:3,title:"彗星高层 · 架子班",tip:"用【撕掉一页】压缩敌方牌库；【涂改员】【废稿雨】【垃圾洪流】把对手的牌变成【垃圾】。【销毁登记员】把污染计入销毁，【废稿收费站】提高垃圾费用，再用【废稿结算】按垃圾数量造成伤害。"}
 };
 
 /* 关键字解释（卡牌预览时展示） */
@@ -828,7 +832,11 @@ const BUILTIN_CODE_KEYS=
   "@token:scout",
   "@token:spyGhost",
   "@token:dream",
-  "@token:divinePunish"
+  "@token:divinePunish",
+  "白猫:spellpunish",
+  "白猫:junktax",
+  "白猫:corruptcredit",
+  "白猫:junkblast"
 ];
 
 const CARD_CODE_ALPHABET="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

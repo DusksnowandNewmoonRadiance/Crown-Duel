@@ -95,11 +95,12 @@ function optionSpec(card){
 }
 /* 能否出这张牌：返回 null 或原因 */
 function scrapTax(p){return p&&p.board?p.board.filter(u=>u.effect==="scrapTax"&&u.health>0).length:0;}
+function junkTax(p){return p&&p.board?2*p.board.filter(u=>u.effect==="whiteJunkTax"&&u.health>0).length:0;}
 /* 实际费用：废品回收站让手牌中的废料费用 +1（视图里的牌已经加过，带 taxed 标记） */
-function effCost(card,me){return card.cost+((card.scrap&&!card.taxed)?scrapTax(me):0);}
+function effCost(card,me,foe){return card.cost+((card.scrap&&!card.taxed)?scrapTax(me):0)+(card.effect==="whiteJunk"&&!card.junkTaxed?junkTax(foe):0);}
 /* 能否出这张牌：返回 null 或原因 */
 function playError(card,me,foe){
-  const cost=effCost(card,me);
+  const cost=effCost(card,me,foe);
   if(cost>me.energy)return`费用不足（需要 ${cost}，当前 ${me.energy}）`;
   if(me.turnCap!=null&&(me.playedTurn||0)>=me.turnCap)return`出牌封锁：本回合最多只能打出 ${me.turnCap} 张牌`;
   if(card.kind==="spell"&&me.noSpell)return"寂静星环：本回合无法打出法术牌";
@@ -254,7 +255,7 @@ class Game{
       if(!p.deck.length){p.fatigue++;const dmg=p.fatigue*(p.fatigue+1)/2;this.note(`牌库已空，第 ${p.fatigue} 次疲劳，受到 ${dmg} 点伤害`,p);this.damageHero(p,dmg,{fatigue:true});if(this.phase==="over")break;continue;}
       const card=p.deck.pop();
       /* DIY·神罚：抽到时自动施放（不进手牌） */
-      if(card.onDraw){this.note(`【${card.name}】抽到时自动施放`,p);this.cast(p,card,this.opp(p),[],null);if(this.phase==="over")break;continue;}
+      if(card.onDraw){this.note(`【${card.name}】抽到时自动施放`,p);this.cast(p,card,this.opp(p),[],null);this._onEnemySpell(p);if(this.phase==="over")break;continue;}
       if(p.hand.length>=MAX_HAND){this.burn(p,card,credit,label);continue;}
       p.hand.push(card);this._drawHeal(p);
       this._reduceBeelzebub(this.opp(p));
@@ -288,11 +289,13 @@ class Game{
     }
     return count;
   }
-  recordDestroyed(s,card,zone,label){
+  recordDestroyed(s,card,zone,label,converted=false){
     s.destroyedCards++;
-    s.destroyedLog.push({name:card.name,zone,source:label});
-    this.emit({t:"burn",pi:this.opp(s).idx,sourcePi:s.idx,card:pubCard(card),destroyed:true,zone,source:label});
-    this.note(`${label}：销毁敌方${zone}中的【${card.name}】`,s);
+    s.destroyedLog.push({name:card.name,zone,source:label,converted});
+    if(!converted){
+      this.emit({t:"burn",pi:this.opp(s).idx,sourcePi:s.idx,card:pubCard(card),destroyed:true,zone,source:label});
+      this.note(`${label}：销毁敌方${zone}中的【${card.name}】`,s);
+    }
     for(const u of s.board.filter(x=>x.effect==="whiteSentinel"&&x.health>0)){
       u.attack++;u.health++;u.maxHealth++;
       this.note(`${u.name}：因销毁敌牌获得 +1/+1`,s);
@@ -318,6 +321,7 @@ class Game{
       const old=candidates[Math.floor(Math.random()*candidates.length)];
       const at=cards.indexOf(old);
       const into=cards[at]=this.clone(TOKENS.junk,o.hero);
+      if(s.board.some(u=>u.effect==="whiteCorruptCredit"&&u.health>0))this.recordDestroyed(s,old,zone,label,true);
       changed++;
       const msg=`${label}：敌方${zone}中的【${old.name}】变成了【垃圾】`;
       this.note(msg,s);
@@ -331,8 +335,10 @@ class Game{
       this.draw(o,1,s,label);
       const drawn=o.hand.find(c=>!before.has(c.uid));
       if(!drawn)continue;
+      if(drawn.effect==="whiteJunk")continue;
       const at=o.hand.indexOf(drawn);
       const into=o.hand[at]=this.clone(TOKENS.junk,o.hero);
+      if(s.board.some(u=>u.effect==="whiteCorruptCredit"&&u.health>0))this.recordDestroyed(s,drawn,"刚抽到的手牌",label,true);
       const msg=`${label}：敌方新抽到的【${drawn.name}】变成了【垃圾】`;
       this.note(msg,s);
       this.emit({t:"transformCard",pi:o.idx,sourcePi:s.idx,zone:"刚抽到的手牌",card:pubCard(drawn),into:pubCard(into)});
@@ -351,6 +357,15 @@ class Game{
     const blocked=Math.min(p.armor,n);p.armor-=blocked;p.hp-=n-blocked;
     if(!o.fatigue&&!o.self)this.opp(p).stats.dmg+=n;
     this._checkEnd();
+  }
+  _onEnemySpell(caster){
+    if(this.phase==="over")return;
+    const owner=this.opp(caster);
+    for(const u of owner.board.filter(x=>x.effect==="whiteSpellPunish"&&x.health>0)){
+      this.damageHero(caster,1);
+      this.note(`${u.name}：敌方使用法术，对敌方英雄造成 1 点伤害`,owner);
+      if(this.phase==="over")break;
+    }
   }
   damageUnit(owner,u,n,src,combat){u.health-=boost(src,n,combat);}
   heal(p,n){p.hp+=n;}
@@ -672,7 +687,7 @@ class Game{
     }
     const os=optionSpec(c);
     if(os&&!os.options.some(x=>x.id===option))return err("请先做出选择");
-    s.energy-=effCost(c,s);s.hand=s.hand.filter(x=>x!==c);s.stats.played++;s.playedTurn=(s.playedTurn||0)+1;
+    s.energy-=effCost(c,s,o);s.hand=s.hand.filter(x=>x!==c);s.stats.played++;s.playedTurn=(s.playedTurn||0)+1;
     this.emit({t:"play",pi,card:pubCard(c),targets:picked,option:os?option:null});
     if(c.kind==="unit"){
       s.board.push(c);this._enter(s,c);
@@ -682,6 +697,7 @@ class Game{
     }else{
       this.note(`施放【${c.name}】`,s);
       this.cast(s,c,o,picked,option);
+      this._onEnemySpell(s);
     }
     /* 剧情模式：敌人打出【洗劫村庄】→ 着火对话 */
     if(this.campaign&&pi!==this.campaign.player&&c.id==="bd_burn"&&!this.campaign.seen.enemyBurn){
@@ -841,7 +857,11 @@ class Game{
         this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，获得 +${n}/+${n}`,s);
         break;
       }
-      case"whiteBoard":if(o.board.length)this.destroyBoardUnit(s,o,o.board.slice().sort((a,b)=>b.attack-a.attack)[0],c.name);break;
+      case"whiteBoard":{
+        const alive=o.board.filter(u=>u.health>0);
+        if(alive.length){const highest=Math.max(...alive.map(u=>u.attack));for(const u of alive.filter(x=>x.attack===highest))this.destroyBoardUnit(s,o,u,c.name);}
+        break;
+      }
       case"whiteFinal":{
         const n=Math.min(18,4+s.destroyedCards);
         this.damageHero(o,n);this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，造成 ${n} 点伤害`,s);
@@ -1425,6 +1445,11 @@ class Game{
       case"whiteForce2":this.forcedRead(s,o,2,c.name);this.armor(s,3);break;
       case"whiteCorruptDeck":this.corruptEnemyCards(s,o,"牌库",2,c.name);break;
       case"whiteDrawJunk5":this.drawAndCorrupt(s,o,5,c.name);break;
+      case"whiteJunkBlast":{
+        const n=o.hand.filter(x=>x.effect==="whiteJunk").length+o.deck.filter(x=>x.effect==="whiteJunk").length;
+        this.damageHero(o,n);this.note(`${c.name}：敌方手牌与牌库共有 ${n} 张【垃圾】，造成 ${n} 点伤害`,s);
+        break;
+      }
       case"whiteMend":this.heal(s,6);this.armor(s,2);this.note(`${c.name}：恢复 6 点生命，获得 2 点护甲`,s);break;
       case"whiteJunk":this.destroyEnemyCards(o,s,"deck",1,c.name);this.draw(s,1);break;
       case"whiteHand1":this.destroyEnemyCards(s,o,"handOrDeck",1,c.name);break;
@@ -1667,7 +1692,7 @@ class Game{
       winner:this.winner===null?null:(this.winner==="draw"?"draw":(this.winner===pi?"me":"foe")),
       reason:this.reason,
       intro:(this.intro||[]).map(x=>({who:x.pi===pi?"me":"foe",from:x.from,to:x.to})),
-      me:pubPlayer(me,true),foe:pubPlayer(foe,false),
+      me:pubPlayer(me,true,foe),foe:pubPlayer(foe,false,me),
       pending:pd&&pd.pi===pi?{title:pd.title,hint:pd.hint,cards:pd.cards.map(pubCard)}:null,
       foePending:!!(pd&&pd.pi!==pi),
       mulligan:this.phase==="mulligan"?{done:me.mulliganDone,foeDone:foe.mulliganDone}:null,
@@ -1686,13 +1711,13 @@ function pubCard(c){
   else if(c.lifespan)x.lifespan=c.lifespan;
   return x;
 }
-function pubPlayer(p,full){
+function pubPlayer(p,full,opponent){
   return{name:p.name,hero:p.hero,hp:p.hp,maxHp:p.maxHp,armor:p.armor,energy:p.energy,maxEnergy:p.maxEnergy,money:p.money,
     heroImmune:p.heroImmune,turnsStarted:p.turnsStarted,fatigue:p.fatigue,deckCount:p.deck.length,handCount:p.hand.length,destroyedCards:p.destroyedCards||0,destroyedLog:p.destroyedLog||[],
     regime:p.regime||null,regimeChanges:p.regimeChanges||0,fedTurn:!!p.fedTurn,
     decay:p.decay||0,turnCap:p.turnCap==null?null:p.turnCap,playedTurn:p.playedTurn||0,noSpell:!!p.noSpell,
     nextCap:p.nextCap==null?null:p.nextCap,nextNoSpell:!!p.nextNoSpell,
-    hand:full?p.hand.map(c=>{const x=pubCard(c);if(c.scrap){const t=scrapTax(p);if(t){x.cost+=t;x.taxed=true;}}return x;}):p.hand.map(c=>({uid:c.uid,back:true,costUp:c.cost>c.baseCost})),
+    hand:full?p.hand.map(c=>{const x=pubCard(c);if(c.scrap){const t=scrapTax(p);if(t){x.cost+=t;x.taxed=true;}}if(c.effect==="whiteJunk"){const t=junkTax(opponent);if(t){x.cost+=t;x.junkTaxed=true;}}return x;}):p.hand.map(c=>({uid:c.uid,back:true,costUp:c.cost>c.baseCost||(c.effect==="whiteJunk"&&junkTax(opponent)>0)})),
     board:p.board.map(pubCard),stats:p.stats};
 }
 function err(msg){return{ok:false,error:msg};}
