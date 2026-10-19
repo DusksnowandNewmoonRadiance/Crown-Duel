@@ -39,13 +39,35 @@ check("超过 30 个被拒绝",!!err&&D.count()===30,err);
 // 导出 / 导入
 const code=D.encode({hero:"七星",name:"七星·速攻",cards:full("七星")});
 const back=D.decode(code);
+check("新卡组代码先写两位卡牌师编号，再写每张卡的两位编号",code.startsWith("CD3.")&&/^[A-Za-z0-9]{2}$/.test(code.split(".")[1])&&code.split(".")[3].length===80);
 check("导出再导入内容一致（含中文名称）",back.hero==="七星"&&back.name==="七星·速攻"&&JSON.stringify(back.cards)===JSON.stringify(full("七星")));
-let bad=null;try{D.decode("CD1.@@@");}catch(e){bad=e.message;}
+check("卡牌师由开头编号自动识别，不依赖元信息里的名字",D.peekHero(code)==="七星"&&!Object.hasOwn(JSON.parse(Buffer.from(code.split(".")[2],"base64url").toString()),"h"));
+const allCards=[...Object.values(C.PROFILES).flatMap(p=>p.cards),...Object.values(C.TOKENS),...Object.values(C.AWA_CARDS),...Object.values(C.CAMPAIGN_CARDS)];
+check("现有每张卡都有两位字母数字编号",allCards.every(c=>/^[A-Za-z0-9]{2}$/.test(c.code)));
+check("每个卡牌师内编号唯一，跨卡牌师可复用",Object.values(C.PROFILES).every(p=>new Set(p.cards.map(c=>c.code)).size===p.cards.length)&&C.PROFILES["苏苏"].cards[0].code===C.PROFILES["七星"].cards[0].code);
+check("卡牌师编号唯一",new Set(Object.keys(C.PROFILES).map(h=>C.heroCode(h))).size===Object.keys(C.PROFILES).length);
+check("所有卡牌师的推荐卡组都能还原",Object.keys(C.PROFILES).every(h=>JSON.stringify(D.decode(D.encode({hero:h,name:h,cards:full(h)})).cards)===JSON.stringify(full(h))));
+const old="CD1."+Buffer.from(JSON.stringify({h:"七星",n:"旧代码",c:full("七星")}),"utf8").toString("base64url");
+check("旧版 CD1 卡组仍可导入",D.peekHero(old)==="七星"&&JSON.stringify(D.decode(old).cards)===JSON.stringify(full("七星")));
+const oldMeta=Buffer.from(JSON.stringify({h:"七星",n:"旧 CD2",c:[]}),"utf8").toString("base64url");
+const oldBody=oldMeta+".0r",alphabet="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+let sum=0;for(const ch of oldBody)sum=(sum*33+ch.charCodeAt(0))%3844;
+const oldCd2="CD2."+oldBody+"."+alphabet[Math.floor(sum/62)]+alphabet[sum%62];
+check("上一版 CD2 全局编号仍按旧卡牌解析",D.peekHero(oldCd2)==="七星"&&D.decode(oldCd2).cards[0]==="cometWatcher");
+let bad=null;try{D.decode(code.slice(0,-1)+(code.endsWith("0")?"1":"0"));}catch(e){bad=e.message;}
 check("损坏的代码被拒绝",!!bad,bad);
 let bad2=null;try{D.decode("hello");}catch(e){bad2=e.message;}
 check("非卡组代码被拒绝",!!bad2,bad2);
-const withUnknown=D.decode(D.encode({hero:"七星",name:"x",cards:full("七星").concat(["nope","nope2"])}));
-check("导入时忽略已不存在的卡牌并统计",withUnknown.dropped===2);
+const withUnknown=D.decode("CD1."+Buffer.from(JSON.stringify({h:"七星",n:"x",c:full("七星").concat(["nope","nope2"])}),"utf8").toString("base64url"));
+check("旧代码导入时忽略已不存在的卡牌并统计",withUnknown.dropped===2);
+const doomed=C.PROFILES["七星"].cards.pop(),removedCode=D.encode({hero:"七星",name:"已下架",cards:[doomed.id]});
+const missing=D.decode(removedCode);C.PROFILES["七星"].cards.push(doomed);
+check("新代码导入时统计已下架卡牌",missing.dropped===1&&missing.cards.length===0);
+C.PROFILES["测试DIY"]={diy:true,cards:[{id:"alpha",code:""},{id:"beta",code:""}]};
+const diyCode=D.encode({hero:"测试DIY",name:"自制",cards:["beta","alpha","beta"]});
+C.PROFILES["测试DIY"].cards.reverse();
+check("DIY 卡组代码保留卡牌师和编号对应关系",diyCode.startsWith("CD3.zz.")&&D.peekHero(diyCode)==="测试DIY"&&JSON.stringify(D.decode(diyCode).cards)===JSON.stringify(["beta","alpha","beta"]));
+delete C.PROFILES["测试DIY"];
 // 删除
 D.remove(r1.id);
 check("删除出战卡组后回退到官方推荐",D.active("苏苏").virtual===true&&D.count()===29);

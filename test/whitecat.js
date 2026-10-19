@@ -1,6 +1,6 @@
 const assert=require("node:assert/strict");
 const Cards=require("../shared/cards.js");
-const {Game}=require("../shared/engine.js");
+const {Game,playError}=require("../shared/engine.js");
 
 function game(){
   const g=new Game({players:[{name:"白猫玩家",hero:"白猫"},{name:"对手",hero:"字母"}],first:0});
@@ -113,7 +113,62 @@ function play(g,id){
 {
   const deck=Cards.defaultDeck("白猫");
   assert.equal(deck.length,40);
-  for(const id of ["editor","pollute","medic","mend","shredstorm","flood"])assert.ok(deck.includes(id),`${id} 应进入默认卡组`);
+  for(const id of ["editor","pollute","medic","mend","shredstorm","flood","spellpunish","junktax","corruptcredit","junkblast"])assert.ok(deck.includes(id),`${id} 应进入默认卡组`);
+}
+{
+  const g=game(),o=g.players[1],s=g.players[0];
+  for(const atk of [5,5,2]){const u=g.clone(Cards.cardDef("字母","guard"),"字母");u.attack=atk;o.board.push(u);}
+  play(g,"meteor");
+  assert.equal(o.board.length,1,"终稿裁决应消灭所有并列最高攻单位");
+  assert.equal(o.board[0].attack,2);
+  assert.equal(s.destroyedCards,2);
+  s.energy=10;play(g,"ash");assert.equal(s.board.find(u=>u.id==="ash").taunt,true,"灰烬化身应有嘲讽");
+}
+{
+  const g=game(),o=g.players[1];
+  const junk=()=>g.clone(Cards.TOKENS.junk,o.hero);
+  o.hand=[junk(),junk()];o.deck=[junk(),g.clone(Cards.cardDef("字母","order"),o.hero)];
+  const hp=o.hp;play(g,"junkblast");assert.equal(o.hp,hp-3,"废稿结算按手牌和牌库中垃圾总数造成伤害");
+}
+{
+  const g=game(),o=g.players[1];
+  play(g,"spellpunish");g.endTurn(0);o.energy=o.maxEnergy=10;
+  const spell=g.clone(Cards.cardDef("字母","order"),o.hero);o.hand.push(spell);
+  const hp=o.hp;assert.equal(g.playCard(1,spell.uid,[]).ok,true);
+  assert.equal(o.hp,hp-1,"敌方施放法术时应受到 1 点伤害");
+}
+{
+  const g=game(),o=g.players[1],s=g.players[0];
+  play(g,"junktax");g.endTurn(0);o.energy=o.maxEnergy=2;
+  const junk=g.clone(Cards.TOKENS.junk,o.hero);o.hand.push(junk);
+  const view=g.viewFor(1);const shown=view.me.hand.find(c=>c.uid===junk.uid);
+  assert.equal(shown.cost,3,"敌方手牌中的垃圾应显示 +2 费用");
+  assert.match(playError(shown,view.me,view.foe),/费用不足/);
+  assert.equal(g.playCard(1,junk.uid,[]).ok,false,"费用不足时不能打出垃圾");
+  o.energy=3;assert.equal(g.playCard(1,junk.uid,[]).ok,true);
+  assert.equal(o.energy,0,"打出垃圾应实际支付 3 费");
+  s.board.find(u=>u.id==="junktax").health=0;g.cleanup();
+  const next=g.clone(Cards.TOKENS.junk,o.hero);o.hand.push(next);
+  assert.equal(g.viewFor(1).me.hand.find(c=>c.uid===next.uid).cost,1,"收费站离场后费用应恢复");
+}
+{
+  const g=game(),o=g.players[1],s=g.players[0];
+  play(g,"corruptcredit");s.energy=10;o.hand=[o.deck.pop()];
+  const old=o.hand[0].name;play(g,"editor");
+  assert.equal(s.destroyedCards,1,"污染时原牌应计入销毁");
+  assert.equal(s.destroyedLog[0].name,old);
+  assert.equal(s.destroyedLog[0].converted,true);
+  assert.ok(g.events.some(e=>e.t==="transformCard"&&e.card.name===old));
+  assert.ok(!g.events.some(e=>e.t==="burn"&&e.card.name===old),"污染不应重复播放销毁动画");
+  s.energy=10;play(g,"pollute");assert.equal(s.destroyedCards,3,"牌库污染也应计入销毁");
+  s.board.find(u=>u.id==="corruptcredit").health=0;g.cleanup();
+  s.energy=10;play(g,"pollute");assert.equal(s.destroyedCards,3,"被动单位离场后污染不再计入销毁");
+}
+{
+  const g=game(),o=g.players[1],s=g.players[0];
+  play(g,"corruptcredit");s.energy=10;o.hand=[];
+  play(g,"flood");
+  assert.equal(s.destroyedCards,5,"新抽到并变成垃圾的牌应逐张计入销毁");
 }
 {
   const g=game(),o=g.players[1],s=g.players[0];
