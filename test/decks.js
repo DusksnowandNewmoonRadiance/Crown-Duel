@@ -47,6 +47,17 @@ check("现有每张卡都有两位字母数字编号",allCards.every(c=>/^[A-Za-
 check("每个卡牌师内编号唯一，跨卡牌师可复用",Object.values(C.PROFILES).every(p=>new Set(p.cards.map(c=>c.code)).size===p.cards.length)&&C.PROFILES["苏苏"].cards[0].code===C.PROFILES["七星"].cards[0].code);
 check("卡牌师编号唯一",new Set(Object.keys(C.PROFILES).map(h=>C.heroCode(h))).size===Object.keys(C.PROFILES).length);
 check("所有卡牌师的推荐卡组都能还原",Object.keys(C.PROFILES).every(h=>JSON.stringify(D.decode(D.encode({hero:h,name:h,cards:full(h)})).cards)===JSON.stringify(full(h))));
+const xiCode=D.encode({hero:"045",name:"汐",cards:["xi"]});
+check("汐属于 045，默认卡组包含 2 张并保留名片召唤",!!C.cardDef("045","xi")&&!C.cardDef("绘梨衣","xi")&&full("045").filter(id=>id==="xi").length===2&&full("045").includes("namecardsummon")&&!full("绘梨衣").includes("xi"));
+check("汐可用 045 编号导出导入",C.cardCode("045","xi")==="0R"&&D.decode(xiCode).hero==="045"&&D.decode(xiCode).cards[0]==="xi");
+check("旧编号保留且已下架的绘梨衣汐不会被导出",C.cardCode("045","highcommand")==="0Q"&&C.cardCode("绘梨衣","guard")==="07"&&C.cardCode("绘梨衣","xi")===null&&C.cardFromCode("绘梨衣","06")==="xi");
+{
+  const alphabet="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const body=C.heroCode("绘梨衣")+"."+Buffer.from(JSON.stringify({n:"旧汐卡组"}),"utf8").toString("base64url")+".0607";
+  let sum=0;for(const ch of body)sum=(sum*33+ch.charCodeAt(0))%3844;
+  const imported=D.decode("CD3."+body+"."+alphabet[Math.floor(sum/62)]+alphabet[sum%62]);
+  check("旧绘梨衣代码只丢弃汐，其他卡保持原编号",imported.dropped===1&&JSON.stringify(imported.cards)===JSON.stringify(["guard"]));
+}
 const old="CD1."+Buffer.from(JSON.stringify({h:"七星",n:"旧代码",c:full("七星")}),"utf8").toString("base64url");
 check("旧版 CD1 卡组仍可导入",D.peekHero(old)==="七星"&&JSON.stringify(D.decode(old).cards)===JSON.stringify(full("七星")));
 const oldMeta=Buffer.from(JSON.stringify({h:"七星",n:"旧 CD2",c:[]}),"utf8").toString("base64url");
@@ -60,7 +71,7 @@ let bad2=null;try{D.decode("hello");}catch(e){bad2=e.message;}
 check("非卡组代码被拒绝",!!bad2,bad2);
 const withUnknown=D.decode("CD1."+Buffer.from(JSON.stringify({h:"七星",n:"x",c:full("七星").concat(["nope","nope2"])}),"utf8").toString("base64url"));
 check("旧代码导入时忽略已不存在的卡牌并统计",withUnknown.dropped===2);
-const doomed=C.PROFILES["七星"].cards.pop(),removedCode=D.encode({hero:"七星",name:"已下架",cards:[doomed.id]});
+const doomed=C.PROFILES["七星"].cards.at(-1),removedCode=D.encode({hero:"七星",name:"已下架",cards:[doomed.id]});C.PROFILES["七星"].cards.pop();
 const missing=D.decode(removedCode);C.PROFILES["七星"].cards.push(doomed);
 check("新代码导入时统计已下架卡牌",missing.dropped===1&&missing.cards.length===0);
 C.PROFILES["测试DIY"]={diy:true,cards:[{id:"alpha",code:""},{id:"beta",code:""}]};

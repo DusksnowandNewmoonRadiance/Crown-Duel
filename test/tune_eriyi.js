@@ -9,8 +9,8 @@ function reset(){Object.assign(C.TOKENS.scrapUnit,JSON.parse(origTok));P.hp=orig
 const V={
   base:()=>{},
   hp34:()=>{P.hp=34;},
-  stats:()=>{P.hp=34;card("scavenger").atk=2;card("corner").atk=3;card("corner").hp=4;card("fortress").atk=2;card("fortress").hp=7;card("xi").atk=3;card("guard").atk=5;card("guard").hp=5;card("shredder").atk=2;},
-  statsCheap:()=>{V.stats();card("guard").cost=3;card("fortress").cost=2;card("xi").cost=2;card("temp").cost=1;},
+  stats:()=>{P.hp=34;card("scavenger").atk=2;card("corner").atk=3;card("corner").hp=4;card("fortress").atk=2;card("fortress").hp=7;card("guard").atk=5;card("guard").hp=5;card("shredder").atk=2;},
+  statsCheap:()=>{V.stats();card("guard").cost=3;card("fortress").cost=2;card("temp").cost=1;},
   powerful:()=>{V.stats();card("fortress").cost=2;card("guard").cost=3;card("temp").cost=1;card("eriyi").cost=3;card("colossus").cost=5;card("sweep").text="弃掉手牌中所有【废料】，每张恢复 3 点生命（至多 12 点）。";},
   p2:()=>{V.powerful();C.TOKENS.scrapUnit.atk=2;C.TOKENS.scrapUnit.hp=2;card("upcycle").cost=0;card("rummage").cost=0;},
   p3:()=>{V.p2();card("neutral").cost=3;card("remelt").cost=1;card("expired").cost=0;card("recycle").cost=1;card("sweep").cost=1;},

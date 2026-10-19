@@ -197,10 +197,11 @@ const PROFILES={
   ]},
   "045":{faction:"普鲁士国 · 架子班",style:"高层名片 · 开发他人卡组",hp:31,cards:[
     {id:"contact",name:"联络员",cost:1,kind:"unit",art:"◇",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
-    {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
+    {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"intel",name:"情报官",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
-    {id:"advisor",name:"高层顾问",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
+    {id:"advisor",name:"高层顾问",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"diplomat",name:"外交官",cost:3,kind:"unit",art:"✎",atk:3,hp:5,text:"部署：获得 2 点护甲。",effect:"armor2",n:2,limit:2,rarity:"special",fx:"sp_guard"},
+    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
     {id:"researcher",name:"解析员",cost:4,kind:"unit",art:"⌬",atk:4,hp:6,text:"部署：抽 1 张牌，获得 1 点护甲。",effect:"drawArmor",n:1,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"cardmaker",name:"卡片工匠",cost:4,kind:"unit",art:"▦",atk:4,hp:5,text:"部署：抽 2 张牌。",effect:"draw2",n:1,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"blueprint",name:"蓝图制卡师",cost:5,kind:"unit",art:"▦",atk:6,hp:6,text:"嘲讽。",taunt:true,n:1,limit:2,rarity:"special"},
@@ -254,7 +255,6 @@ const PROFILES={
     {id:"fortress",name:"废料堡垒",cost:2,kind:"unit",art:"▤",atk:2,hp:5,text:"嘲讽。",taunt:true,n:4,limit:4,rarity:"common"},
     {id:"corner",name:"角落里的小怪兽",cost:2,kind:"unit",art:"☻",atk:3,hp:4,text:"每当你打出 1 张【废料】，获得 +1 攻击，持续到回合结束。",effect:"scrapRage",n:2,limit:3,rarity:"rare"},
     {id:"shredder",name:"碎纸机",cost:2,kind:"unit",art:"▥",atk:2,hp:4,text:"每当你打出 1 张【废料】，恢复 1 点生命。",effect:"scrapHeal",n:2,limit:3,rarity:"rare"},
-    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
     {id:"guard",name:"小怪兽卫队",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"部署：你手牌中每有 1 张【废料】，获得 +1/+1（至多 +3）。",effect:"scrapGuard",n:2,limit:2,rarity:"special"},
     {id:"eriyi",name:"绘梨衣",cost:3,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：转化 2。",flavor:"蜷缩在杂乱房间的角落里，用最差的牌打出最好的效果。",effect:"convert2",n:1,limit:1,rarity:"elite"},
     {id:"colossus",name:"废料巨像",cost:5,kind:"unit",art:"▦",atk:4,hp:4,text:"部署：弃掉手牌中所有【废料】，每张使其获得 +1/+1。",effect:"scrapColossus",n:1,limit:1,rarity:"elite"},
@@ -743,7 +743,7 @@ const BUILTIN_CODE_KEYS=
   "绘梨衣:fortress",
   "绘梨衣:corner",
   "绘梨衣:shredder",
-  "绘梨衣:xi",
+  "绘梨衣:xi", // 旧编号保留，避免其他绘梨衣卡牌代码错位
   "绘梨衣:guard",
   "绘梨衣:eriyi",
   "绘梨衣:colossus",
@@ -836,7 +836,8 @@ const BUILTIN_CODE_KEYS=
   "白猫:spellpunish",
   "白猫:junktax",
   "白猫:corruptcredit",
-  "白猫:junkblast"
+  "白猫:junkblast",
+  "045:xi"
 ];
 
 const CARD_CODE_ALPHABET="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -862,8 +863,9 @@ for(const [id,card] of Object.entries(CAMPAIGN_CARDS))card.code=codeByKey.get("@
 /* DIY 卡牌以所属卡牌师为命名空间；导出的 DIY 卡组也记录编号对应的 id。 */
 function cardCode(hero,id){
   const fixed=codeByKey.get(hero+":"+id);
-  if(fixed)return fixed;
-  const p=PROFILES[hero];if(!p||!p.diy)return null;
+  const p=PROFILES[hero];
+  if(fixed)return p&&p.cards.some(c=>c.id===id)?fixed:null;
+  if(!p||!p.diy)return null;
   const ids=p.cards.map(c=>c.id).sort();
   const i=ids.indexOf(id);
   return i<0?null:codeAt(i);
