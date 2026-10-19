@@ -549,13 +549,13 @@ function leaveTournament(u){
   const t=u.tournamentId&&tournaments.get(u.tournamentId);if(!t)return;
   if(t.stage==="waiting"){
     t.players=t.players.filter(id=>id!==u.id);u.tournamentId=null;
-    tournamentGold(u,Store.closeTournament(u.uid,true),TOURNAMENT_FEE);
+    tournamentGold(u,Store.closeTournament(u.uid,true,t.id),TOURNAMENT_FEE);
     send(u,"tournament:state",null);
     if(!t.players.length)tournaments.delete(t.id);else tournamentChanged(t);
     return;
   }
   t.withdrawn.add(u.id);
-  Store.closeTournament(u.uid,false);
+  Store.closeTournament(u.uid,false,t.id);
   const r=u.roomId&&rooms.get(u.roomId);
   if(r&&r.tournamentId===t.id){
     if(r.match&&!r.match.over)r.match.forfeit(r.match.seatOf(u.id),"对手退出比赛");
@@ -573,7 +573,7 @@ function cancelTournament(t){
     r.seats.forEach(id=>{const u=users.get(id);if(u&&u.roomId===r.id){u.roomId=null;if(u.socket){u.socket.leave("room:"+r.id);u.socket.join("lobby");}}});
     rooms.delete(r.id);
   }
-  const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),null,0,true);
+  const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),null,0,true,t.id);
   t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)tournamentGold(u,balances[id.slice(5)],TOURNAMENT_FEE);});
   tournamentChanged(t);
   t.players.forEach(id=>{const u=users.get(id);if(u)u.tournamentId=null;});tournaments.delete(t.id);
@@ -642,7 +642,7 @@ function advanceTournament(t,r,winnerId,round){
     },5000);
   }else{
     t.stage="done";t.champion=winnerId;
-    const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),winnerId.slice(5),TOURNAMENT_PRIZE,false);
+    const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),winnerId.slice(5),TOURNAMENT_PRIZE,false,t.id);
     const champion=users.get(winnerId),gold=balances[winnerId.slice(5)];
     if(champion)tournamentGold(champion,gold,TOURNAMENT_PRIZE);
     tournamentChanged(t);
@@ -956,10 +956,12 @@ io.on("connection",socket=>{
     if(u.roomId)return reply(cb,{ok:false,error:"请先离开当前房间"});
     if(diyBlocked(u.hero,{pool:"vanilla"}))return reply(cb,{ok:false,error:"比赛仅支持原版卡牌师"});
     if(rooms.size+2>MAX_ROOMS)return reply(cb,{ok:false,error:"比赛人数已满，请稍后再试"});
-    const paid=Store.enterTournament(u.uid,TOURNAMENT_FEE);if(!paid.ok)return reply(cb,{ok:false,error:paid.msg});
-    dequeue(u);
     let t=[...tournaments.values()].find(x=>x.stage==="waiting"&&x.players.length<4);
-    if(!t){t={id:crypto.randomUUID(),stage:"waiting",players:[],winners:[null,null],champion:null,withdrawn:new Set()};tournaments.set(t.id,t);}
+    const fresh=!t;
+    if(fresh)t={id:crypto.randomUUID(),stage:"waiting",players:[],winners:[null,null],champion:null,withdrawn:new Set()};
+    const paid=Store.enterTournament(u.uid,TOURNAMENT_FEE,t.id);if(!paid.ok)return reply(cb,{ok:false,error:paid.msg});
+    dequeue(u);
+    if(fresh)tournaments.set(t.id,t);
     t.players.push(u.id);u.tournamentId=t.id;
     tournamentGold(u,paid.gold,-TOURNAMENT_FEE);tournamentChanged(t);
     reply(cb,{ok:true,state:tournamentState(t,u.id)});

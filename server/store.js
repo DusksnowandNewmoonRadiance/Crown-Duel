@@ -41,7 +41,7 @@ let users=read("users.json",{});
 /* 服务器重启会取消尚未完成的比赛，退还仍在托管中的报名费。 */
 let recoveredTournamentFees=0;
 for(const u of Object.values(users))if(Number.isInteger(u.tournamentFee)&&u.tournamentFee>0){
-  u.gold+=u.tournamentFee;u.tournamentFee=0;recoveredTournamentFees++;
+  u.gold+=u.tournamentFee;u.tournamentFee=0;u.tournamentId=null;recoveredTournamentFees++;
 }
 if(recoveredTournamentFees)write("users.json",users);
 let moderation=read("moderation.json",{bans:{},mutes:{},forcedNames:{},reports:[]});
@@ -206,25 +206,29 @@ const Store={
     if(u.gold<n)return{ok:false,msg:`金币不足，需要 ${n} 金币`};
     u.gold-=n;write("users.json",users);return{ok:true,gold:u.gold};
   },
-  enterTournament(uid,fee){
+  enterTournament(uid,fee,tournamentId){
     const u=users[uid];
-    if(!u||!Number.isInteger(fee)||fee<=0)return{ok:false,msg:"账号或金额无效"};
+    if(!u||!Number.isInteger(fee)||fee<=0||!tournamentId)return{ok:false,msg:"账号或金额无效"};
     if(u.tournamentFee)return{ok:false,msg:"账号已有未完成的比赛"};
     if(u.gold<fee)return{ok:false,msg:`金币不足，需要 ${fee} 金币`};
-    u.gold-=fee;u.tournamentFee=fee;write("users.json",users);return{ok:true,gold:u.gold};
+    u.gold-=fee;u.tournamentFee=fee;u.tournamentId=tournamentId;write("users.json",users);return{ok:true,gold:u.gold};
   },
-  closeTournament(uid,refund){
+  closeTournament(uid,refund,tournamentId){
     const u=users[uid];if(!u)return 0;
+    if(u.tournamentId!==tournamentId)return u.gold;
     const fee=Number.isInteger(u.tournamentFee)?u.tournamentFee:0;
     if(refund)u.gold+=fee;
-    u.tournamentFee=0;write("users.json",users);return u.gold;
+    u.tournamentFee=0;u.tournamentId=null;write("users.json",users);return u.gold;
   },
-  settleTournament(uids,winnerUid,prize,refund){
+  settleTournament(uids,winnerUid,prize,refund,tournamentId){
     const balances={};
     for(const uid of uids){
       const u=users[uid];if(!u)continue;
-      if(refund&&Number.isInteger(u.tournamentFee))u.gold+=u.tournamentFee;
-      u.tournamentFee=0;balances[uid]=u.gold;
+      if(u.tournamentId===tournamentId){
+        if(refund&&Number.isInteger(u.tournamentFee))u.gold+=u.tournamentFee;
+        u.tournamentFee=0;u.tournamentId=null;
+      }
+      balances[uid]=u.gold;
     }
     if(winnerUid&&users[winnerUid]&&Number.isInteger(prize)&&prize>0){
       users[winnerUid].gold+=prize;balances[winnerUid]=users[winnerUid].gold;
