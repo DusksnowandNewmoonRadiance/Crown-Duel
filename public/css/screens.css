@@ -1297,3 +1297,16 @@
   .diy-play-list{flex-direction:row;flex-wrap:wrap}
   .diy-play-hero{width:auto}
 }
+.tournament-page{width:min(960px,100%);margin:0 auto;padding:clamp(16px,4vw,48px);display:grid;gap:24px}
+.tournament-status{text-align:center;font-size:clamp(20px,3vw,30px);font-weight:700;color:var(--gold2,#e8c77c)}
+.tournament-bracket{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.tournament-round{display:grid;align-content:start;gap:16px}
+.tournament-round h3{text-align:center;margin:0 0 6px}
+.tournament-pair{display:grid;gap:8px;padding:16px;border:1px solid var(--line,#6b593d);border-radius:14px;background:var(--panel,#191d29)}
+.tournament-pair strong{text-align:center;color:var(--gold2,#e8c77c)}
+.tournament-player{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px;border:1px solid var(--line,#6b593d);border-radius:9px}
+.tournament-player span{opacity:.72;font-size:.9em}
+.tournament-player.own{border-color:var(--gold2,#e8c77c)}
+.tournament-player.advanced{background:rgba(224,184,92,.13)}
+.tournament-player.empty{opacity:.5}
+@media(max-width:650px){.tournament-bracket{grid-template-columns:1fr}.tournament-page{gap:14px}.tournament-player{padding:10px;flex-wrap:wrap}}

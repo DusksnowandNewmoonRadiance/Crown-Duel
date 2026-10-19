@@ -533,8 +533,10 @@ const Decks=(()=>{
     }catch(e){return false;}
   }
   async function importCode(){
-    const code=window.prompt("粘贴卡组代码：");
-    if(!code)return;
+    let code;
+    try{code=(await navigator.clipboard.readText()).trim();}
+    catch(e){host.toast("无法读取剪贴板，请允许浏览器访问剪贴板后重试",false);return;}
+    if(!code){host.toast("剪贴板里没有卡组代码",false);return;}
     try{
       const hero=api.peekHero(code);
     if(hero&&!C.PROFILES[hero]){

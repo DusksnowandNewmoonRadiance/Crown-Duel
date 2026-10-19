@@ -38,6 +38,12 @@ if(!Array.isArray(announcements)){
 let balance=read("balance.json",{rev:"",overrides:{},updatedAt:0});
 let stats=read("stats.json",{});
 let users=read("users.json",{});
+/* 服务器重启会取消尚未完成的比赛，退还仍在托管中的报名费。 */
+let recoveredTournamentFees=0;
+for(const u of Object.values(users))if(Number.isInteger(u.tournamentFee)&&u.tournamentFee>0){
+  u.gold+=u.tournamentFee;u.tournamentFee=0;recoveredTournamentFees++;
+}
+if(recoveredTournamentFees)write("users.json",users);
 let moderation=read("moderation.json",{bans:{},mutes:{},forcedNames:{},reports:[]});
 moderation.bans=moderation.bans||{};moderation.mutes=moderation.mutes||{};
 moderation.forcedNames=moderation.forcedNames||{};moderation.reports=Array.isArray(moderation.reports)?moderation.reports:[];
@@ -194,6 +200,37 @@ const Store={
   },
   /* ---------- 金币与仓库 ---------- */
   addGold(uid,n){const u=users[uid];if(!u)return 0;u.gold=Math.max(0,u.gold+n);write("users.json",users);return u.gold;},
+  spendGold(uid,n){
+    const u=users[uid];
+    if(!u||!Number.isInteger(n)||n<=0)return{ok:false,msg:"账号或金额无效"};
+    if(u.gold<n)return{ok:false,msg:`金币不足，需要 ${n} 金币`};
+    u.gold-=n;write("users.json",users);return{ok:true,gold:u.gold};
+  },
+  enterTournament(uid,fee){
+    const u=users[uid];
+    if(!u||!Number.isInteger(fee)||fee<=0)return{ok:false,msg:"账号或金额无效"};
+    if(u.tournamentFee)return{ok:false,msg:"账号已有未完成的比赛"};
+    if(u.gold<fee)return{ok:false,msg:`金币不足，需要 ${fee} 金币`};
+    u.gold-=fee;u.tournamentFee=fee;write("users.json",users);return{ok:true,gold:u.gold};
+  },
+  closeTournament(uid,refund){
+    const u=users[uid];if(!u)return 0;
+    const fee=Number.isInteger(u.tournamentFee)?u.tournamentFee:0;
+    if(refund)u.gold+=fee;
+    u.tournamentFee=0;write("users.json",users);return u.gold;
+  },
+  settleTournament(uids,winnerUid,prize,refund){
+    const balances={};
+    for(const uid of uids){
+      const u=users[uid];if(!u)continue;
+      if(refund&&Number.isInteger(u.tournamentFee))u.gold+=u.tournamentFee;
+      u.tournamentFee=0;balances[uid]=u.gold;
+    }
+    if(winnerUid&&users[winnerUid]&&Number.isInteger(prize)&&prize>0){
+      users[winnerUid].gold+=prize;balances[winnerUid]=users[winnerUid].gold;
+    }
+    write("users.json",users);return balances;
+  },
   /* ---------- 配饰（头衔 / 名字颜色） ---------- */
   NAME_COLORS,
   /* 买配饰：头衔直接入库；宝箱随机开 7 色之一，重复返还 25 金币 */

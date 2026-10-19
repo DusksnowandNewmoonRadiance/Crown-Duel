@@ -29,10 +29,10 @@ const store={
    ============================================================ */
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
-  ["#scrHome","#scrLobby","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  ["#scrHome","#scrLobby","#scrTournament","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
   document.body.classList.toggle("in-game",id==="#scrGame");   // 对局中关掉整屏装饰层（不用 :has，避免整页样式失效）
   if(id==="#scrGame")GameUI.fit();
-  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
+  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrTournament"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
 }
 function openModal(id){$(id).hidden=false;}
 function closeModal(id){$(id).hidden=true;}
@@ -1014,7 +1014,7 @@ $("#lobbyDiy").addEventListener("click",openDiy);
    联机
    ============================================================ */
 const Net={
-  socket:null,inLobby:false,room:null,lobby:null,myId:null,searching:false,searchSince:0,gameOn:false,pendingJoin:null,
+  socket:null,inLobby:false,room:null,tournament:null,lobby:null,myId:null,searching:false,searchSince:0,gameOn:false,pendingJoin:null,
   seq:null,hbTimer:null,hbMiss:0,wasDown:false,diyHeroBack:null,friends:null,spectating:false,
   connect(){
     if(this.socket)return;
@@ -1065,6 +1065,25 @@ const Net={
     s.on("lobby:chatlog",list=>{$("#lobbyChatLog").innerHTML="";list.forEach(m=>chatLine("#lobbyChatLog",m));});
     s.on("lobby:chat",m=>chatLine("#lobbyChatLog",m));
     s.on("room",r=>this.onRoom(r));
+    s.on("tournament:state",t=>{
+      this.tournament=t;
+      if(t){renderTournament();if(this.inLobby&&!this.gameOn)show("#scrTournament");}
+      else if(this.inLobby&&!this.gameOn){show("#scrLobby");renderLobby();}
+    });
+    s.on("tournament:round",()=>{
+      if(this.gameOn){this.gameOn=false;this.seq=null;GameUI.stop();}
+      if(this.tournament&&this.inLobby){show("#scrTournament");renderTournament();}
+    });
+    s.on("tournament:notice",d=>toast(d.text,true,4500));
+    s.on("tournament:cancelled",d=>{
+      if(this.gameOn){this.gameOn=false;this.seq=null;GameUI.stop();}
+      if(this.inLobby){show("#scrTournament");renderTournament();}
+      toast(d.text,true,4500);
+    });
+    s.on("tournament:gold",d=>{
+      if(Account.me&&typeof d.gold==="number")Account.me.gold=d.gold;
+      renderGold();toast(d.delta>0?`比赛金币 +${d.delta}`:`报名费 ${-d.delta} 金币`,true);
+    });
     s.on("room:chatlog",list=>{$("#roomChatLog").innerHTML="";list.forEach(m=>chatLine("#roomChatLog",m));});
     s.on("room:chat",m=>chatLine("#roomChatLog",m));
     s.on("match:status",d=>{this.searching=d.searching;if(d.searching){this.searchSince=Date.now();openModal("#mMatch");}else closeModal("#mMatch");});
@@ -1108,12 +1127,20 @@ const Net={
       toast("DIY 角色只能在「允许 DIY」的房间里使用，已切回原版角色",false,4500);
     }
     this.inLobby=true;store.set("online","1");
-    if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
+    if(this.tournament){show("#scrTournament");renderTournament();}
+    else if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
   },
   leaveAll(){
     this.inLobby=false;store.del("online");this.room=null;this.gameOn=false;this.diyHeroBack=null;
+    const leavingTournament=!!this.tournament,oldSocket=this.socket;this.tournament=null;
     if(isDiyHero(Me.hero))Me.hero=HEROES[0];
-    if(this.socket){this.socket.disconnect();this.socket=null;}
+    if(oldSocket){
+      if(leavingTournament&&oldSocket.connected){
+        oldSocket.emit("tournament:leave",{},()=>oldSocket.disconnect());
+        setTimeout(()=>{if(oldSocket.connected)oldSocket.disconnect();},1500);
+      }else oldSocket.disconnect();
+      this.socket=null;
+    }
     closeModal("#mMatch");$("#connBanner").hidden=true;
     if(GameUI.active&&GameUI.mode==="online")GameUI.stop();
     show("#scrHome");renderHome();
@@ -1162,6 +1189,7 @@ const Net={
     }
     if(r){if(!had)Audio2.sfx("match");show("#scrRoom");renderRoom();}
     else{
+      if(this.tournament){show("#scrTournament");renderTournament();return;}
       /* 离开房间：DIY 角色只在 DIY 房间里有效，回到大厅前先切回原版 */
       this.diyHeroBack=null;
       if(isDiyHero(Me.hero)){
@@ -1211,7 +1239,7 @@ const Net={
       this.gameOn=true;
       closeModal("#mMatch");$$(".modal").forEach(m=>m.hidden=true);
       show("#scrGame");
-      GameUI.start(this.ctl,"online",{tutorial:store.get("coach","")!=="1",opponentId:u.foeId,opponentName:u.view&&u.view.foe&&u.view.foe.name,onReport:(id,name)=>openReport(id,name,"game"),onAgain:()=>this.backToRoomAfterGame(),onExit:()=>this.backToLobbyAfterGame()});
+      GameUI.start(this.ctl,"online",{tutorial:store.get("coach","")!=="1",opponentId:u.foeId,opponentName:u.view&&u.view.foe&&u.view.foe.name,onReport:(id,name)=>openReport(id,name,"game"),onAgain:()=>this.tournament?this.backToTournamentAfterGame():this.backToRoomAfterGame(),onExit:()=>this.tournament?this.backToTournamentAfterGame():this.backToLobbyAfterGame()});
     }
     if(u.spectate){
       Net.spectating=true;
@@ -1243,6 +1271,11 @@ const Net={
     this.gameOn=false;this.seq=null;GameUI.stop();
     this.clearSpectate();setTimeout(()=>Live.afterGame(),0);
     if(this.room){show("#scrRoom");renderRoom();}else{show("#scrLobby");renderLobby();}
+  },
+  backToTournamentAfterGame(){
+    this.gameOn=false;this.seq=null;GameUI.stop();
+    this.clearSpectate();setTimeout(()=>Live.afterGame(),0);
+    if(this.tournament){show("#scrTournament");renderTournament();}else{show("#scrLobby");renderLobby();}
   },
   backToLobbyAfterGame(){
     this.gameOn=false;this.seq=null;GameUI.stop();
@@ -1353,6 +1386,40 @@ if(friendForm)friendForm.addEventListener("submit",e=>{
 });
 $("#lobbyBack").addEventListener("click",()=>Net.leaveAll());
 $("#btnQuick").addEventListener("click",()=>{if(Net.socket){Net.socket.emit("match:quick");}});
+$("#btnTournament").addEventListener("click",()=>{
+  if(!Net.socket||!Net.socket.connected){toast("请先连接联机服务器");return;}
+  Net.socket.emit("tournament:join",{},r=>{
+    if(!r||!r.ok)toast((r&&r.error)||"报名失败");
+    else if(r.state){Net.tournament=r.state;renderTournament();show("#scrTournament");}
+  });
+});
+function renderTournament(){
+  const t=Net.tournament;if(!t)return;
+  const stage=t.stage;
+  const labels={waiting:`等待选手加入 · ${t.players.length}/4`,semifinal:"半决赛进行中",final:"决赛进行中",done:"比赛已结束"};
+  const myGroup=t.players.findIndex(p=>p.id===t.you)<2?0:1;
+  const status=stage==="done"?(t.cancelled?"比赛取消，报名费已退还":t.champion===t.you?"你获得冠军，奖励 900 金币！":"比赛结束，冠军已诞生"):
+    stage==="semifinal"&&t.winners.includes(t.you)?"你已晋级决赛，等待另一场结束":
+    stage==="semifinal"&&t.winners[myGroup]&&t.winners[myGroup]!==t.you?"半决赛结束，你已被淘汰":
+    stage==="final"&&!t.winners.includes(t.you)?"你已被淘汰，决赛进行中":
+    labels[stage];
+  $("#tournamentStatus").textContent=status||labels[stage]||"比赛中";
+  const slot=i=>{
+    const p=t.players[i];if(!p)return `<div class="tournament-player empty">等待第 ${i+1} 位选手</div>`;
+    const own=p.id===t.you,win=t.winners.includes(p.id)||t.champion===p.id;
+    return `<div class="tournament-player${own?" own":""}${win?" advanced":""}"><b>${V.esc(p.nick)}${own?"（你）":""}</b><span>${V.esc(p.hero)}${win?" · 晋级":""}${p.connected?"":" · 离线"}</span></div>`;
+  };
+  const final=t.winners.map(id=>t.players.find(p=>p.id===id)).map(p=>p?`<div class="tournament-player${p.id===t.you?" own":""}${p.id===t.champion?" advanced":""}"><b>${V.esc(p.nick)}</b><span>${V.esc(p.hero)}${p.id===t.champion?" · 冠军":""}</span></div>`:`<div class="tournament-player empty">待定</div>`).join("");
+  $("#tournamentBracket").innerHTML=`<div class="tournament-round"><h3>半决赛</h3><div class="tournament-pair">${slot(0)}<strong>VS</strong>${slot(1)}</div><div class="tournament-pair">${slot(2)}<strong>VS</strong>${slot(3)}</div></div><div class="tournament-round"><h3>决赛</h3><div class="tournament-pair">${final}</div></div>`;
+  $("#tournamentLeave").textContent=stage==="done"?"‹ 返回大厅":stage==="waiting"?"‹ 取消报名（退费）":"‹ 退出比赛";
+}
+$("#tournamentLeave").addEventListener("click",()=>{
+  if(Net.tournament&&Net.tournament.stage==="done"){
+    Net.tournament=null;show("#scrLobby");renderLobby();return;
+  }
+  if(!Net.socket)return;
+  Net.socket.emit("tournament:leave",{},r=>{if(!r||!r.ok)toast((r&&r.error)||"退出失败");});
+});
 $("#matchCancel").addEventListener("click",()=>{Net.socket&&Net.socket.emit("match:cancel");closeModal("#mMatch");});
 setInterval(()=>{if(Net.searching)$("#matchTime").textContent=`已等待 ${Math.floor((Date.now()-Net.searchSince)/1000)} 秒`;},500);
 /* 建房：房间类型（pool）默认原版，DIY 房间才允许 DIY 角色 */
@@ -1475,7 +1542,7 @@ const Live={
     if(this.maint.on&&!m.restarting)sysMsg("maint",this.maint.message,{id:"sysMaint",sticky:true});
     if(m&&m.restarting)sysMsg("maint","服务器正在重启更新，几秒后会自动重新连接…",{id:"sysMaint",sticky:true});
     const lm=$("#lobbyMaint");lm.hidden=!this.maint.on;lm.textContent="🔧 "+(this.maint.message||"");
-    $("#btnQuick").disabled=$("#btnCreate").disabled=!!this.maint.on;
+    $("#btnQuick").disabled=$("#btnCreate").disabled=$("#btnTournament").disabled=!!this.maint.on;
   },
   /* ---------- 公告 ---------- */
   seen(){try{return new Set(JSON.parse(store.get("seenNews","[]")));}catch(e){return new Set();}},

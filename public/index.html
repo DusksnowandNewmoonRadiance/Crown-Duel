@@ -119,6 +119,7 @@
       <div class="maint-box" id="lobbyMaint" hidden></div>
       <div class="lobby-tools">
         <button class="btn btn-gold" id="btnQuick"><svg class="ic" viewBox="0 0 24 24"><use href="#i-bolt"/></svg> 快速匹配</button>
+        <button class="btn btn-gold" id="btnTournament">四人比赛 · 150 金币</button>
         <button class="btn btn-primary" id="btnCreate"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg> 创建房间</button>
         <button class="btn" id="lobbyDiy"><svg class="ic" viewBox="0 0 24 24"><use href="#i-edit"/></svg> DIY 工坊</button>
         <form class="join-code" id="joinCodeForm"><input id="joinCode" inputmode="numeric" maxlength="8" placeholder="输入房间号"><button class="btn" type="submit">加入</button></form>
@@ -136,6 +137,20 @@
       <div class="chat-log" id="lobbyChatLog"></div>
       <form class="chat-form" id="lobbyChatForm"><input id="lobbyChatIn" maxlength="120" placeholder="说点什么…" autocomplete="off"><button class="btn" type="submit">发送</button></form>
     </aside>
+  </main>
+</section>
+
+<!-- ======================= 四人比赛 ======================= -->
+<section class="screen" id="scrTournament" hidden>
+  <header class="topbar">
+    <button class="btn btn-ghost" id="tournamentLeave">‹ 退出比赛</button>
+    <div class="brand-mini">四人比赛</div>
+    <div class="topbar-r"><span class="chip">报名 150 金币 · 冠军 900 金币</span></div>
+  </header>
+  <main class="tournament-page">
+    <div class="tournament-status" id="tournamentStatus"></div>
+    <div class="tournament-bracket" id="tournamentBracket"></div>
+    <p class="muted">四人到齐后自动进行两场半决赛；胜者晋级决赛。等待期间退出会退还报名费。</p>
   </main>
 </section>
 
@@ -177,7 +192,7 @@
     <div class="dk-overview-tools">
       <label for="dkOverviewHero">卡牌师</label><select id="dkOverviewHero"><option value="all">全部卡牌师</option></select>
       <button class="btn btn-primary" id="dkOverviewNew">＋ 新建卡组</button>
-      <button class="btn" id="dkOverviewImport">导入代码</button>
+      <button class="btn" id="dkOverviewImport">从剪贴板导入</button>
     </div>
     <div class="dk-overview-grid" id="dkOverviewGrid"></div>
   </section>
@@ -189,7 +204,7 @@
       <div class="dk-list" id="dkList"></div>
       <div class="dk-side-btns">
         <button class="btn btn-primary" id="dkNew"><svg class="ic" viewBox="0 0 24 24"><use href="#i-plus"/></svg> 新建卡组</button>
-        <button class="btn" id="dkImport">导入代码</button>
+        <button class="btn" id="dkImport">从剪贴板导入</button>
       </div>
     </aside>
     <section class="dk-pool">
