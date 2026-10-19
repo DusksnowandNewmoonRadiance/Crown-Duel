@@ -243,6 +243,8 @@ app.use("/admin",adminRouter({
   setMaintenance:(on,msg)=>setMaintenance(on,msg),
   drain:(min,msg)=>startDrain(min,msg),
   contentChanged:()=>io.emit("content",{rev:Store.balance().rev}),
+  tournamentSettingsChanged:()=>lobbyChanged(),
+  goldChanged:(uid,gold)=>send(users.get("acct_"+uid),"account:gold",{gold}),
   reports:()=>Store.reports(),moderation:()=>Store.moderationLists(),
   sanctionPlayer:(id,type,reason)=>sanctionPlayer(id,type,reason),
   resolveReport:(id,action)=>resolveReport(id,action),
@@ -399,7 +401,9 @@ function lobbyChanged(){
 }
 function lobbySnapshot(){
   const list=[...rooms.values()].filter(r=>!r.tournamentId).sort((a,b)=>(a.status==="waiting"?0:1)-(b.status==="waiting"?0:1)||b.createdAt-a.createdAt).slice(0,100);
-  return{online:onlineCount(),queue:queue.length,rooms:list.map(r=>({
+  const waiting=[...tournaments.values()].find(t=>t.stage==="waiting"&&t.players.length<4);
+  const tournament=waiting?{fee:waiting.fee,prize:waiting.prize}:Store.tournamentSettings();
+  return{online:onlineCount(),queue:queue.length,tournament,rooms:list.map(r=>({
     id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,status:r.status,pool:roomPool(r),
     players:r.seats.filter(Boolean).map(id=>{const u=users.get(id);return u?{id:u.id,nick:u.nick,hero:u.hero}:null;}).filter(Boolean)
   }))};
@@ -537,21 +541,20 @@ function enqueue(u,pool){
 }
 
 /* ---------- 四人比赛：服务器分配，报名费与奖励均由账号余额结算 ---------- */
-const TOURNAMENT_FEE=150,TOURNAMENT_PRIZE=900;
 function tournamentState(t,id){
-  return{id:t.id,stage:t.stage,fee:TOURNAMENT_FEE,prize:TOURNAMENT_PRIZE,
+  return{id:t.id,stage:t.stage,fee:t.fee,prize:t.prize,
     players:t.players.map(pid=>{const p=users.get(pid);return{id:pid,nick:p?p.nick:pid,hero:p?p.hero:"",connected:!!(p&&p.connected)};}),
     winners:t.winners.slice(),champion:t.champion||null,you:id,withdrawn:t.withdrawn.has(id)};
 }
-function tournamentChanged(t){t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)send(u,"tournament:state",tournamentState(t,id));});}
+function tournamentChanged(t){t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)send(u,"tournament:state",tournamentState(t,id));});lobbyChanged();}
 function tournamentGold(u,gold,delta){send(u,"tournament:gold",{gold,delta});}
 function leaveTournament(u){
   const t=u.tournamentId&&tournaments.get(u.tournamentId);if(!t)return;
   if(t.stage==="waiting"){
     t.players=t.players.filter(id=>id!==u.id);u.tournamentId=null;
-    tournamentGold(u,Store.closeTournament(u.uid,true,t.id),TOURNAMENT_FEE);
+    tournamentGold(u,Store.closeTournament(u.uid,true,t.id),t.fee);
     send(u,"tournament:state",null);
-    if(!t.players.length)tournaments.delete(t.id);else tournamentChanged(t);
+    if(!t.players.length){tournaments.delete(t.id);lobbyChanged();}else tournamentChanged(t);
     return;
   }
   t.withdrawn.add(u.id);
@@ -574,7 +577,7 @@ function cancelTournament(t){
     rooms.delete(r.id);
   }
   const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),null,0,true,t.id);
-  t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)tournamentGold(u,balances[id.slice(5)],TOURNAMENT_FEE);});
+  t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)tournamentGold(u,balances[id.slice(5)],t.fee);});
   tournamentChanged(t);
   t.players.forEach(id=>{const u=users.get(id);if(u)u.tournamentId=null;});tournaments.delete(t.id);
 }
@@ -642,9 +645,9 @@ function advanceTournament(t,r,winnerId,round){
     },5000);
   }else{
     t.stage="done";t.champion=winnerId;
-    const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),winnerId.slice(5),TOURNAMENT_PRIZE,false,t.id);
+    const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),winnerId.slice(5),t.prize,false,t.id);
     const champion=users.get(winnerId),gold=balances[winnerId.slice(5)];
-    if(champion)tournamentGold(champion,gold,TOURNAMENT_PRIZE);
+    if(champion)tournamentGold(champion,gold,t.prize);
     tournamentChanged(t);
     t.players.forEach(id=>{const u=users.get(id);if(u)u.tournamentId=null;});
     tournaments.delete(t.id);
@@ -958,12 +961,12 @@ io.on("connection",socket=>{
     if(rooms.size+2>MAX_ROOMS)return reply(cb,{ok:false,error:"比赛人数已满，请稍后再试"});
     let t=[...tournaments.values()].find(x=>x.stage==="waiting"&&x.players.length<4);
     const fresh=!t;
-    if(fresh)t={id:crypto.randomUUID(),stage:"waiting",players:[],winners:[null,null],champion:null,withdrawn:new Set()};
-    const paid=Store.enterTournament(u.uid,TOURNAMENT_FEE,t.id);if(!paid.ok)return reply(cb,{ok:false,error:paid.msg});
+    if(fresh)t={id:crypto.randomUUID(),stage:"waiting",players:[],winners:[null,null],champion:null,withdrawn:new Set(),...Store.tournamentSettings()};
+    const paid=Store.enterTournament(u.uid,t.fee,t.id);if(!paid.ok)return reply(cb,{ok:false,error:paid.msg});
     dequeue(u);
     if(fresh)tournaments.set(t.id,t);
     t.players.push(u.id);u.tournamentId=t.id;
-    tournamentGold(u,paid.gold,-TOURNAMENT_FEE);tournamentChanged(t);
+    tournamentGold(u,paid.gold,-t.fee);tournamentChanged(t);
     reply(cb,{ok:true,state:tournamentState(t,u.id)});
     if(t.players.length===4)setTimeout(()=>startTournament(t),1000);
   });

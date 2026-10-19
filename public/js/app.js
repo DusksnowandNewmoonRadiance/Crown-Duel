@@ -1084,6 +1084,11 @@ const Net={
       if(Account.me&&typeof d.gold==="number")Account.me.gold=d.gold;
       renderGold();toast(d.delta>0?`比赛金币 +${d.delta}`:`报名费 ${-d.delta} 金币`,true);
     });
+    s.on("account:gold",d=>{
+      if(Account.me&&typeof d.gold==="number"){
+        Account.me.gold=d.gold;renderGold();toast(`金币余额已更新：${d.gold}`,true);
+      }
+    });
     s.on("room:chatlog",list=>{$("#roomChatLog").innerHTML="";list.forEach(m=>chatLine("#roomChatLog",m));});
     s.on("room:chat",m=>chatLine("#roomChatLog",m));
     s.on("match:status",d=>{this.searching=d.searching;if(d.searching){this.searchSince=Date.now();openModal("#mMatch");}else closeModal("#mMatch");});
@@ -1329,6 +1334,7 @@ function renderLobby(){
   $("#lobbyHero").onclick=()=>pickHero(h=>{Me.hero=h;Net.profile();renderLobby();renderHome();});
   $("#lobbyDeck").onclick=()=>openDecks(Me.hero);
   const L=Net.lobby;
+  $("#btnTournament").textContent=`四人比赛 · ${L&&L.tournament?L.tournament.fee:150} 金币`;
   renderFriends();
   $("#lobbyOnline").textContent=L?`在线 ${L.online}${L.queue?` · 匹配中 ${L.queue}`:""}`:"连接中…";
   const box=$("#roomList");
@@ -1395,10 +1401,11 @@ $("#btnTournament").addEventListener("click",()=>{
 });
 function renderTournament(){
   const t=Net.tournament;if(!t)return;
+  $("#tournamentCosts").textContent=`报名 ${t.fee} 金币 · 冠军 ${t.prize} 金币`;
   const stage=t.stage;
   const labels={waiting:`等待选手加入 · ${t.players.length}/4`,semifinal:"半决赛进行中",final:"决赛进行中",done:"比赛已结束"};
   const myGroup=t.players.findIndex(p=>p.id===t.you)<2?0:1;
-  const status=stage==="done"?(t.cancelled?"比赛取消，报名费已退还":t.champion===t.you?"你获得冠军，奖励 900 金币！":"比赛结束，冠军已诞生"):
+  const status=stage==="done"?(t.cancelled?"比赛取消，报名费已退还":t.champion===t.you?`你获得冠军，奖励 ${t.prize} 金币！`:"比赛结束，冠军已诞生"):
     stage==="semifinal"&&t.winners.includes(t.you)?"你已晋级决赛，等待另一场结束":
     stage==="semifinal"&&t.winners[myGroup]&&t.winners[myGroup]!==t.you?"半决赛结束，你已被淘汰":
     stage==="final"&&!t.winners.includes(t.you)?"你已被淘汰，决赛进行中":

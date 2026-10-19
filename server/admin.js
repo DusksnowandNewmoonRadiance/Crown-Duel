@@ -91,6 +91,7 @@ module.exports=function adminRouter(ctx){
     const b=req.body||{},out=Store.adminAddGold(String(req.params.uid||""),b.delta,b.reason);
     if(!out.ok)return res.status(400).json({error:out.error});
     audit(req,"gold",req.params.uid,{delta:out.delta,reason:out.reason,gold:out.gold});
+    if(ctx.goldChanged)ctx.goldChanged(req.params.uid,out.gold);
     res.json(out);
   });
   router.post("/api/users/:uid/rank",(req,res)=>{
@@ -147,6 +148,16 @@ module.exports=function adminRouter(ctx){
     else if(b.action==="off")ctx.setMaintenance(false);
     else return res.status(400).json({error:"未知操作"});
     res.json(ctx.status());
+  });
+
+  router.get("/api/tournament",(req,res)=>res.json(Store.tournamentSettings()));
+  router.put("/api/tournament",(req,res)=>{
+    const b=req.body||{},before=Store.tournamentSettings();
+    const out=Store.saveTournamentSettings(b.fee,b.prize);
+    if(!out.ok)return res.status(400).json({error:out.error});
+    audit(req,"tournament-settings","",{before:{fee:before.fee,prize:before.prize},after:{fee:out.fee,prize:out.prize}});
+    if(ctx.tournamentSettingsChanged)ctx.tournamentSettingsChanged();
+    res.json(out);
   });
 
   router.get("/api/balance",(req,res)=>{
