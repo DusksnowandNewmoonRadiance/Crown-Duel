@@ -523,7 +523,7 @@ const CAMPAIGN_CARDS={
   bd_levy:{id:"bd_levy",name:"强征",cost:3,kind:"spell",art:"⚖",text:"对敌方英雄造成 3 点伤害。",effect:"hero3",campaignOnly:true,rarity:"common",hero:"土匪"},
   bd_burn:{id:"bd_burn",name:"洗劫村庄",cost:5,kind:"spell",art:"🏚",text:"对敌方英雄造成 5 点伤害。",effect:"hero5",campaignOnly:true,rarity:"common",hero:"土匪"}
 };
-/* 卡牌编号是公开分享格式的一部分。新卡只能追加到此表末尾，不能重排或复用旧编号。 */
+/* 卡牌编号是公开分享格式的一部分。新卡只能追加到此表末尾，不能重排；同一命名空间内不复用旧编号。 */
 const BUILTIN_CODE_KEYS=
 [
   "苏苏:red",
@@ -833,10 +833,19 @@ const BUILTIN_CODE_KEYS=
 
 const CARD_CODE_ALPHABET="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const codeAt=n=>CARD_CODE_ALPHABET[Math.floor(n/62)]+CARD_CODE_ALPHABET[n%62];
-const codeByKey=new Map(),keyByCode=new Map();
+/* 卡牌师编号也固定下来；DIY 用 zz，名称随卡组代码保存。 */
+const HERO_CODE_KEYS=["苏苏","字母","七星","核弹","猪瘟鱼","八幡","045","下水","绘梨衣","白猫"];
+const heroCodeByName=new Map(HERO_CODE_KEYS.map((name,i)=>[name,codeAt(i)]));
+const heroNameByCode=new Map(HERO_CODE_KEYS.map((name,i)=>[codeAt(i),name]));
+const legacyKeyByCode=new Map();
+const codeByKey=new Map(),keyByGroupCode=new Map(),groupSize=new Map();
 BUILTIN_CODE_KEYS.forEach((key,i)=>{
-  const code=codeAt(i);
-  codeByKey.set(key,code);keyByCode.set(code,key);
+  const legacyCode=codeAt(i);
+  legacyKeyByCode.set(legacyCode,key);
+  const group=key.split(":")[0];
+  const code=codeAt(groupSize.get(group)||0);
+  groupSize.set(group,(groupSize.get(group)||0)+1);
+  codeByKey.set(key,code);keyByGroupCode.set(group+":"+code,key);
 });
 for(const [hero,profile] of Object.entries(PROFILES))for(const card of profile.cards)card.code=codeByKey.get(hero+":"+card.id);
 for(const [id,card] of Object.entries(TOKENS))card.code=codeByKey.get("@token:"+id);
@@ -849,14 +858,24 @@ function cardCode(hero,id){
   const p=PROFILES[hero];if(!p||!p.diy)return null;
   const ids=p.cards.map(c=>c.id).sort();
   const i=ids.indexOf(id);
-  return i<0?null:codeAt(3000+i);
+  return i<0?null:codeAt(i);
 }
 function cardFromCode(hero,code){
-  const key=keyByCode.get(code);
-  if(key&&key.startsWith(hero+":"))return key.slice(hero.length+1);
+  const key=keyByGroupCode.get(hero+":"+code);
+  if(key)return key.slice(hero.length+1);
   const p=PROFILES[hero];if(!p||!p.diy)return null;
   return p.cards.find(c=>cardCode(hero,c.id)===code)?.id||null;
 }
+function legacyCardFromCode(hero,code){
+  const key=legacyKeyByCode.get(code);
+  if(key&&key.startsWith(hero+":"))return key.slice(hero.length+1);
+  const p=PROFILES[hero];if(!p||!p.diy)return null;
+  const ids=p.cards.map(c=>c.id).sort();
+  const i=ids.findIndex((_,index)=>codeAt(3000+index)===code);
+  return i<0?null:ids[i];
+}
+function heroCode(hero){return heroCodeByName.get(hero)||(PROFILES[hero]&&PROFILES[hero].diy?"zz":null);}
+function heroFromCode(code,diyName){return code==="zz"?(diyName||null):heroNameByCode.get(code)||null;}
 /* 剧情专属卡升级阶梯：+1/+1 → 冲锋 → 嘲讽 → 部署抽 1 */
 const CAMPAIGN_UPGRADES={
   cp_villager:[
@@ -1003,7 +1022,7 @@ function applyOverrides(map,rev){
   overridesRev=rev||"";
 }
 
-return{REGIMES,RARITY,RARITY_ORDER,MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,cardCode,cardFromCode,defaultDeck,deckError,
+return{REGIMES,RARITY,RARITY_ORDER,MAX_BOARD,MAX_HAND,ESCAPE_TARGET,STEAL_UNIT,DECK_SIZE,MAX_ENERGY,PROFILES,TOKENS,AWA_CARDS,COLORS,HERO_INFO,KEYWORDS,ALL_CARDS,cardDef,cardCode,cardFromCode,legacyCardFromCode,heroCode,heroFromCode,defaultDeck,deckError,
   DECK_PRESETS,presets,presetDeck,aiDeck,
   CAMPAIGN_CARDS,CAMPAIGNS,CAMPAIGN_UPGRADES,campaignOf,campaignInitialDeck,campaignUpgradePath,rarityLimit,
   PATCHABLE,checkOverrides,applyOverrides,baseOf:key=>BASE[key],get overridesRev(){return overridesRev;}};

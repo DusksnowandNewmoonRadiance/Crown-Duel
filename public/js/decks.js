@@ -17,6 +17,17 @@ const Decks=(()=>{
   const unb64=s=>{if(!/^[A-Za-z0-9_-]+$/.test(s))throw new Error("卡组代码已损坏");let b=s.replace(/-/g,"+").replace(/_/g,"/");while(b.length%4)b+="=";return decodeURIComponent(escape(atob(b)));};
   const alphabet="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const checksum=s=>{let n=0;for(let i=0;i<s.length;i++)n=(n*33+s.charCodeAt(i))%3844;return alphabet[Math.floor(n/62)]+alphabet[n%62];};
+  function decodePairs(hero,pairs,meta,legacy){
+    const diyMap=new Map(C.PROFILES[hero].diy&&Array.isArray(meta.m)?meta.m.filter(x=>Array.isArray(x)&&x.length===2&&typeof x[0]==="string"&&typeof x[1]==="string"):[]);
+    const knownIds=new Set(C.PROFILES[hero].cards.map(c=>c.id));
+    const cards=[],length=pairs.length/2;
+    for(let i=0;i<length;i++){
+      const pair=pairs.slice(i*2,i*2+2);
+      const id=diyMap.get(pair)||(legacy?C.legacyCardFromCode(hero,pair):C.cardFromCode(hero,pair));
+      if(id&&knownIds.has(id))cards.push(id);
+    }
+    return{cards:cards.slice(0,C.DECK_SIZE),dropped:length-cards.length};
+  }
 
   /* ============================================================
      存储
@@ -193,24 +204,32 @@ const Decks=(()=>{
       if(data.active[d.hero]===id)delete data.active[d.hero];
       persist();scheduleSync();
     },
-    /* CD2：元信息 + 每张卡固定两位编号 + 两位校验码。CD1 仍可导入。 */
+    /* CD3：卡牌师编号 + 名称 + 师内卡牌编号 + 校验码；旧 CD1/CD2 仍可导入。 */
     encode(d){
       if(!C.PROFILES[d.hero]||!Array.isArray(d.cards))throw new Error("卡组格式错误");
+      const heroCode=C.heroCode(d.hero);
+      if(!heroCode)throw new Error("卡牌师没有编号");
       const used=new Map();
       const pairs=d.cards.map(id=>{
         const code=C.cardCode(d.hero,id);
         if(!code)throw new Error("卡组包含已不存在的卡牌，请先移除再导出");
         used.set(code,id);return code;
       }).join("");
-      const meta={h:d.hero,n:cleanName(d.name)};
-      if(C.PROFILES[d.hero].diy)meta.m=[...used].map(([code,id])=>[code,id]);
-      const body=b64(JSON.stringify(meta))+"."+pairs;
-      return"CD2."+body+"."+checksum(body);
+      const meta={n:cleanName(d.name)};
+      if(C.PROFILES[d.hero].diy){meta.h=d.hero;meta.m=[...used].map(([code,id])=>[code,id]);}
+      const body=heroCode+"."+b64(JSON.stringify(meta))+"."+pairs;
+      return"CD3."+body+"."+checksum(body);
     },
     /* 只取英雄名：用于导入前判断「本机还没有这个 DIY 角色」 */
     peekHero(code){
       try{
         let b=String(code||"").trim();
+        if(b.startsWith("CD3.")){
+          const parts=b.slice(4).split(".");
+          if(parts.length!==4)return null;
+          const meta=JSON.parse(unb64(parts[1]));
+          return C.heroFromCode(parts[0],meta.h);
+        }
         if(!/^CD[12]\./.test(b))return null;
         const meta=b.startsWith("CD2.")?b.slice(4).split(".")[0]:b.slice(4);
         const o=JSON.parse(unb64(meta));
@@ -219,20 +238,20 @@ const Decks=(()=>{
     },
     decode(code){
       code=String(code||"").trim();
+      if(code.startsWith("CD3.")){
+        const parts=code.slice(4).split(".");
+        if(parts.length!==4||!/^[A-Za-z0-9]{2}$/.test(parts[0])||parts[2].length%2||!/^[A-Za-z0-9]*$/.test(parts[2])||parts[3]!==checksum(parts.slice(0,3).join(".")))throw new Error("卡组代码已损坏");
+        let meta;try{meta=JSON.parse(unb64(parts[1]));}catch(e){throw new Error("卡组代码已损坏");}
+        const hero=C.heroFromCode(parts[0],meta&&meta.h);
+        if(!hero||!C.PROFILES[hero]||typeof meta.n!=="string")throw new Error("卡组代码已损坏");
+        return{hero,name:cleanName(meta.n)||"导入的卡组",...decodePairs(hero,parts[2],meta,false)};
+      }
       if(code.startsWith("CD2.")){
         const parts=code.slice(4).split(".");
         if(parts.length!==3||parts[1].length%2||!/^[A-Za-z0-9]*$/.test(parts[1])||parts[2]!==checksum(parts[0]+"."+parts[1]))throw new Error("卡组代码已损坏");
         let o;try{o=JSON.parse(unb64(parts[0]));}catch(e){throw new Error("卡组代码已损坏");}
         if(!o||typeof o.h!=="string"||!C.PROFILES[o.h]||typeof o.n!=="string")throw new Error("卡组代码已损坏");
-        const diyMap=new Map(C.PROFILES[o.h].diy&&Array.isArray(o.m)?o.m.filter(x=>Array.isArray(x)&&x.length===2&&typeof x[0]==="string"&&typeof x[1]==="string"):[]);
-        const knownIds=new Set(C.PROFILES[o.h].cards.map(c=>c.id));
-        const cards=[],length=parts[1].length/2;
-        for(let i=0;i<length;i++){
-          const pair=parts[1].slice(i*2,i*2+2);
-          const id=diyMap.get(pair)||C.cardFromCode(o.h,pair);
-          if(id&&knownIds.has(id))cards.push(id);
-        }
-        return{hero:o.h,name:cleanName(o.n)||"导入的卡组",cards:cards.slice(0,C.DECK_SIZE),dropped:length-cards.length};
+        return{hero:o.h,name:cleanName(o.n)||"导入的卡组",...decodePairs(o.h,parts[1],o,true)};
       }
       if(!code.startsWith("CD1."))throw new Error("不是有效的卡组代码");
       let o;try{o=JSON.parse(unb64(code.slice(4)));}catch(e){throw new Error("卡组代码已损坏");}
@@ -298,7 +317,7 @@ const Decks=(()=>{
     if(hero&&!list.includes(hero))hero=vanillaHeroes()[0]||list[0]||null;
     const btn=h=>{
       const n=api.list(h).length;
-      return`<button class="${h===hero?"on":""}" data-h="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}"><span class="g">${V.esc(V.glyph(h))}</span><b>${V.esc(h)}</b>${isDiyHero(h)?`<em class="diy-tag">DIY</em>`:""}${n?`<i>${n}</i>`:""}</button>`;
+      return`<button class="${h===hero?"on":""}" data-h="${V.esc(h)}" style="--hcr:${V.heroRgb(h)}"><span class="g">${V.esc(V.glyph(h))}</span><b>${V.esc(h)}</b><code class="dk-hero-code" title="卡牌师编号">${V.esc(C.heroCode(h)||"")}</code>${isDiyHero(h)?`<em class="diy-tag">DIY</em>`:""}${n?`<i>${n}</i>`:""}</button>`;
     };
     $("#dkHeroes").innerHTML=vanillaHeroes().map(btn).join("")+list.filter(isDiyHero).map(btn).join("");
   }
