@@ -354,7 +354,8 @@ class Game{
     if(this.phase==="over")return;
     if(!o.fatigue&&!o.self&&n>0){const src=this.opp(p);n+=bandCount(src);if(!o.combat&&hasBonus(src,"ukr"))n+=1;}
     if(n<=0)return;
-    const blocked=Math.min(p.armor,n);p.armor-=blocked;p.hp-=n-blocked;
+    if(o.fatigue)p.hp-=n;
+    else{const blocked=Math.min(p.armor,n);p.armor-=blocked;p.hp-=n-blocked;}
     if(!o.fatigue&&!o.self)this.opp(p).stats.dmg+=n;
     this._checkEnd();
   }

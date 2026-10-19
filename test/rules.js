@@ -32,6 +32,16 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   check("自己的下个回合开始时护甲清空",a.armor===0);
 }
 
+/* ---- 疲劳穿透护甲 ---- */
+{
+  const g=game("字母","白猫"),p=g.players[0];
+  p.deck=[];p.armor=5;const hp=p.hp;
+  g.draw(p,1);
+  check("疲劳伤害穿透护甲且不消耗护甲",p.hp===hp-1&&p.armor===5,`hp ${hp}→${p.hp} armor ${p.armor}`);
+  g.draw(p,1);
+  check("第二次疲劳继续穿透护甲",p.hp===hp-4&&p.armor===5);
+}
+
 /* ---- 0 攻击力单位可以攻击 ---- */
 {
   const g=game("七星","苏苏");

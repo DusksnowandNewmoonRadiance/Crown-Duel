@@ -327,6 +327,26 @@
 /* ============================================================================
    卡组页面
    ============================================================================ */
+.dk-overview{flex:1;min-height:0;overflow:auto;padding:18px 22px 30px}
+.dk-overview-tools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:18px}
+.dk-overview-tools label{font-size:12px;color:var(--text-3)}
+.dk-overview-tools select{min-height:36px;min-width:150px;padding:7px 10px;border:1px solid var(--line-2);border-radius:var(--r-2);background:var(--surface);color:var(--text-2)}
+.dk-overview-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;align-items:start}
+.dk-overview-item{min-width:0;padding:10px;border:1px solid var(--line);border-radius:var(--r-3);background:var(--surface);text-align:center}
+.dk-overview-item:hover{border-color:rgba(var(--hcr),.55)}
+.dk-overview-open{display:flex;flex-direction:column;align-items:center;gap:9px;width:100%;padding:0;border:0;background:none;color:var(--text);cursor:pointer}
+.dk-overview-back{position:relative;display:grid;place-items:center;width:min(100%,150px);aspect-ratio:5/7;overflow:hidden;border:2px solid rgba(var(--hcr),.75);border-radius:10px;background:radial-gradient(circle at 50% 38%,rgba(var(--hcr),.28),transparent 55%),linear-gradient(145deg,#24242b,#0d0d11 70%);box-shadow:0 9px 18px rgba(0,0,0,.28)}
+.dk-overview-back::before{content:"";position:absolute;inset:7px;border:1px solid rgba(var(--hcr),.45);border-radius:6px;pointer-events:none}
+.dk-overview-crest{width:62%;aspect-ratio:1;display:block;border-radius:50%;overflow:hidden;border:1px solid rgba(var(--hcr),.7);background:rgba(var(--hcr),.1)}
+.dk-overview-crest svg{display:block;width:100%;height:100%}
+.dk-overview-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.dk-overview-meta{font-size:11px;color:var(--text-3)}
+.dk-overview-rename{margin-top:9px;padding:5px 10px;border:1px solid var(--line-2);border-radius:var(--r-2);background:transparent;color:var(--text-2);font-size:11px}
+.dk-overview-rename:hover{background:var(--surface-2)}
+#scrDecks[data-view="overview"] .decks,#scrDecks[data-view="overview"] .dk-tabs{display:none}
+#scrDecks[data-view="editor"] .dk-overview{display:none}
+@media(max-width:960px){.dk-overview-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.dk-overview{padding:12px 12px 26px}.dk-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.dk-overview-item{padding:7px}.dk-overview-back{width:min(100%,130px)}}
 .decks{
   flex:1;min-height:0;display:grid;
   grid-template-columns:220px minmax(0,1fr) 288px;gap:14px;padding:14px 16px 16px;
