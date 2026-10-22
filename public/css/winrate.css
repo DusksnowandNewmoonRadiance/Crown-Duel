@@ -1,0 +1,42 @@
+/* ---------- 胜率测试 ---------- */
+.winrate-page{flex:1;min-height:0;display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:16px;padding:18px;overflow:hidden}
+.winrate-config,.winrate-results{min-height:0;overflow:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:18px}
+.winrate-config h2,.winrate-results h2{margin:0 0 14px;color:var(--gold2);font:700 24px var(--serif)}
+.winrate-config h3,.winrate-results h3{margin:20px 0 10px;color:var(--gold2);font:700 17px var(--serif)}
+.winrate-fields,.winrate-decks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.winrate-fields label,.winrate-decks label{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:12px;color:var(--muted)}
+.winrate-fields select,.winrate-fields input,.winrate-decks select{width:100%;min-width:0;border:1px solid var(--line2);border-radius:9px;background:var(--bg2);color:var(--text);padding:8px;font:14px var(--sans)}
+.winrate-fields select:disabled,.winrate-fields input:disabled,.winrate-decks select:disabled{opacity:.55}
+#wrDeckGridWrap{margin-top:18px}#wrDeckGridWrap summary{cursor:pointer;color:var(--gold2);font-weight:700}
+.winrate-decks{margin-top:10px}.winrate-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.winrate-progress{margin-top:12px;min-height:20px;color:var(--gold2);font-size:13px}
+.winrate-table-wrap{overflow:auto;max-width:100%;margin:8px 0 16px}
+.winrate-table-wrap table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+.winrate-table-wrap th,.winrate-table-wrap td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}
+.winrate-table-wrap th{color:var(--gold2);background:var(--panel2);position:sticky;top:0}
+.winrate-detail{border:1px solid var(--line);border-radius:10px;margin:9px 0;padding:10px 12px}
+.winrate-detail summary{display:flex;justify-content:space-between;gap:10px;cursor:pointer;color:var(--gold2)}
+.winrate-detail summary span{color:var(--green)}
+.winrate-detail h4{margin:16px 0 5px}.winrate-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-top:14px}
+.winrate-metrics>div{border:1px solid var(--line);border-radius:8px;padding:7px 9px}.winrate-metrics small{display:block;color:var(--muted)}
+.winrate-metrics b{display:block;margin-top:4px}.winrate-diagnostics{font-size:13px;line-height:1.7;color:var(--muted)}
+.winrate-chart-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px}
+.winrate-chart-heading h3{margin:0}.winrate-chart-heading label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+.winrate-chart-heading select{max-width:180px;border:1px solid var(--line2);border-radius:8px;background:var(--bg2);color:var(--text);padding:7px;font:13px var(--sans)}
+.winrate-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 20px}
+.winrate-chart-panel{min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--panel2);padding:14px}
+.winrate-chart-panel h4{margin:0 0 14px;color:var(--gold2);font-size:15px}.winrate-chart-panel p{margin:12px 0 0}
+.winrate-chart-wide{grid-column:1/-1}.winrate-pie-wrap{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;min-height:205px}
+.winrate-pie{width:180px;height:180px;flex:none;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 1px var(--line2),0 8px 24px #0005}
+.winrate-pie span{width:118px;height:118px;border-radius:50%;background:var(--panel2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:26px;font-weight:800}
+.winrate-pie small{font-size:12px;font-weight:400;color:var(--muted)}.winrate-pie-legend{min-width:88px;display:grid;gap:9px;font-size:13px}
+.winrate-pie-legend div{display:flex;align-items:center;gap:7px}.winrate-pie-legend b{margin-left:auto}.winrate-pie-legend i{width:10px;height:10px;border-radius:3px}
+.winrate-pie-legend .win{background:var(--green)}.winrate-pie-legend .loss{background:var(--red)}.winrate-pie-legend .draw{background:var(--blue)}
+.winrate-bars{max-height:240px;overflow:auto;display:grid;gap:5px}.winrate-bar-row{width:100%;display:grid;grid-template-columns:minmax(65px,100px) minmax(40px,1fr) 42px 40px;align-items:center;gap:8px;border:1px solid transparent;border-radius:7px;background:transparent;padding:5px 6px;text-align:left;font-size:12px}
+.winrate-bar-row:hover,.winrate-bar-row.active{background:rgba(226,180,103,.1);border-color:var(--line2)}.winrate-bar-row span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.winrate-bar-track{height:10px;border-radius:6px;background:var(--bg);overflow:hidden}.winrate-bar-track span{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--gold))}
+.winrate-bar-row b{text-align:right;color:var(--gold2)}.winrate-bar-row small{text-align:right;color:var(--muted);font-size:10px}
+.winrate-line{display:block;width:100%;height:auto;min-height:180px;color:var(--muted);font:12px var(--sans)}.winrate-grid{stroke:var(--line2);stroke-width:1;stroke-dasharray:3 5}
+@media(max-width:900px){.winrate-chart-grid{grid-template-columns:1fr}.winrate-chart-wide{grid-column:auto}}
+@media(max-width:900px){.winrate-page{display:block;overflow:auto;padding:12px}.winrate-config,.winrate-results{overflow:visible;margin-bottom:12px;padding:14px}}
+@media(max-width:420px){.winrate-fields,.winrate-decks{grid-template-columns:1fr}.winrate-pie{width:156px;height:156px}.winrate-pie span{width:102px;height:102px}}

@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="css/screens.css">
 <link rel="stylesheet" href="css/stage.css">
 <link rel="stylesheet" href="css/theme-blueprint.css">
+<link rel="stylesheet" href="css/winrate.css">
 </head>
 <body>
 
@@ -90,6 +91,7 @@
           <button class="act-row" id="btnShop">商店<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
           <button class="act-row" id="btnVault">仓库<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
           <button class="act-row" id="btnRules">玩法说明<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
+          <button class="act-row" id="btnWinrate">胜率测试<svg class="ic" viewBox="0 0 24 24"><use href="#i-arw"/></svg></button>
         </div>
         <div class="ver" id="verLabel"></div>
       </div>
@@ -99,6 +101,33 @@
       <div class="hero-grid" id="heroGrid"></div>
       <div class="hero-detail" id="heroDetail"></div>
     </div>
+  </main>
+</section>
+
+<!-- ======================= 胜率测试 ======================= -->
+<section class="screen" id="scrWinrate" hidden>
+  <header class="topbar"><button class="btn btn-ghost" id="winrateBack">‹ 返回</button><div class="brand-mini">胜率测试</div><span class="muted">电脑自动对战</span></header>
+  <main class="winrate-page">
+    <div class="winrate-config">
+      <h2>测试设置</h2>
+      <div class="winrate-fields">
+        <label>测试范围<select id="wrMode"><option value="match">两人对阵</option><option value="hero">一位卡牌师对所有人</option><option value="all">全部对阵矩阵</option></select></label>
+        <label id="wrHeroAField">卡牌师 A<select id="wrHeroA"></select></label>
+        <label id="wrHeroBField">卡牌师 B<select id="wrHeroB"></select></label>
+        <label id="wrDeckAField">A 的卡组<select id="wrDeckA"></select></label>
+        <label id="wrDeckBField">B 的卡组<select id="wrDeckB"></select></label>
+        <label>A 的电脑难度<select id="wrAiA"><option value="easy">简单</option><option value="normal" selected>普通</option><option value="hard">困难</option></select></label>
+        <label>B / 对手电脑难度<select id="wrAiB"><option value="easy">简单</option><option value="normal" selected>普通</option><option value="hard">困难</option></select></label>
+        <label>每组对阵局数<input id="wrGames" type="number" min="1" max="1000" value="20" inputmode="numeric"></label>
+        <label>先后手<select id="wrFirst"><option value="alternate">交替</option><option value="a">A / 列表前者先手</option><option value="b">B / 列表后者先手</option><option value="random">随机</option></select></label>
+        <label>卡牌统计最低样本局数<input id="wrMinSample" type="number" min="1" max="1000" value="4" inputmode="numeric"></label>
+      </div>
+      <details id="wrDeckGridWrap" hidden><summary>各卡牌师卡组（点击展开）</summary><p class="muted small">随机会从该卡牌师的预设卡组中随机选择。</p><div class="winrate-decks" id="wrDeckGrid"></div></details>
+      <p class="muted small" id="wrEstimate"></p>
+      <div class="winrate-actions"><button class="btn btn-gold" id="wrStart">开始测试</button><button class="btn btn-danger" id="wrCancel" disabled>停止测试</button></div>
+      <div class="winrate-progress" id="wrProgress" role="status" aria-live="polite">选择参数后开始测试。</div>
+    </div>
+    <div class="winrate-results" id="wrResults"><div class="empty">结果会显示在这里。</div></div>
   </main>
 </section>
 
@@ -168,6 +197,7 @@
       <div class="seat" id="seat1"></div>
     </div>
     <div class="room-status" id="roomStatus"></div>
+    <div class="room-kick-history" id="roomKickHistory" hidden><b>踢出记录</b><div id="roomKickList"></div></div>
     <div class="room-spectate" id="roomSpectate" hidden></div>
     <div class="room-actions">
       <button class="btn" id="roomHero">更换卡牌师</button>
@@ -703,6 +733,7 @@
 <script src="js/input.js"></script>
 <script src="js/game-ui.js"></script>
 <script src="js/app.js"></script>
+<script src="js/winrate-ui.js"></script>
 </body>
 </html>
 

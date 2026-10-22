@@ -438,6 +438,7 @@ function friendListPayload(u){
 function roomView(r,forId){
   return{id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,hostId:r.hostId,status:r.status,pool:roomPool(r),
     spectators:(r.spectators||[]).length,spectate:!!(r.spectators||[]).includes(forId),
+    kicked:r.hostId===forId?[...(r.kicked||new Map()).entries()].map(([id,entry])=>({id,nick:entry.nick,at:entry.at})):[],
     you:r.seats.indexOf(forId),countdown:r.countdownAt?Math.max(0,r.countdownAt-now()):0,
     seats:r.seats.map((id,i)=>{if(!id)return null;const u=users.get(id);if(!u)return null;
       return{id,nick:u.nick,hero:u.hero,ready:r.ready[i],connected:u.connected,host:id===r.hostId};})};
@@ -450,7 +451,7 @@ function roomChanged(r){
 function createRoom(host,name,password,quick,pool){
   const r={id:crypto.randomUUID(),code:randomCode(),name:clean(name,16)||`${host.nick}的房间`,password:clean(password,16),
     hostId:host.id,seats:[null,null],ready:[false,false],status:"waiting",match:null,quick:!!quick,pool:roomPool({pool}),
-    spectators:[],chat:[],createdAt:now(),countdownT:null,countdownAt:0};
+    spectators:[],kicked:new Map(),chat:[],createdAt:now(),countdownT:null,countdownAt:0};
   rooms.set(r.id,r);return r;
 }
 function joinRoom(u,r){
@@ -914,6 +915,7 @@ io.on("connection",socket=>{
     if(!r)return reply(cb,{ok:false,error:"房间不存在或已关闭"});
     if(r.tournamentId)return reply(cb,{ok:false,error:"比赛房间只能通过比赛入口加入"});
     if(r.seats.includes(u.id))return reply(cb,{ok:true});
+    if(r.kicked&&r.kicked.has(u.id))return reply(cb,{ok:false,error:"你已被房主移出该房间"});
     /* 池分离：带着 DIY 角色进不了普通房间 */
     if(diyBlocked(u.hero,r))return reply(cb,{ok:false,error:diyBlockMsg(u.hero)});
     if(r.password&&clean(d.password,16)!==r.password)return reply(cb,{ok:false,error:r.password&&d.password?"密码错误":"需要密码",needPassword:true});
@@ -923,6 +925,38 @@ io.on("connection",socket=>{
   });
 
   socket.on("room:leave",()=>{const u=userOf(socket);if(u&&!u.tournamentId){leaveRoom(u);send(u,"room",null);}});
+
+  socket.on("room:kick",(d,cb)=>{
+    const host=userOf(socket),r=host&&host.roomId&&rooms.get(host.roomId);
+    if(!r||r.hostId!==host.id||r.quick)return reply(cb,{ok:false,error:"只有房主可以移出玩家"});
+    if(r.status==="playing")return reply(cb,{ok:false,error:"对局进行中不能移出玩家"});
+    const targetId=String(d&&d.targetId||"");
+    if(!targetId||targetId===host.id||!r.seats.includes(targetId))return reply(cb,{ok:false,error:"该玩家不在房间内"});
+    const target=users.get(targetId);
+    if(!target)return reply(cb,{ok:false,error:"该玩家不在房间内"});
+    r.kicked.set(targetId,{nick:target.nick,at:now()});
+    if(target.dcTimer){clearTimeout(target.dcTimer);target.dcTimer=null;}
+    leaveRoom(target,true);
+    roomSys(r,`${host.nick} 将 ${target.nick} 移出了房间`);
+    roomChanged(r);
+    send(target,"room:kicked",{reason:"你已被房主移出房间"});
+    send(target,"room",null);
+    send(target,"lobby",lobbySnapshot());
+    if(!target.connected)users.delete(targetId);
+    reply(cb,{ok:true});
+  });
+
+  socket.on("room:unkick",(d,cb)=>{
+    const host=userOf(socket),r=host&&host.roomId&&rooms.get(host.roomId);
+    if(!r||r.hostId!==host.id||r.quick)return reply(cb,{ok:false,error:"只有房主可以解除踢出"});
+    const targetId=String(d&&d.targetId||"");
+    if(!r.kicked||!r.kicked.has(targetId))return reply(cb,{ok:false,error:"没有这条踢出记录"});
+    const entry=r.kicked.get(targetId);
+    r.kicked.delete(targetId);
+    roomSys(r,`${host.nick} 已解除对 ${entry.nick} 的踢出限制`);
+    roomChanged(r);
+    reply(cb,{ok:true});
+  });
 
   socket.on("room:ready",ready=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(!r)return;
@@ -1088,6 +1122,7 @@ io.on("connection",socket=>{
     const r=d.id?rooms.get(String(d.id)):[...rooms.values()].find(x=>x.code===clean(d.code,10));
     if(!r)return reply(cb,{ok:false,error:"房间不存在或已关闭"});
     if(r.tournamentId)return reply(cb,{ok:false,error:"比赛不开放观战"});
+    if(r.kicked&&r.kicked.has(u.id))return reply(cb,{ok:false,error:"你已被房主移出该房间"});
     if(r.seats.includes(u.id))return reply(cb,{ok:false,error:"你在座位上，不能观战"});
     if(!r.match||r.match.over||r.status!=="playing")return reply(cb,{ok:false,error:"对局还没开始或已经结束"});
     if((r.spectators||[]).includes(u.id))return reply(cb,{ok:true});

@@ -4,6 +4,7 @@ const fs=require("fs");
 const path=require("path");
 const crypto=require("crypto");
 const Rank=require("../shared/rank.js");
+const RELEASE_NOTES=require("./release-notes.js");
 
 const DATA_DIR=process.env.DATA_DIR||path.join(__dirname,"..","data");
 fs.mkdirSync(DATA_DIR,{recursive:true});
@@ -34,6 +35,11 @@ if(!Array.isArray(announcements)){
   announcements=[{id:"welcome",type:"公告",title:"欢迎来到皇冠对决",
     body:"8 位风格迥异的卡牌师，快节奏的卡牌对决。\n\n· 第一次玩？先去「单人练习」熟悉卡组，会有新手引导。\n· 想和朋友对战？进入「联机对战」创建房间，把房间号发给朋友即可。\n\n祝你玩得开心！",
     popup:false,pinned:true,createdAt:Date.now(),updatedAt:Date.now()}];
+}
+if(read("release-notes-seed.json",0)<1){
+  for(const item of RELEASE_NOTES)if(!announcements.some(a=>a.id===item.id))announcements.push(item);
+  write("announcements.json",announcements);
+  write("release-notes-seed.json",1);
 }
 let balance=read("balance.json",{rev:"",overrides:{},updatedAt:0});
 const TOURNAMENT_DEFAULTS={fee:150,prize:900};
