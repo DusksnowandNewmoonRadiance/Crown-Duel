@@ -58,7 +58,7 @@ function deckMode(p){
 const BURN={hero99:99,damage5:5,damage6:6,damage7:7,damage5draw:5,aoe2:2,aoe5:5,manaBurn:2,steal5draw:3,hero2drawSteal:2,hero2:2,hero1:1,hero3:3,steal3hero1:1,xiashuiDeploy:3,disruption:2,
   };
 function burnOf(s,c,o){
-  if(c.effect==="whiteFinal")return Math.min(18,4+(s.destroyedCards||0));
+  if(c.effect==="whiteFinal")return Math.min(18,4+2*(s.destroyedCards||0));
   if(c.effect==="whiteStrike")return Math.min(7,2+Math.floor((s.destroyedCards||0)/3));
   if(c.effect==="whiteBurst")return Math.min(10,3+Math.floor((s.destroyedCards||0)/2));
   if(c.effect==="whiteNight")return 5;

@@ -197,10 +197,11 @@ const PROFILES={
   ]},
   "045":{faction:"普鲁士国 · 架子班",style:"高层名片 · 开发他人卡组",hp:31,cards:[
     {id:"contact",name:"联络员",cost:1,kind:"unit",art:"◇",atk:1,hp:2,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
-    {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
+    {id:"apprentice",name:"架子班学徒",cost:2,kind:"unit",art:"✦",atk:2,hp:3,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"intel",name:"情报官",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:2,rarity:"special"},
-    {id:"advisor",name:"高层顾问",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:3,limit:3,rarity:"rare"},
+    {id:"advisor",name:"高层顾问",cost:2,kind:"unit",art:"◇",atk:2,hp:4,text:"部署：抽 1 张牌。",effect:"draw",n:2,limit:3,rarity:"rare"},
     {id:"diplomat",name:"外交官",cost:3,kind:"unit",art:"✎",atk:3,hp:5,text:"部署：获得 2 点护甲。",effect:"armor2",n:2,limit:2,rarity:"special",fx:"sp_guard"},
+    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
     {id:"researcher",name:"解析员",cost:4,kind:"unit",art:"⌬",atk:4,hp:6,text:"部署：抽 1 张牌，获得 1 点护甲。",effect:"drawArmor",n:1,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"cardmaker",name:"卡片工匠",cost:4,kind:"unit",art:"▦",atk:4,hp:5,text:"部署：抽 2 张牌。",effect:"draw2",n:1,limit:2,rarity:"special",fx:"sp_insight"},
     {id:"blueprint",name:"蓝图制卡师",cost:5,kind:"unit",art:"▦",atk:6,hp:6,text:"嘲讽。",taunt:true,n:1,limit:2,rarity:"special"},
@@ -254,7 +255,6 @@ const PROFILES={
     {id:"fortress",name:"废料堡垒",cost:2,kind:"unit",art:"▤",atk:2,hp:5,text:"嘲讽。",taunt:true,n:4,limit:4,rarity:"common"},
     {id:"corner",name:"角落里的小怪兽",cost:2,kind:"unit",art:"☻",atk:3,hp:4,text:"每当你打出 1 张【废料】，获得 +1 攻击，持续到回合结束。",effect:"scrapRage",n:2,limit:3,rarity:"rare"},
     {id:"shredder",name:"碎纸机",cost:2,kind:"unit",art:"▥",atk:2,hp:4,text:"每当你打出 1 张【废料】，恢复 1 点生命。",effect:"scrapHeal",n:2,limit:3,rarity:"rare"},
-    {id:"xi",name:"汐",cost:3,kind:"unit",art:"◇",atk:3,hp:4,text:"嘲讽。部署：使 1 张随机敌方手牌的费用 +1。",flavor:"名誉性质的职位，也有实权。",taunt:true,effect:"costUp1",n:2,limit:2,rarity:"special"},
     {id:"guard",name:"小怪兽卫队",cost:3,kind:"unit",art:"✦",atk:4,hp:4,text:"部署：你手牌中每有 1 张【废料】，获得 +1/+1（至多 +3）。",effect:"scrapGuard",n:2,limit:2,rarity:"special"},
     {id:"eriyi",name:"绘梨衣",cost:3,kind:"unit",art:"♛",atk:4,hp:4,text:"部署：转化 2。",flavor:"蜷缩在杂乱房间的角落里，用最差的牌打出最好的效果。",effect:"convert2",n:1,limit:1,rarity:"elite"},
     {id:"colossus",name:"废料巨像",cost:5,kind:"unit",art:"▦",atk:4,hp:4,text:"部署：弃掉手牌中所有【废料】，每张使其获得 +1/+1。",effect:"scrapColossus",n:1,limit:1,rarity:"elite"},
@@ -271,7 +271,7 @@ const PROFILES={
   ]},
   白猫:{faction:"彗星国 · 架子班",style:"销毁敌牌 · 疲劳审判",hp:38,cards:[
     {id:"kitten",name:"勘误猫",cost:1,kind:"unit",art:"◇",atk:2,hp:2,text:"部署：消灭一名攻击力不超过 2 的敌方单位（优先攻击力最低者），计入已销毁卡牌。",effect:"whiteProof",n:2,limit:4,rarity:"common"},
-    {id:"sentinel",name:"卷宗守卫",cost:2,kind:"unit",art:"◈",atk:2,hp:3,text:"嘲讽。每当你销毁一张敌方卡牌，获得 +1/+1。",taunt:true,effect:"whiteSentinel",n:2,limit:4,rarity:"common"},
+    {id:"sentinel",name:"卷宗守卫",cost:2,kind:"unit",art:"◈",atk:2,hp:3,text:"嘲讽。每当你销毁一张敌方卡牌，获得 +1/+2。",taunt:true,effect:"whiteSentinel",n:2,limit:4,rarity:"common"},
     {id:"courier",name:"书页窃贼",cost:2,kind:"unit",art:"✦",atk:2,hp:2,text:"部署：销毁敌方牌库顶的 2 张牌。",effect:"whiteDeck1",n:1,limit:3,rarity:"rare"},
     {id:"leaper",name:"断章猎手",cost:3,kind:"unit",art:"✧",atk:3,hp:2,text:"冲锋。部署：对敌方英雄造成 2 点伤害；本局每销毁 3 张敌方卡牌，伤害 +1（至多 7 点）。",charge:true,effect:"whiteStrike",n:1,limit:3,rarity:"rare"},
     {id:"guardian",name:"页边催读官",cost:4,kind:"unit",art:"◆",atk:3,hp:6,text:"嘲讽。部署及你的回合开始时：强制对手抽 1 张牌，立即销毁抽到的牌；牌库为空则触发疲劳。",taunt:true,effect:"whiteMargin",n:1,limit:2,rarity:"special"},
@@ -280,12 +280,12 @@ const PROFILES={
     {id:"reserve",name:"档案拆解者",cost:5,kind:"unit",art:"✩",atk:5,hp:5,text:"部署：销毁敌方牌库顶的 3 张牌。",effect:"whiteDeck2",n:1,limit:2,rarity:"special"},
     {id:"inspector",name:"禁书搜查官",cost:5,kind:"unit",art:"◎",atk:5,hp:4,text:"部署：随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 1 张牌。",effect:"whiteHand1",n:1,limit:2,rarity:"special"},
     {id:"editor",name:"涂改员",cost:3,kind:"unit",art:"✎",atk:3,hp:3,text:"部署：随机将敌方手牌中的 1 张非垃圾牌变成【垃圾】。",effect:"whiteCorruptHand",n:2,limit:3,rarity:"rare"},
-    {id:"spellpunish",name:"错字追责官",cost:3,kind:"unit",art:"✎",atk:2,hp:4,text:"每当敌方使用一张法术牌，对敌方英雄造成 1 点伤害。",effect:"whiteSpellPunish",n:1,limit:3,rarity:"rare"},
-    {id:"junktax",name:"废稿收费站",cost:3,kind:"unit",art:"▧",atk:1,hp:5,text:"敌方【垃圾】的费用 +2。",effect:"whiteJunkTax",n:1,limit:2,rarity:"special"},
+    {id:"spellpunish",name:"错字追责官",cost:3,kind:"unit",art:"✎",atk:2,hp:4,text:"每当敌方使用一张法术牌，对敌方英雄造成 2 点伤害。",effect:"whiteSpellPunish",n:1,limit:3,rarity:"rare"},
+    {id:"junktax",name:"废稿收费站",cost:3,kind:"unit",art:"▧",atk:1,hp:5,text:"嘲讽。敌方【垃圾】的费用 +2。",taunt:true,effect:"whiteJunkTax",n:1,limit:2,rarity:"special"},
     {id:"corruptcredit",name:"销毁登记员",cost:4,kind:"unit",art:"▤",atk:3,hp:4,text:"你的卡牌将敌方卡牌变成【垃圾】时，原牌也计入已销毁卡牌。",effect:"whiteCorruptCredit",n:2,limit:2,rarity:"special"},
     {id:"medic",name:"纸缝医师",cost:3,kind:"unit",art:"✚",atk:2,hp:4,text:"部署：你的英雄恢复 4 点生命。",effect:"whiteMedic",n:1,limit:2,rarity:"special"},
-    {id:"meteor",name:"终稿裁决",cost:7,kind:"unit",art:"☄",atk:6,hp:6,text:"部署：消灭所有攻击力最高的敌方单位，均计入已销毁卡牌。",effect:"whiteBoard",n:1,limit:1,rarity:"elite"},
-    {id:"sovereign",name:"白猫·空白终章",cost:6,kind:"unit",art:"♛",atk:6,hp:6,text:"部署：对敌方英雄造成 4 点伤害；本局每销毁 1 张敌方卡牌，伤害 +1（至多 18 点）。",effect:"whiteFinal",n:1,limit:1,rarity:"elite"},
+    {id:"meteor",name:"终稿裁决",cost:7,kind:"unit",art:"☄",atk:6,hp:6,text:"嘲讽。部署：消灭所有攻击力最高的敌方单位，均计入已销毁卡牌。",taunt:true,effect:"whiteBoard",n:1,limit:1,rarity:"elite"},
+    {id:"sovereign",name:"白猫·空白终章",cost:6,kind:"unit",art:"♛",atk:6,hp:6,text:"部署：对敌方英雄造成 4 点伤害；本局每销毁 1 张敌方卡牌，伤害 +2（至多 18 点）。",effect:"whiteFinal",n:1,limit:1,rarity:"elite"},
     {id:"spark",name:"撕掉一页",cost:1,kind:"spell",art:"✦",text:"销毁敌方牌库顶的 2 张牌，抽 1 张牌。",effect:"whiteDeckDraw",n:4,limit:4,rarity:"common"},
     {id:"surge",name:"强制翻页",cost:2,kind:"spell",art:"⇧",text:"销毁敌方牌库顶的 2 张牌，再强制对手抽 1 张并销毁抽到的牌；牌库为空则触发疲劳。",effect:"whiteForce1",n:2,limit:3,rarity:"rare"},
     {id:"insight",name:"没收手稿",cost:3,kind:"spell",art:"◎",text:"随机销毁敌方手牌的 1 张牌；若其手牌为空，改为销毁牌库顶的 2 张牌。抽 1 张牌。",effect:"whiteConfiscate",n:1,limit:2,rarity:"special"},
@@ -384,7 +384,7 @@ const KEYWORDS={
   destroyCard:{name:"销毁",desc:"把指定的牌从手牌、牌库或战场移出本局对战。白猫销毁的敌牌会计入她的销毁数量；销毁时可在战斗记录中查看牌名。"},
   pollute:{name:"污染",desc:"把敌方手牌或牌库中的非垃圾牌直接变成【垃圾】，卡牌数量不变。"},
   junk:{name:"垃圾",desc:"1 费法术。打出时销毁自己牌库顶的一张牌，然后抽一张；牌库为空时抽牌会触发疲劳。"},
-  fatigue:{name:"疲劳",desc:"牌库为空时每次尝试抽牌都会受到伤害：第 1 次 1 点、第 2 次 3 点、第 3 次 6 点，此后按 1+2+…+次数累加。"},
+  fatigue:{name:"疲劳",desc:"牌库为空时每次尝试抽牌都会受到伤害：第 1 次 1 点、第 2 次 3 点、第 3 次 6 点，此后按 1+2+…+次数累加。疲劳伤害无视护甲。"},
   onDraw:{name:"抽取：使用",desc:"抽到这张牌时立即自动使用，不进入手牌。"},
   overdraw:{name:"手牌上限",desc:"手牌最多 10 张。手牌已满时继续抽牌，新抽到的牌会被销毁，无法进入手牌。"}
 };
@@ -743,7 +743,7 @@ const BUILTIN_CODE_KEYS=
   "绘梨衣:fortress",
   "绘梨衣:corner",
   "绘梨衣:shredder",
-  "绘梨衣:xi",
+  "绘梨衣:xi", // 旧编号保留，避免其他绘梨衣卡牌代码错位
   "绘梨衣:guard",
   "绘梨衣:eriyi",
   "绘梨衣:colossus",
@@ -836,7 +836,8 @@ const BUILTIN_CODE_KEYS=
   "白猫:spellpunish",
   "白猫:junktax",
   "白猫:corruptcredit",
-  "白猫:junkblast"
+  "白猫:junkblast",
+  "045:xi"
 ];
 
 const CARD_CODE_ALPHABET="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -862,8 +863,9 @@ for(const [id,card] of Object.entries(CAMPAIGN_CARDS))card.code=codeByKey.get("@
 /* DIY 卡牌以所属卡牌师为命名空间；导出的 DIY 卡组也记录编号对应的 id。 */
 function cardCode(hero,id){
   const fixed=codeByKey.get(hero+":"+id);
-  if(fixed)return fixed;
-  const p=PROFILES[hero];if(!p||!p.diy)return null;
+  const p=PROFILES[hero];
+  if(fixed)return p&&p.cards.some(c=>c.id===id)?fixed:null;
+  if(!p||!p.diy)return null;
   const ids=p.cards.map(c=>c.id).sort();
   const i=ids.indexOf(id);
   return i<0?null:codeAt(i);

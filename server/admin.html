@@ -68,6 +68,17 @@ textarea.code{font-family:var(--mono);font-size:12.5px;min-height:260px}
   </div>
 
   <div class="box">
+    <h2>四人比赛设置</h2>
+    <p class="hint">设置新开比赛的报名费与冠军奖励。已经有人报名的比赛继续使用原来的金额；设置会保存到服务器。</p>
+    <div class="inline">
+      <label>每人报名费 <input id="tFee" type="number" min="0" max="1000000" step="1" inputmode="numeric" style="width:130px"> 金币</label>
+      <label>冠军奖励 <input id="tPrize" type="number" min="0" max="10000000" step="1" inputmode="numeric" style="width:130px"> 金币</label>
+      <button class="btn btn-gold" id="tSave">保存比赛设置</button>
+    </div>
+    <div class="msg" id="tMsg"></div>
+  </div>
+
+  <div class="box">
     <div class="inline" style="justify-content:space-between"><h2>玩家举报与处罚</h2><button class="btn" id="modRefresh">刷新</button></div>
     <p class="hint">处理举报前请核对双方 ID、举报原因和聊天记录。封号会立即断开联机；禁言会阻止大厅、房间和局内发言。</p>
     <div class="inline"><input id="sanctionId" placeholder="手动处罚：玩家 ID" style="max-width:280px"><input id="sanctionReason" maxlength="200" placeholder="处罚原因" style="max-width:280px"><button class="btn btn-danger" id="manualBan">封号</button><button class="btn" id="manualMute">禁言</button></div>
@@ -248,6 +259,19 @@ async function maint(action){
 }
 $("#mDrain").onclick=()=>maint("drain");$("#mOn").onclick=()=>maint("on");$("#mOff").onclick=()=>maint("off");
 
+async function loadTournament(){
+  const t=await api("GET","/tournament");
+  $("#tFee").value=t.fee;$("#tPrize").value=t.prize;
+}
+$("#tSave").onclick=async()=>{
+  const fee=Number($("#tFee").value),prize=Number($("#tPrize").value);
+  if(!$("#tFee").value.trim()||!$("#tPrize").value.trim()||!Number.isInteger(fee)||!Number.isInteger(prize)){
+    msg("#tMsg","请输入整数金额");return;
+  }
+  try{await api("PUT","/tournament",{fee,prize});msg("#tMsg","已保存，新开比赛将使用此设置",true);await loadTournament();}
+  catch(e){msg("#tMsg",e.message);}
+};
+
 async function loadBal(){
   const b=await api("GET","/balance");balCards=b.cards;
   $("#balJson").value=JSON.stringify(b.overrides||{},null,2);
@@ -370,7 +394,7 @@ $("#userTable").onclick=async e=>{
     await Promise.all([loadUsers(),loadLogs()]);
   }catch(err){msg("#userMsg",err.message);}
 };
-async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadReports(),loadModeration(),loadDiy(),loadUsers(),loadLogs()]);}catch(e){}}
+async function loadAll(){try{await Promise.all([loadStatus(),loadAnn(),loadBal(),loadTournament(),loadReports(),loadModeration(),loadDiy(),loadUsers(),loadLogs()]);}catch(e){}}
 $("#refresh").onclick=loadAll;$("#modRefresh").onclick=()=>Promise.all([loadReports(),loadModeration(),loadStatus()]);
 setInterval(()=>{if(!$("#main").hidden)Promise.all([loadStatus(),loadReports(),loadModeration()]).catch(()=>{});},10000);
 if(TOKEN){$("#tok").value=TOKEN;login();}

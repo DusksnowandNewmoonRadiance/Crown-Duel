@@ -243,6 +243,8 @@ app.use("/admin",adminRouter({
   setMaintenance:(on,msg)=>setMaintenance(on,msg),
   drain:(min,msg)=>startDrain(min,msg),
   contentChanged:()=>io.emit("content",{rev:Store.balance().rev}),
+  tournamentSettingsChanged:()=>lobbyChanged(),
+  goldChanged:(uid,gold)=>send(users.get("acct_"+uid),"account:gold",{gold}),
   reports:()=>Store.reports(),moderation:()=>Store.moderationLists(),
   sanctionPlayer:(id,type,reason)=>sanctionPlayer(id,type,reason),
   resolveReport:(id,action)=>resolveReport(id,action),
@@ -325,6 +327,7 @@ function startDrain(minutes,message){
    ============================================================ */
 const users=new Map();   // clientId -> user
 const rooms=new Map();   // roomId -> room
+const tournaments=new Map(); // 服务器自动编排的四人淘汰赛
 let queue=[];            // 快速匹配队列（clientId）
 const lobbyChat=[];
 const chatArchive=[]; // recent direct conversations retained so a report can include evidence
@@ -397,8 +400,10 @@ function lobbyChanged(){
   setTimeout(()=>{lobbyDirty=false;io.to("lobby").emit("lobby",lobbySnapshot());},250);
 }
 function lobbySnapshot(){
-  const list=[...rooms.values()].sort((a,b)=>(a.status==="waiting"?0:1)-(b.status==="waiting"?0:1)||b.createdAt-a.createdAt).slice(0,100);
-  return{online:onlineCount(),queue:queue.length,rooms:list.map(r=>({
+  const list=[...rooms.values()].filter(r=>!r.tournamentId).sort((a,b)=>(a.status==="waiting"?0:1)-(b.status==="waiting"?0:1)||b.createdAt-a.createdAt).slice(0,100);
+  const waiting=[...tournaments.values()].find(t=>t.stage==="waiting"&&t.players.length<4);
+  const tournament=waiting?{fee:waiting.fee,prize:waiting.prize}:Store.tournamentSettings();
+  return{online:onlineCount(),queue:queue.length,tournament,rooms:list.map(r=>({
     id:r.id,code:r.code,name:r.name,locked:!!r.password,quick:r.quick,status:r.status,pool:roomPool(r),
     players:r.seats.filter(Boolean).map(id=>{const u=users.get(id);return u?{id:u.id,nick:u.nick,hero:u.hero}:null;}).filter(Boolean)
   }))};
@@ -438,6 +443,7 @@ function roomView(r,forId){
       return{id,nick:u.nick,hero:u.hero,ready:r.ready[i],connected:u.connected,host:id===r.hostId};})};
 }
 function roomChanged(r){
+  if(r.tournamentId)return;
   r.seats.forEach(id=>{if(id){const u=users.get(id);send(u,"room",roomView(r,id));}});
   lobbyChanged();
 }
@@ -459,6 +465,7 @@ function joinRoom(u,r){
 }
 function leaveRoom(u,silent){
   const r=u.roomId&&rooms.get(u.roomId);
+  if(r&&r.tournamentId){if(r.match&&!r.match.over)r.match.forfeit(r.match.seatOf(u.id),"对手离开了比赛");return;}
   if(u.spectating){
     u.spectating=false;
     if(r&&Array.isArray(r.spectators))r.spectators=r.spectators.filter(x=>x!==u.id);
@@ -531,6 +538,120 @@ function enqueue(u,pool){
     send(u,"match:status",{searching:true,since:u.queuedAt,pool:want});
   }
   lobbyChanged();
+}
+
+/* ---------- 四人比赛：服务器分配，报名费与奖励均由账号余额结算 ---------- */
+function tournamentState(t,id){
+  return{id:t.id,stage:t.stage,fee:t.fee,prize:t.prize,
+    players:t.players.map(pid=>{const p=users.get(pid);return{id:pid,nick:p?p.nick:pid,hero:p?p.hero:"",connected:!!(p&&p.connected)};}),
+    winners:t.winners.slice(),champion:t.champion||null,you:id,withdrawn:t.withdrawn.has(id)};
+}
+function tournamentChanged(t){t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)send(u,"tournament:state",tournamentState(t,id));});lobbyChanged();}
+function tournamentGold(u,gold,delta){send(u,"tournament:gold",{gold,delta});}
+function leaveTournament(u){
+  const t=u.tournamentId&&tournaments.get(u.tournamentId);if(!t)return;
+  if(t.stage==="waiting"){
+    t.players=t.players.filter(id=>id!==u.id);u.tournamentId=null;
+    tournamentGold(u,Store.closeTournament(u.uid,true,t.id),t.fee);
+    send(u,"tournament:state",null);
+    if(!t.players.length){tournaments.delete(t.id);lobbyChanged();}else tournamentChanged(t);
+    return;
+  }
+  t.withdrawn.add(u.id);
+  Store.closeTournament(u.uid,false,t.id);
+  const r=u.roomId&&rooms.get(u.roomId);
+  if(r&&r.tournamentId===t.id){
+    if(r.match&&!r.match.over)r.match.forfeit(r.match.seatOf(u.id),"对手退出比赛");
+    else{u.roomId=null;if(u.socket){u.socket.leave("room:"+r.id);u.socket.join("lobby");}}
+  }
+  u.tournamentId=null;
+  send(u,"tournament:state",null);
+  tournamentChanged(t);
+}
+function cancelTournament(t){
+  t.stage="done";t.cancelled=true;
+  t.players.forEach(id=>send(users.get(id),"tournament:cancelled",{text:"比赛取消，未结算的报名费已退还"}));
+  for(const r of [...rooms.values()])if(r.tournamentId===t.id){
+    if(r.match)r.match.dispose();
+    r.seats.forEach(id=>{const u=users.get(id);if(u&&u.roomId===r.id){u.roomId=null;if(u.socket){u.socket.leave("room:"+r.id);u.socket.join("lobby");}}});
+    rooms.delete(r.id);
+  }
+  const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),null,0,true,t.id);
+  t.players.forEach(id=>{const u=users.get(id);if(u&&u.tournamentId===t.id)tournamentGold(u,balances[id.slice(5)],t.fee);});
+  tournamentChanged(t);
+  t.players.forEach(id=>{const u=users.get(id);if(u)u.tournamentId=null;});tournaments.delete(t.id);
+}
+function startTournamentPair(t,seatIds,round){
+  if(t.stage==="done")return;
+  const absent=seatIds.filter(id=>t.withdrawn.has(id)||!users.get(id));
+  if(absent.length===2){cancelTournament(t);return;}
+  if(absent.length===1){advanceTournament(t,null,seatIds.find(id=>id!==absent[0]),round);return;}
+  const r={id:crypto.randomUUID(),code:"",name:"比赛",password:"",hostId:null,
+    seats:seatIds.slice(),ready:[true,true],status:"playing",match:null,quick:false,pool:"vanilla",
+    spectators:[],chat:[],createdAt:now(),tournamentId:t.id,tournamentRound:round};
+  rooms.set(r.id,r);
+  seatIds.forEach(id=>{
+    const u=users.get(id);if(!u)return;
+    u.roomId=r.id;
+    if(u.socket){u.socket.leave("lobby");u.socket.join("room:"+r.id);}
+    send(u,"tournament:round",{round});
+  });
+  r.match=new Match(r);
+  setTimeout(()=>{
+    const missing=seatIds.find(id=>t.withdrawn.has(id)||!users.get(id)||!users.get(id).connected);
+    if(missing&&r.match&&!r.match.over)r.match.forfeit(r.match.seatOf(missing),"比赛选手离线或退出");
+  },1000);
+}
+function startTournament(t){
+  if(t.stage!=="waiting"||t.players.length!==4)return;
+  t.stage="semifinal";t.winners=[null,null];tournamentChanged(t);
+  startTournamentPair(t,t.players.slice(0,2),0);
+  startTournamentPair(t,t.players.slice(2,4),1);
+}
+function finishTournamentMatch(r){
+  const t=tournaments.get(r.tournamentId);if(!t)return;
+  const winner=r.match.game.winner;
+  if(winner==="draw"){
+    r.match.dispose();
+    r.match=null;
+    r.seats.forEach(id=>send(users.get(id),"tournament:notice",{text:"平局，重新进行本轮比赛"}));
+    setTimeout(()=>{
+      if(!tournaments.has(t.id)||t.stage==="done")return;
+      const absent=r.seats.filter(id=>t.withdrawn.has(id)||!users.get(id));
+      if(absent.length){
+        if(absent.length===2)cancelTournament(t);
+        else advanceTournament(t,r,r.seats.find(id=>id!==absent[0]),r.tournamentRound);
+        return;
+      }
+      r.seats.forEach(id=>send(users.get(id),"tournament:round",{round:r.tournamentRound,rematch:true}));
+      r.match=new Match(r);
+    },3000);
+    return;
+  }
+  advanceTournament(t,r,r.seats[winner],r.tournamentRound);
+}
+function advanceTournament(t,r,winnerId,round){
+  if(r){
+    r.seats.forEach(id=>{
+      const u=users.get(id);if(u&&u.roomId===r.id){u.roomId=null;if(u.socket){u.socket.leave("room:"+r.id);u.socket.join("lobby");}}
+    });
+    rooms.delete(r.id);
+  }
+  if(round<2){
+    t.winners[round]=winnerId;tournamentChanged(t);
+    if(t.winners.every(Boolean))setTimeout(()=>{
+      if(t.stage!=="semifinal")return;
+      t.stage="final";tournamentChanged(t);startTournamentPair(t,t.winners,2);
+    },5000);
+  }else{
+    t.stage="done";t.champion=winnerId;
+    const balances=Store.settleTournament(t.players.map(id=>id.slice(5)),winnerId.slice(5),t.prize,false,t.id);
+    const champion=users.get(winnerId),gold=balances[winnerId.slice(5)];
+    if(champion)tournamentGold(champion,gold,t.prize);
+    tournamentChanged(t);
+    t.players.forEach(id=>{const u=users.get(id);if(u)u.tournamentId=null;});
+    tournaments.delete(t.id);
+  }
 }
 
 /* ============================================================
@@ -667,6 +788,7 @@ class Match{
     /* 联机胜率统计：按双方英雄记录胜负（平局各记一场） */
     try{Store.recordMatch(this.seats.map(id=>{const u=users.get(id);return u&&u.hero||"?";}),g.winner);}
     catch(e){console.error("[stats] 记录对局失败",e);}
+    if(r.tournamentId){finishTournamentMatch(r);return;}
     /* 段位：只算「快速匹配 + 双方登录真实账号 + uid 不同 + 分出胜负」，服务端判定 */
     {
       const su=this.seats.map(id=>users.get(id)||null);
@@ -724,7 +846,10 @@ io.on("connection",socket=>{
     u.socket=socket;u.connected=true;socket.data.uid=cid;
     if(u.dcTimer){clearTimeout(u.dcTimer);u.dcTimer=null;}
     reply(cb,{ok:true,id:cid,nick:u.nick,build:BUILD,version:VERSION,maintenance:maintView(),diyHeroes:DiyServer.list()});
-    if(r){
+    if(r&&r.tournamentId){
+      socket.join("room:"+r.id);
+      if(r.match&&!r.match.over)r.match.sendTo(u.id);
+    }else if(r){
       socket.join("room:"+r.id);
       send(u,"room",roomView(r,u.id));send(u,"room:chatlog",r.chat);
       if(r.match&&!r.match.over){
@@ -738,6 +863,7 @@ io.on("connection",socket=>{
       send(u,"room",null);
     }
     send(u,"lobby",lobbySnapshot());
+    if(u.tournamentId){const t=tournaments.get(u.tournamentId);if(t)send(u,"tournament:state",tournamentState(t,u.id));}
     send(u,"lobby:chatlog",lobbyChat);
     send(u,"diy:list",{heroes:DiyServer.list()});
     if(u.uid){send(u,"friend:list",friendListPayload(u));friendPresence(u,true);}
@@ -748,7 +874,7 @@ io.on("connection",socket=>{
     const u=userOf(socket);if(!u||!d)return;
     const mod=Store.moderationState(u.id);
     if(d.nick!==undefined)u.nick=mod.forcedName||clean(d.nick,12)||u.nick;
-    if(d.hero&&C.PROFILES[d.hero]&&!(u.roomId&&rooms.get(u.roomId)&&rooms.get(u.roomId).status==="playing")){
+    if(d.hero&&C.PROFILES[d.hero]&&!u.tournamentId&&!(u.roomId&&rooms.get(u.roomId)&&rooms.get(u.roomId).status==="playing")){
       const room=u.roomId&&rooms.get(u.roomId);
       if(diyBlocked(d.hero,room)){send(u,"toast",{text:diyBlockMsg(d.hero)});return;}
       u.hero=d.hero;u.deck=C.deckError(d.hero,d.deck)?null:d.deck;
@@ -768,6 +894,7 @@ io.on("connection",socket=>{
 
   socket.on("room:create",(d,cb)=>{
     const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    if(u.tournamentId)return reply(cb,{ok:false,error:"请先结束当前比赛"});
     if(limited(u,"_rc",1500))return reply(cb,{ok:false,error:"操作太快了"});
     if(rooms.size>=MAX_ROOMS)return reply(cb,{ok:false,error:"房间数量已达上限，请稍后再试"});
     if(MAINT.on)return reply(cb,{ok:false,error:MAINT.message});
@@ -781,9 +908,11 @@ io.on("connection",socket=>{
 
   socket.on("room:join",(d,cb)=>{
     const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    if(u.tournamentId)return reply(cb,{ok:false,error:"请先结束当前比赛"});
     d=d||{};
     const r=d.id?rooms.get(String(d.id)):[...rooms.values()].find(x=>x.code===clean(d.code,10));
     if(!r)return reply(cb,{ok:false,error:"房间不存在或已关闭"});
+    if(r.tournamentId)return reply(cb,{ok:false,error:"比赛房间只能通过比赛入口加入"});
     if(r.seats.includes(u.id))return reply(cb,{ok:true});
     /* 池分离：带着 DIY 角色进不了普通房间 */
     if(diyBlocked(u.hero,r))return reply(cb,{ok:false,error:diyBlockMsg(u.hero)});
@@ -793,7 +922,7 @@ io.on("connection",socket=>{
     reply(cb,{ok:true});
   });
 
-  socket.on("room:leave",()=>{const u=userOf(socket);if(u){leaveRoom(u);send(u,"room",null);}});
+  socket.on("room:leave",()=>{const u=userOf(socket);if(u&&!u.tournamentId){leaveRoom(u);send(u,"room",null);}});
 
   socket.on("room:ready",ready=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);if(!r)return;
@@ -815,12 +944,36 @@ io.on("connection",socket=>{
   socket.on("match:quick",(d,cb)=>{
     const u=userOf(socket);
     if(!u)return reply(cb,{ok:false,error:"未登录"});
+    if(u.tournamentId)return reply(cb,{ok:false,error:"请先结束当前比赛"});
     const want=d&&typeof d==="object"&&d.pool!==undefined?poolOf(d.pool):"vanilla";
     if(!want){send(u,"toast",{text:"匹配类型无效，只能是 vanilla 或 diy"});return reply(cb,{ok:false,error:"pool"});}
     enqueue(u,want);
     reply(cb,{ok:true,queued:true});
   });
   socket.on("match:cancel",()=>{const u=userOf(socket);if(u)dequeue(u);});
+
+  socket.on("tournament:join",(d,cb)=>{
+    const u=userOf(socket);if(!u||!u.uid)return reply(cb,{ok:false,error:"请先登录账号"});
+    if(MAINT.on)return reply(cb,{ok:false,error:MAINT.message});
+    if(u.tournamentId){const t=tournaments.get(u.tournamentId);return reply(cb,t?{ok:true,state:tournamentState(t,u.id)}:{ok:false,error:"比赛状态异常，请重试"});}
+    if(u.roomId)return reply(cb,{ok:false,error:"请先离开当前房间"});
+    if(diyBlocked(u.hero,{pool:"vanilla"}))return reply(cb,{ok:false,error:"比赛仅支持原版卡牌师"});
+    if(rooms.size+2>MAX_ROOMS)return reply(cb,{ok:false,error:"比赛人数已满，请稍后再试"});
+    let t=[...tournaments.values()].find(x=>x.stage==="waiting"&&x.players.length<4);
+    const fresh=!t;
+    if(fresh)t={id:crypto.randomUUID(),stage:"waiting",players:[],winners:[null,null],champion:null,withdrawn:new Set(),...Store.tournamentSettings()};
+    const paid=Store.enterTournament(u.uid,t.fee,t.id);if(!paid.ok)return reply(cb,{ok:false,error:paid.msg});
+    dequeue(u);
+    if(fresh)tournaments.set(t.id,t);
+    t.players.push(u.id);u.tournamentId=t.id;
+    tournamentGold(u,paid.gold,-t.fee);tournamentChanged(t);
+    reply(cb,{ok:true,state:tournamentState(t,u.id)});
+    if(t.players.length===4)setTimeout(()=>startTournament(t),1000);
+  });
+  socket.on("tournament:leave",(d,cb)=>{
+    const u=userOf(socket);if(!u||!u.tournamentId)return reply(cb,{ok:false,error:"当前不在比赛中"});
+    leaveTournament(u);reply(cb,{ok:true});
+  });
 
   socket.on("game:action",(a,cb)=>{
     const u=userOf(socket);const r=u&&u.roomId&&rooms.get(u.roomId);
@@ -930,9 +1083,11 @@ io.on("connection",socket=>{
   /* ---------- 观战 ---------- */
   socket.on("room:spectate",(d,cb)=>{
     const u=userOf(socket);if(!u)return reply(cb,{ok:false,error:"未登录"});
+    if(u.tournamentId)return reply(cb,{ok:false,error:"请先结束当前比赛"});
     d=d||{};
     const r=d.id?rooms.get(String(d.id)):[...rooms.values()].find(x=>x.code===clean(d.code,10));
     if(!r)return reply(cb,{ok:false,error:"房间不存在或已关闭"});
+    if(r.tournamentId)return reply(cb,{ok:false,error:"比赛不开放观战"});
     if(r.seats.includes(u.id))return reply(cb,{ok:false,error:"你在座位上，不能观战"});
     if(!r.match||r.match.over||r.status!=="playing")return reply(cb,{ok:false,error:"对局还没开始或已经结束"});
     if((r.spectators||[]).includes(u.id))return reply(cb,{ok:true});
@@ -973,6 +1128,22 @@ io.on("connection",socket=>{
     if(u.uid)friendPresence(u,false);
     if(u.spectating){u.spectating=false;const sr=u.roomId&&rooms.get(u.roomId);if(sr&&Array.isArray(sr.spectators))sr.spectators=sr.spectators.filter(x=>x!==u.id);}
     dequeue(u);
+    if(u.tournamentId){
+      const t=tournaments.get(u.tournamentId);
+      if(t&&t.stage==="waiting"){
+        u.dcTimer=setTimeout(()=>{u.dcTimer=null;if(!u.connected){leaveTournament(u);users.delete(u.id);}},ROOM_GRACE_MS);
+      }else{
+        u.dcTimer=setTimeout(()=>{
+          u.dcTimer=null;if(u.connected)return;
+          const tr=u.roomId&&rooms.get(u.roomId);
+          if(tr&&tr.tournamentId&&tr.match&&!tr.match.over)tr.match.forfeit(tr.match.seatOf(u.id),"对手断线超时");
+          if(u.tournamentId)leaveTournament(u);
+          users.delete(u.id);
+        },RECONNECT_MS);
+      }
+      if(t)tournamentChanged(t);
+      lobbyChanged();return;
+    }
     const r=u.roomId&&rooms.get(u.roomId);
     if(r){
       if(r.match&&!r.match.over){

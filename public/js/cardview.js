@@ -21,7 +21,7 @@ const CardView=(()=>{
   function back(costUp){return`<div class="card-back${costUp?" up":""}">${backInner()}<span class="glyph">♛</span></div>`;}
 
   /* 预览时展示的关键字说明 */
-  function keywordNotes(c){
+  function keywordList(c){
     const K=C.KEYWORDS,out=[];
     if(c.charge)out.push(K.charge);
     if(c.taunt)out.push(K.taunt);
@@ -33,6 +33,7 @@ const CardView=(()=>{
     if(/污染|变成【垃圾】/.test(c.text||"")||/whiteCorruptHand|whiteCorruptDeck|whiteDrawJunk5/.test(c.effect||""))out.push(K.pollute);
     if(/【垃圾】/.test(c.text||"")||c.id==="junk")out.push(K.junk);
     if(/疲劳/.test(c.text||""))out.push(K.fatigue);
+    if(c.onDraw)out.push(K.onDraw);
     if(/手牌已满|手牌上限|满手牌/.test(c.text||""))out.push(K.overdraw);
     if(/【衰减】/.test(c.text||""))out.push(K.decay);
     if(/亡语/.test(c.text||"")||c.deathDmg>0)out.push(K.deathrattle);
@@ -57,7 +58,12 @@ const CardView=(()=>{
     if(c.core)out.push(K.core);
     if(c.kind==="unit"&&c.fresh&&!c.charge)out.push({name:"刚部署",desc:"本回合不能攻击，下回合即可行动。"});
     if(c.stun>0)out.push({name:"眩晕",desc:"下个回合无法攻击。"});
-    return out.map(k=>`<div><b>${esc(k.name)}</b>${esc(k.desc)}</div>`).join("");
+    return out;
   }
-  return{esc,rgb,heroRgb,glyph,card,back,backInner,keywordNotes,richText};
+  function keywordKeys(c){
+    const entries=Object.entries(C.KEYWORDS);
+    return keywordList(c).map(item=>{const match=entries.find(([,value])=>value===item);return match&&match[0];}).filter(Boolean);
+  }
+  function keywordNotes(c){return keywordList(c).map(k=>`<div><b>${esc(k.name)}</b>${esc(k.desc)}</div>`).join("");}
+  return{esc,rgb,heroRgb,glyph,card,back,backInner,keywordList,keywordKeys,keywordNotes,richText};
 })();

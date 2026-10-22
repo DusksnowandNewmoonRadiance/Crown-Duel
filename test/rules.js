@@ -32,6 +32,16 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
   check("自己的下个回合开始时护甲清空",a.armor===0);
 }
 
+/* ---- 疲劳穿透护甲 ---- */
+{
+  const g=game("字母","白猫"),p=g.players[0];
+  p.deck=[];p.armor=5;const hp=p.hp;
+  g.draw(p,1);
+  check("疲劳伤害穿透护甲且不消耗护甲",p.hp===hp-1&&p.armor===5,`hp ${hp}→${p.hp} armor ${p.armor}`);
+  g.draw(p,1);
+  check("第二次疲劳继续穿透护甲",p.hp===hp-4&&p.armor===5);
+}
+
 /* ---- 0 攻击力单位可以攻击 ---- */
 {
   const g=game("七星","苏苏");
@@ -159,6 +169,13 @@ function toTurn(g,pi){let n=0;while(g.current!==pi&&n++<4)g.endTurn(g.current);}
 }
 
 /* ---- 045：愚蠢 / 绘梨衣 / 开发他人卡组 ---- */
+{
+  const g=game("045","字母"),a=g.players[0],b=g.players[1];
+  const enemy=mk(g,"字母","commando");b.hand=[enemy];
+  ready(g,0,[mk(g,"045","xi")]);
+  const cost=enemy.cost,r=play(g,0,a.hand[0]);
+  check("汐：045 部署后提高敌方手牌费用",r.ok&&a.board.some(c=>c.id==="xi")&&enemy.cost===cost+1);
+}
 {
   const g=game("045","字母");
   const a=g.players[0],b=g.players[1];

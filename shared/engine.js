@@ -297,8 +297,8 @@ class Game{
       this.note(`${label}：销毁敌方${zone}中的【${card.name}】`,s);
     }
     for(const u of s.board.filter(x=>x.effect==="whiteSentinel"&&x.health>0)){
-      u.attack++;u.health++;u.maxHealth++;
-      this.note(`${u.name}：因销毁敌牌获得 +1/+1`,s);
+      u.attack++;u.health+=2;u.maxHealth+=2;
+      this.note(`${u.name}：因销毁敌牌获得 +1/+2`,s);
     }
   }
   forcedRead(s,o,n,label){
@@ -354,7 +354,8 @@ class Game{
     if(this.phase==="over")return;
     if(!o.fatigue&&!o.self&&n>0){const src=this.opp(p);n+=bandCount(src);if(!o.combat&&hasBonus(src,"ukr"))n+=1;}
     if(n<=0)return;
-    const blocked=Math.min(p.armor,n);p.armor-=blocked;p.hp-=n-blocked;
+    if(o.fatigue)p.hp-=n;
+    else{const blocked=Math.min(p.armor,n);p.armor-=blocked;p.hp-=n-blocked;}
     if(!o.fatigue&&!o.self)this.opp(p).stats.dmg+=n;
     this._checkEnd();
   }
@@ -362,8 +363,8 @@ class Game{
     if(this.phase==="over")return;
     const owner=this.opp(caster);
     for(const u of owner.board.filter(x=>x.effect==="whiteSpellPunish"&&x.health>0)){
-      this.damageHero(caster,1);
-      this.note(`${u.name}：敌方使用法术，对敌方英雄造成 1 点伤害`,owner);
+      this.damageHero(caster,2);
+      this.note(`${u.name}：敌方使用法术，对敌方英雄造成 2 点伤害`,owner);
       if(this.phase==="over")break;
     }
   }
@@ -727,7 +728,7 @@ class Game{
   /* 转化 N：弃掉 N 张废料，从牌库里发现 1 张中费牌，费用 -（N-1）
      旧规则池是 N+1~N+3，但绘梨衣卡组没有 4~6 费牌，导致「转化 3」几乎转不出牌、
      且转 3 不比转 2 好——出现「转得越多牌效越低」。
-     修复：池下限固定为 3（保证能转到 汐/卫队/中立宣言 这类中费好牌），上界放宽到 N+4，
+     修复：池下限固定为 3（保证能转到卫队/中立宣言这类中费好牌），上界放宽到 N+4，
      折扣随 N 增大、选项随 N 增多——转得越多，牌越好、越便宜。 */
   _convert(s,n,label){
     if(s.hand.filter(x=>x.scrap).length<n){this.note(`${label}：手牌中的废料不足 ${n} 张`,s);return;}
@@ -863,7 +864,7 @@ class Game{
         break;
       }
       case"whiteFinal":{
-        const n=Math.min(18,4+s.destroyedCards);
+        const n=Math.min(18,4+2*s.destroyedCards);
         this.damageHero(o,n);this.note(`${c.name}：本局已销毁 ${s.destroyedCards} 张敌方卡牌，造成 ${n} 点伤害`,s);
         break;
       }

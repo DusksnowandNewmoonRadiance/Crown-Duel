@@ -36,8 +36,20 @@ if(!Array.isArray(announcements)){
     popup:false,pinned:true,createdAt:Date.now(),updatedAt:Date.now()}];
 }
 let balance=read("balance.json",{rev:"",overrides:{},updatedAt:0});
+const TOURNAMENT_DEFAULTS={fee:150,prize:900};
+let tournamentConfig=read("tournament.json",TOURNAMENT_DEFAULTS);
+if(!tournamentConfig||!Number.isInteger(tournamentConfig.fee)||tournamentConfig.fee<0||tournamentConfig.fee>1000000||
+   !Number.isInteger(tournamentConfig.prize)||tournamentConfig.prize<0||tournamentConfig.prize>10000000)
+  tournamentConfig={...TOURNAMENT_DEFAULTS};
 let stats=read("stats.json",{});
 let users=read("users.json",{});
+/* 服务器重启会取消尚未完成的比赛，退还仍在托管中的报名费。 */
+let recoveredTournamentFees=0;
+for(const u of Object.values(users))if(u.tournamentId||Number.isInteger(u.tournamentFee)&&u.tournamentFee>0){
+  if(Number.isInteger(u.tournamentFee)&&u.tournamentFee>0)u.gold+=u.tournamentFee;
+  u.tournamentFee=0;u.tournamentId=null;recoveredTournamentFees++;
+}
+if(recoveredTournamentFees)write("users.json",users);
 let moderation=read("moderation.json",{bans:{},mutes:{},forcedNames:{},reports:[]});
 moderation.bans=moderation.bans||{};moderation.mutes=moderation.mutes||{};
 moderation.forcedNames=moderation.forcedNames||{};moderation.reports=Array.isArray(moderation.reports)?moderation.reports:[];
@@ -193,7 +205,49 @@ const Store={
     u.decks=decks;write("users.json",users);return true;
   },
   /* ---------- 金币与仓库 ---------- */
+  tournamentSettings(){return{...tournamentConfig};},
+  saveTournamentSettings(fee,prize){
+    if(!Number.isInteger(fee)||fee<0||fee>1000000)return{ok:false,error:"报名费必须是 0~1000000 的整数"};
+    if(!Number.isInteger(prize)||prize<0||prize>10000000)return{ok:false,error:"冠军奖励必须是 0~10000000 的整数"};
+    tournamentConfig={fee,prize,updatedAt:Date.now()};write("tournament.json",tournamentConfig);
+    return{ok:true,...tournamentConfig};
+  },
   addGold(uid,n){const u=users[uid];if(!u)return 0;u.gold=Math.max(0,u.gold+n);write("users.json",users);return u.gold;},
+  spendGold(uid,n){
+    const u=users[uid];
+    if(!u||!Number.isInteger(n)||n<=0)return{ok:false,msg:"账号或金额无效"};
+    if(u.gold<n)return{ok:false,msg:`金币不足，需要 ${n} 金币`};
+    u.gold-=n;write("users.json",users);return{ok:true,gold:u.gold};
+  },
+  enterTournament(uid,fee,tournamentId){
+    const u=users[uid];
+    if(!u||!Number.isInteger(fee)||fee<0||!tournamentId)return{ok:false,msg:"账号或金额无效"};
+    if(u.tournamentId)return{ok:false,msg:"账号已有未完成的比赛"};
+    if(u.gold<fee)return{ok:false,msg:`金币不足，需要 ${fee} 金币`};
+    u.gold-=fee;u.tournamentFee=fee;u.tournamentId=tournamentId;write("users.json",users);return{ok:true,gold:u.gold};
+  },
+  closeTournament(uid,refund,tournamentId){
+    const u=users[uid];if(!u)return 0;
+    if(u.tournamentId!==tournamentId)return u.gold;
+    const fee=Number.isInteger(u.tournamentFee)?u.tournamentFee:0;
+    if(refund)u.gold+=fee;
+    u.tournamentFee=0;u.tournamentId=null;write("users.json",users);return u.gold;
+  },
+  settleTournament(uids,winnerUid,prize,refund,tournamentId){
+    const balances={};
+    for(const uid of uids){
+      const u=users[uid];if(!u)continue;
+      if(u.tournamentId===tournamentId){
+        if(refund&&Number.isInteger(u.tournamentFee))u.gold+=u.tournamentFee;
+        u.tournamentFee=0;u.tournamentId=null;
+      }
+      balances[uid]=u.gold;
+    }
+    if(winnerUid&&users[winnerUid]&&Number.isInteger(prize)&&prize>0){
+      users[winnerUid].gold+=prize;balances[winnerUid]=users[winnerUid].gold;
+    }
+    write("users.json",users);return balances;
+  },
   /* ---------- 配饰（头衔 / 名字颜色） ---------- */
   NAME_COLORS,
   /* 买配饰：头衔直接入库；宝箱随机开 7 色之一，重复返还 25 金币 */
@@ -330,9 +384,10 @@ const Store={
   adminUser(uid){return users[uid]||null;},
   adminAddGold(uid,delta,reason){
     const u=users[uid];if(!u)return{ok:false,error:"用户不存在"};
-    const d=Math.round(+delta||0);
-    if(!d)return{ok:false,error:"金额不能为 0"};
+    const d=Number(delta);
+    if(!Number.isSafeInteger(d)||d===0||Math.abs(d)>10000000)return{ok:false,error:"金额必须是非零整数，单次最多 10000000"};
     if((u.gold||0)+d<0)return{ok:false,error:`金币不足（当前 ${u.gold||0}）`};
+    if(!Number.isSafeInteger((u.gold||0)+d))return{ok:false,error:"金币余额超出上限"};
     u.gold=(u.gold||0)+d;write("users.json",users);
     return{ok:true,gold:u.gold,delta:d,reason:String(reason||"").slice(0,80)};
   },

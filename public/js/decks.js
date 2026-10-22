@@ -176,6 +176,7 @@ const Decks=(()=>{
       const list=allHeroes();
       if(!hero||!list.includes(hero))hero=vanillaHeroes()[0]||list[0]||null;
       if(W&&!list.includes(W.hero))W=null;
+      if(viewMode==="editor"&&!W)viewMode="overview";
       const scr=$("#scrDecks");
       if(host&&scr&&!scr.hidden)renderAll();
       return true;
@@ -266,7 +267,8 @@ const Decks=(()=>{
      ============================================================ */
   let host=null;                 // {toast, confirm, onClose, onChange}
   let W=null;                    // 正在编辑的卡组 {id,hero,name,cards,virtual,dirty}
-  let hero=null,kind="all",cost="all",rar="all",query="",tab="pool";
+  let hero=null,kind="all",cost="all",rar="all",keyword="all",query="",tab="pool";
+  let viewMode="overview",overviewHero="all";
 
   const stateOf=d=>{
     const err=C.deckError(d.hero,d.cards);
@@ -305,11 +307,34 @@ const Decks=(()=>{
 
   /* ---------- 渲染 ---------- */
   function renderAll(){
+    if(viewMode==="editor"&&!W)viewMode="overview";
     $("#dkQuota").textContent=`卡组 ${api.count()} / ${MAX_DECKS}`;
     $("#dkQuota").classList.toggle("full",api.count()>=MAX_DECKS);
+    $("#scrDecks").dataset.view=viewMode;
+    $("#decksBack").textContent=viewMode==="editor"?"‹ 卡组总览":"‹ 返回";
+    if(viewMode==="overview"){renderOverview();return;}
     renderHeroes();renderList();renderPool();renderCurrent();
     $("#dkTabs").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.t===tab));
     $("#scrDecks").dataset.tab=tab;
+  }
+  function renderOverview(){
+    const heroes=allHeroes();
+    if(overviewHero!=="all"&&!heroes.includes(overviewHero))overviewHero="all";
+    $("#dkOverviewHero").innerHTML='<option value="all">全部卡牌师</option>'+heroes.map(h=>`<option value="${V.esc(h)}">${V.esc(h)}</option>`).join("");
+    $("#dkOverviewHero").value=overviewHero;
+    const decks=heroes.filter(h=>overviewHero==="all"||h===overviewHero).flatMap(h=>[
+      ...api.list(h).sort((a,b)=>b.updatedAt-a.updatedAt),virtualDeck(h)
+    ]);
+    $("#dkOverviewGrid").innerHTML=decks.map(d=>{
+      const isActive=api.isActive(d),crest=window.CardArt?CardArt.portrait(d.hero):V.esc(V.glyph(d.hero));
+      const status=d.virtual?"官方推荐":isActive?"★ 出战中":`${d.cards.length} / ${C.DECK_SIZE} 张`;
+      return `<div class="dk-overview-item" style="--hcr:${V.heroRgb(d.hero)}">
+        <button class="dk-overview-open" data-open="${V.esc(d.id)}" aria-label="打开${V.esc(d.name)}">
+          <span class="dk-overview-back"><span class="dk-overview-crest">${crest}</span></span>
+          <span class="dk-overview-name">${V.esc(d.name)}</span><span class="dk-overview-meta">${V.esc(d.hero)} · ${status}</span>
+        </button>${d.virtual?"":`<button class="dk-overview-rename" data-rename="${V.esc(d.id)}">重命名</button>`}
+      </div>`;
+    }).join("")||'<div class="empty">还没有卡组</div>';
   }
   function renderHeroes(){
     /* 原版在前，DIY 在后（带 DIY 标签）；当前选中的角色如果已被删除，回退到第一个原版角色 */
@@ -347,11 +372,16 @@ const Decks=(()=>{
       if(kind!=="all"&&c.kind!==kind)return false;
       if(cost!=="all"&&(cost==="6"?c.cost<6:c.cost!==+cost))return false;
       if(rar!=="all"&&c.rarity!==rar)return false;
+      if(keyword!=="all"&&!V.keywordKeys(c).includes(keyword))return false;
       if(q&&!(c.name.toLowerCase().includes(q)||String(c.text||"").toLowerCase().includes(q)||String(c.flavor||"").toLowerCase().includes(q)||String(C.cardCode(hero,c.id)||"").toLowerCase()===q))return false;
       return true;
     }).sort((a,b)=>a.cost-b.cost||(a.kind<b.kind?1:-1)||a.name.localeCompare(b.name,"zh"));
   }
   function renderPool(){
+    const counts={};cardsOf(hero).forEach(c=>V.keywordKeys(c).forEach(key=>counts[key]=(counts[key]||0)+1));
+    $("#dkKeyword").innerHTML='<option value="all">全部词条</option>'+Object.entries(C.KEYWORDS).filter(([key])=>counts[key]).map(([key,word])=>`<option value="${V.esc(key)}">${V.esc(word.name)}（${counts[key]}）</option>`).join("");
+    if(keyword!=="all"&&!counts[keyword])keyword="all";
+    $("#dkKeyword").value=keyword;
     $$("#dkKind button").forEach(b=>b.classList.toggle("on",b.dataset.v===kind));
     $$("#dkCost button").forEach(b=>b.classList.toggle("on",b.dataset.v===cost));
     $$("#dkRar button").forEach(b=>b.classList.toggle("on",b.dataset.v===rar));
@@ -363,6 +393,21 @@ const Decks=(()=>{
         <div class="dc-ctrl"><button data-a="-" ${n<=0?"disabled":""} aria-label="减少">−</button><span>${n}<small> / ${c.limit}</small></span><button data-a="+" ${atLimit||full?"disabled":""} aria-label="增加">＋</button></div></div>`;
     }).join(""):`<div class="empty" style="grid-column:1/-1">没有符合条件的卡牌</div>`;
   }
+  function openCardPreview(id){
+    const c=cardsOf(W.hero).find(x=>x.id===id);if(!c)return;
+    const card=Object.assign({hero:W.hero},c),rarity=C.RARITY[c.rarity],notes=V.keywordNotes(card);
+    $("#dkPreviewCard").innerHTML=V.card(card);
+    $("#dkPreviewInfo").innerHTML=`<h2>${V.esc(c.name)}</h2><div class="meta">
+      <span>代码 ${V.esc(C.cardCode(W.hero,c.id)||"—")}</span><span>${V.esc(rarity?rarity.name:c.rarity)}</span>
+      <span>${c.kind==="unit"?"单位":"法术"}</span><span>${c.cost} 费</span><span>阵营 ${V.esc(C.PROFILES[W.hero].faction||W.hero)}</span>
+      ${c.kind==="unit"?`<span>攻击 ${c.atk} / 生命 ${c.hp}</span>`:""}<span>携带上限 ${c.limit}</span></div>
+      <h3>效果</h3><p>${V.richText(c.text||"无")}</p>
+      ${c.flavor?`<h3>描述</h3><p>${V.esc(c.flavor)}</p>`:""}
+      ${notes?`<h3>词条说明</h3><div class="cv-notes">${notes}</div>`:""}`;
+    $("#mDeckCard").hidden=false;
+    $("#mDeckCard .panel").scrollTop=0;
+  }
+  function closeCardPreview(){$("#mDeckCard").hidden=true;}
   function renderCurrent(){
     const name=$("#dkName");
     if(document.activeElement!==name)name.value=W.name;
@@ -461,7 +506,8 @@ const Decks=(()=>{
   async function newDeck(){
     if(api.count()>=MAX_DECKS)return host.toast(`最多保存 ${MAX_DECKS} 个卡组，请先删除不用的卡组`);
     if(!(await guard()))return;
-    W={id:null,hero,name:"新卡组",cards:[],virtual:false,dirty:true};
+    const chosen=viewMode==="overview"&&overviewHero!=="all"?overviewHero:hero;
+    hero=chosen;W={id:null,hero,name:"新卡组",cards:[],virtual:false,dirty:true};viewMode="editor";
     renderAll();$("#dkName").focus();$("#dkName").select();
   }
   async function exportCode(){
@@ -487,8 +533,10 @@ const Decks=(()=>{
     }catch(e){return false;}
   }
   async function importCode(){
-    const code=window.prompt("粘贴卡组代码：");
-    if(!code)return;
+    let code;
+    try{code=(await navigator.clipboard.readText()).trim();}
+    catch(e){host.toast("无法读取剪贴板，请允许浏览器访问剪贴板后重试",false);return;}
+    if(!code){host.toast("剪贴板里没有卡组代码",false);return;}
     try{
       const hero=api.peekHero(code);
     if(hero&&!C.PROFILES[hero]){
@@ -498,6 +546,7 @@ const Decks=(()=>{
     const d=api.decode(code);
       if(!(await guard()))return;
       startWork({hero:d.hero,name:d.name,cards:d.cards},{fresh:true,dirty:true});
+      viewMode="editor";
       renderAll();
       host.toast(d.dropped?`已导入（${d.dropped} 张卡牌已不存在，被忽略），记得保存`:"已导入，记得保存",!d.dropped);
     }catch(e){host.toast(e.message);}
@@ -507,6 +556,22 @@ const Decks=(()=>{
   let bound=false;
   function bind(){
     if(bound)return;bound=true;
+    $("#dkOverviewHero").addEventListener("change",e=>{overviewHero=e.target.value;renderOverview();});
+    $("#dkOverviewNew").addEventListener("click",newDeck);
+    $("#dkOverviewImport").addEventListener("click",importCode);
+    $("#dkOverviewGrid").addEventListener("click",e=>{
+      const rename=e.target.closest("button[data-rename]");
+      if(rename){
+        const d=api.get(rename.dataset.rename);if(!d||d.virtual)return;
+        const name=window.prompt("重命名卡组：",d.name);if(name===null)return;
+        try{api.save({...d,name});host.toast("卡组已重命名",true);host.onChange();renderOverview();}
+        catch(err){host.toast(err.message);}
+        return;
+      }
+      const open=e.target.closest("button[data-open]");if(!open)return;
+      const d=api.get(open.dataset.open);if(!d)return;
+      startWork(d);viewMode="editor";tab="pool";renderAll();
+    });
     $("#dkHeroes").addEventListener("click",async e=>{
       const b=e.target.closest("button");if(!b||b.dataset.h===hero)return;
       if(!(await guard()))return;
@@ -525,15 +590,17 @@ const Decks=(()=>{
     $("#dkKind").addEventListener("click",e=>{const b=e.target.closest("button");if(b){kind=b.dataset.v;renderPool();}});
     $("#dkCost").addEventListener("click",e=>{const b=e.target.closest("button");if(b){cost=b.dataset.v;renderPool();}});
     $("#dkRar").addEventListener("click",e=>{const b=e.target.closest("button");if(b){rar=b.dataset.v;renderPool();}});
+    $("#dkKeyword").addEventListener("change",e=>{keyword=e.target.value;renderPool();});
     $("#dkCards").addEventListener("click",e=>{
       const row=e.target.closest(".dc");if(!row)return;
       const b=e.target.closest("button[data-a]");
       if(b){if(b.disabled)return;b.dataset.a==="-"?sub(row.dataset.id):add(row.dataset.id);return;}
-      if(e.target.closest(".card"))add(row.dataset.id);
+      if(e.target.closest(".card")||e.target.closest(".dc-code"))openCardPreview(row.dataset.id);
     });
     $("#dkItems").addEventListener("click",e=>{
-      const b=e.target.closest("button[data-a]");const row=e.target.closest(".dk-row");if(!b||!row||b.disabled)return;
-      b.dataset.a==="-"?sub(row.dataset.id):add(row.dataset.id);
+      const b=e.target.closest("button[data-a]");const row=e.target.closest(".dk-row");if(!row)return;
+      if(b){if(!b.disabled)(b.dataset.a==="-"?sub(row.dataset.id):add(row.dataset.id));return;}
+      openCardPreview(row.dataset.id);
     });
     $("#dkName").addEventListener("input",e=>{
       const v=e.target.value.replace(/[<>]/g,"").slice(0,NAME_MAX);
@@ -550,11 +617,20 @@ const Decks=(()=>{
     $("#dkFill").addEventListener("click",autoFill);
     $("#dkExport").addEventListener("click",exportCode);
     $("#dkTabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b){tab=b.dataset.t;renderAll();}});
-    $("#decksBack").addEventListener("click",()=>close());
+    $("#decksBack").addEventListener("click",async()=>{
+      if(viewMode==="editor"){
+        if(!(await guard()))return;
+        closeCardPreview();W=null;viewMode="overview";renderAll();return;
+      }
+      close();
+    });
+    $("#mDeckCard").addEventListener("click",e=>{if(e.target===$("#mDeckCard")||e.target.closest("[data-close]"))closeCardPreview();});
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#mDeckCard").hidden)closeCardPreview();});
     window.addEventListener("beforeunload",e=>{if(W&&W.dirty&&!$("#scrDecks").hidden){e.preventDefault();e.returnValue="";}});
   }
 
   async function close(force){
+    closeCardPreview();
     if(!force&&!(await guard()))return;
     W=null;host.onClose();
   }
@@ -564,8 +640,9 @@ const Decks=(()=>{
     /* 传进来的角色可能刚被删（DIY 角色），回退到原版，别让 PROFILES[h] 取空崩掉 */
     if(!h||!C.PROFILES[h])h=vanillaHeroes()[0]||allHeroes()[0];
     const d=deckId&&api.get(deckId);
-    if(d)startWork(d);else pickInitial(h);
-    kind="all";cost="all";rar="all";query="";$("#dkSearch").value="";tab="pool";
+    hero=h;overviewHero="all";W=null;
+    if(d){startWork(d);viewMode="editor";}else viewMode="overview";
+    kind="all";cost="all";rar="all";keyword="all";query="";$("#dkSearch").value="";tab="pool";
     renderAll();
   }
   return Object.assign(api,{open,close,get dirty(){return!!(W&&W.dirty);}});

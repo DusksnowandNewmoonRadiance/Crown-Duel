@@ -122,7 +122,19 @@ function play(g,id){
   assert.equal(o.board.length,1,"终稿裁决应消灭所有并列最高攻单位");
   assert.equal(o.board[0].attack,2);
   assert.equal(s.destroyedCards,2);
+  assert.equal(s.board.find(u=>u.id==="meteor").taunt,true,"终稿裁决应有嘲讽");
   s.energy=10;play(g,"ash");assert.equal(s.board.find(u=>u.id==="ash").taunt,true,"灰烬化身应有嘲讽");
+}
+{
+  const g=game(),o=g.players[1],s=g.players[0];
+  play(g,"sentinel");const guard=s.board.find(u=>u.id==="sentinel");
+  const atk=guard.attack,hp=guard.health,max=guard.maxHealth;
+  s.energy=10;play(g,"spark");
+  assert.equal(guard.attack,atk+2);
+  assert.equal(guard.health,hp+4);
+  assert.equal(guard.maxHealth,max+4,"卷宗守卫每次销毁应获得 +1/+2");
+  s.energy=10;const before=o.hp;play(g,"sovereign");
+  assert.equal(o.hp,before-8,"空白终章每销毁一张应增加 2 点伤害");
 }
 {
   const g=game(),o=g.players[1];
@@ -135,11 +147,11 @@ function play(g,id){
   play(g,"spellpunish");g.endTurn(0);o.energy=o.maxEnergy=10;
   const spell=g.clone(Cards.cardDef("字母","order"),o.hero);o.hand.push(spell);
   const hp=o.hp;assert.equal(g.playCard(1,spell.uid,[]).ok,true);
-  assert.equal(o.hp,hp-1,"敌方施放法术时应受到 1 点伤害");
+  assert.equal(o.hp,hp-2,"敌方施放法术时应受到 2 点伤害");
 }
 {
   const g=game(),o=g.players[1],s=g.players[0];
-  play(g,"junktax");g.endTurn(0);o.energy=o.maxEnergy=2;
+  play(g,"junktax");assert.equal(s.board.find(u=>u.id==="junktax").taunt,true,"废稿收费站应有嘲讽");g.endTurn(0);o.energy=o.maxEnergy=2;
   const junk=g.clone(Cards.TOKENS.junk,o.hero);o.hand.push(junk);
   const view=g.viewFor(1);const shown=view.me.hand.find(c=>c.uid===junk.uid);
   assert.equal(shown.cost,3,"敌方手牌中的垃圾应显示 +2 费用");
