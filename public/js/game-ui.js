@@ -891,7 +891,7 @@ const GameUI=(()=>{
     $("#playBtn").addEventListener("click",()=>GameInput.playHeld());
     $("#pResume").addEventListener("click",()=>$("#pause").hidden=true);
     $("#pSfx").addEventListener("click",()=>{Audio2.setSfx(!Audio2.sfxOn);syncPause();});
-    $("#pMusic").addEventListener("click",()=>{Audio2.setMusic(!Audio2.musicOn);syncPause();});
+    $("#pMusic").addEventListener("input",e=>{Audio2.setMusicVolume(e.target.value);syncPause();});
     $("#pFull").addEventListener("click",toggleFull);
     $("#coachNext").addEventListener("click",nextCoach);
     $("#coachSkip").addEventListener("click",endCoach);
@@ -917,7 +917,8 @@ const GameUI=(()=>{
   function openPause(){syncPause();$("#pause").hidden=false;clearSel();}
   function syncPause(){
     $("#pSfx").textContent="音效："+(Audio2.sfxOn?"开":"关");
-    $("#pMusic").textContent="音乐："+(Audio2.musicOn?"开":"关");
+    $("#pMusic").value=Audio2.musicVolume;
+    $("#pMusicValue").textContent=Audio2.musicVolume+"%";
     $("#pFull").textContent=fsEl()?"退出全屏":"全屏";
     $("#gFull").textContent=fsEl()?"⤢":"⛶";
   }
