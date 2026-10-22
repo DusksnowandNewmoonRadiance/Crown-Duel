@@ -13,8 +13,13 @@ const Audio2=(()=>{
   let AC=null,unlocked=false,ready=false;
   let master,comp,dry,reverb;
   const last={};
-  const S={sfx:true,music:true};
-  try{S.sfx=localStorage.getItem("cd.sfx")!=="0";S.music=localStorage.getItem("cd.music")!=="0";}catch(e){}
+  const S={sfx:true,musicVolume:100,lastMusicVolume:100};
+  try{
+    S.sfx=localStorage.getItem("cd.sfx")!=="0";
+    const saved=localStorage.getItem("cd.musicVolume");
+    S.musicVolume=saved===null?(localStorage.getItem("cd.music")==="0"?0:100):Math.max(0,Math.min(100,Number(saved)||0));
+    if(S.musicVolume>0)S.lastMusicVolume=S.musicVolume;
+  }catch(e){}
 
   const rnd=(a,b)=>a+Math.random()*(b-a);
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -230,7 +235,7 @@ const Audio2=(()=>{
       .then(ab=>AC.decodeAudioData(ab))
       .then(buf=>{bgmBuf[name]=buf;bgmLoading[name]=false;
         /* 曲子到位时如果正放同主题的合成版，直接换过去 */
-        if(S.music&&BG.want===name&&!BG.file&&AC){BG.current=null;music(name);}})
+        if(S.musicVolume>0&&BG.want===name&&!BG.file&&AC){BG.current=null;music(name);}})
       .catch(()=>{bgmLoading[name]=false;});
   }
   function playBgmFile(name){
@@ -242,7 +247,7 @@ const Audio2=(()=>{
       src.connect(g);g.connect(comp);
       const send=AC.createGain();send.gain.value=.12;g.connect(send);send.connect(reverb);
       src.start();
-      g.gain.exponentialRampToValueAtTime(BGM_GAIN[name]||.25,AC.currentTime+1.6);
+      g.gain.exponentialRampToValueAtTime((BGM_GAIN[name]||.25)*S.musicVolume/100,AC.currentTime+1.6);
       BG.file={src,gain:g};
       BG.current=name;
       return true;
@@ -293,12 +298,11 @@ const Audio2=(()=>{
     g.gain.exponentialRampToValueAtTime(.9,t0+atk);
     g.gain.exponentialRampToValueAtTime(.0001,t0+dur);
     osc.connect(filt);filt.connect(g);g.connect(busGain);
-    const send=AC.createGain();send.gain.value=.5;g.connect(send);send.connect(reverb);
     osc.start(t0);osc.stop(t0+dur+.05);
   }
   function music(theme){
     BG.want=theme;
-    if(!unlocked||!S.music){stopMusic();return;}
+    if(!unlocked||S.musicVolume<=0){stopMusic();return;}
     init();if(!AC||!ready)return;
     if(BG.current===theme)return;
     stopMusic();
@@ -310,8 +314,9 @@ const Audio2=(()=>{
     const th=THEMES[theme];if(!th)return;
 
     const busGain=AC.createGain();busGain.gain.value=.0001;busGain.connect(comp);
+    const musicWet=AC.createGain();musicWet.gain.value=.5;busGain.connect(musicWet);musicWet.connect(reverb);
     BG.bus=busGain;BG.current=theme;
-    busGain.gain.exponentialRampToValueAtTime(th.vol||.12,AC.currentTime+.8);
+    busGain.gain.exponentialRampToValueAtTime((th.vol||.12)*S.musicVolume/100,AC.currentTime+.8);
 
     /* 铺底 pad：根音 + 五度，慢起音，进混响 —— 这一层是「不塑料」的关键 */
     if(th.pad&&!th.once){
@@ -325,7 +330,7 @@ const Audio2=(()=>{
         g.gain.exponentialRampToValueAtTime(.035,AC.currentTime+2.2);
         o.connect(g);g.connect(padGain);o.start();padOscs.push(o);
       });
-      padGain.gain.exponentialRampToValueAtTime(.18,AC.currentTime+2.4);
+      padGain.gain.exponentialRampToValueAtTime(.18*S.musicVolume/100,AC.currentTime+2.4);
     }
 
     /* 用 AudioContext 时钟做前瞻排期：setInterval 只负责「补货」 */
@@ -355,10 +360,21 @@ const Audio2=(()=>{
   ["pointerdown","keydown","touchstart"].forEach(e=>document.addEventListener(e,unlock,{capture:true}));
 
   function setSfx(v){S.sfx=v;try{localStorage.setItem("cd.sfx",v?"1":"0");}catch(e){}}
-  function setMusic(v){
-    S.music=v;try{localStorage.setItem("cd.music",v?"1":"0");}catch(e){}
-    const w=BG.want;BG.current=null;
-    if(v)music(w);else stopMusic();
+  function setMusicVolume(value){
+    const next=clamp(Math.round(Number(value)||0),0,100),wasOn=S.musicVolume>0;
+    S.musicVolume=next;
+    if(next>0)S.lastMusicVolume=next;
+    try{localStorage.setItem("cd.musicVolume",String(next));localStorage.setItem("cd.music",next?"1":"0");}catch(e){}
+    if(!next){stopMusic();return;}
+    if(!wasOn){if(BG.want)music(BG.want);return;}
+    if(!AC)return;
+    const update=(node,target)=>{if(node)node.gain.setTargetAtTime(target,AC.currentTime,.08);};
+    if(BG.file)update(BG.file.gain,(BGM_GAIN[BG.current]||.25)*next/100);
+    else if(BG.current){
+      const th=THEMES[BG.current];
+      if(th){update(BG.bus,(th.vol||.12)*next/100);update(BG.pad,.18*next/100);}
+    }
   }
-  return{sfx,music,init,setSfx,setMusic,get sfxOn(){return S.sfx;},get musicOn(){return S.music;}};
+  function setMusic(v){setMusicVolume(v?(S.lastMusicVolume||100):0);}
+  return{sfx,music,init,setSfx,setMusic,setMusicVolume,get sfxOn(){return S.sfx;},get musicOn(){return S.musicVolume>0;},get musicVolume(){return S.musicVolume;}};
 })();

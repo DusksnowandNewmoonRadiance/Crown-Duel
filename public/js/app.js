@@ -225,7 +225,6 @@ function renderHome(){
     <p class="tip">${V.esc(info.tip)}</p>
     <div class="deck-pick"><label for="homeDeck">出战卡组</label>${deckSelectHTML(cur)}<button class="btn" id="homeDeckEdit">管理卡组</button><button class="btn" id="homeLore">查看档案</button></div>`;
   $("#homeNickTxt").innerHTML=Cosmetics.nameHTML(Me.nick||"设置昵称",Account.me);
-  $("#homeSound").classList.toggle("off",!Audio2.musicOn&&!Audio2.sfxOn);
 }
 $("#heroGrid").addEventListener("click",e=>{const b=e.target.closest(".htile");if(!b)return;Me.hero=b.dataset.hero;Audio2.sfx("select");renderHome();});
 $("#heroDetail").addEventListener("change",e=>{
@@ -239,7 +238,14 @@ $("#heroDetail").addEventListener("click",e=>{
 });
 $("#btnCodex").addEventListener("click",()=>openCodex());
 $("#homeNick").addEventListener("click",()=>askNick());
-$("#homeSound").addEventListener("click",()=>{const on=!(Audio2.musicOn||Audio2.sfxOn);Audio2.setSfx(on);Audio2.setMusic(on);if(on)Audio2.music("menu");toast(on?"声音已开启":"声音已关闭",true);renderHome();});
+function syncHomeSettings(){
+  $("#settingsMusic").value=Audio2.musicVolume;
+  $("#settingsMusicValue").textContent=Audio2.musicVolume+"%";
+  $("#settingsSfx").textContent="音效："+(Audio2.sfxOn?"开":"关");
+}
+$("#homeSettings").addEventListener("click",()=>{syncHomeSettings();openModal("#mSettings");});
+$("#settingsMusic").addEventListener("input",e=>{Audio2.setMusicVolume(e.target.value);syncHomeSettings();});
+$("#settingsSfx").addEventListener("click",()=>{Audio2.setSfx(!Audio2.sfxOn);syncHomeSettings();});
 $("#btnRules").addEventListener("click",()=>openModal("#mRules"));
 $("#btnShop").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderShop();show("#scrShop");});
 $("#btnVault").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderVault();show("#scrVault");});
