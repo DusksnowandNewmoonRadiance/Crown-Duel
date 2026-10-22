@@ -29,10 +29,10 @@ const store={
    ============================================================ */
 function toast(msg,info,ms){const t=$("#toast");t.textContent=msg;t.className="on"+(info?" info":"");clearTimeout(t._t);t._t=setTimeout(()=>t.className="",ms||2000);}
 function show(id){
-  ["#scrHome","#scrLobby","#scrTournament","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
+  ["#scrHome","#scrWinrate","#scrLobby","#scrTournament","#scrRoom","#scrDecks","#scrCodex","#scrShop","#scrVault","#scrCampaign","#scrDiy","#scrGame"].forEach(s=>$(s).hidden=s!==id);
   document.body.classList.toggle("in-game",id==="#scrGame");   // 对局中关掉整屏装饰层（不用 :has，避免整页样式失效）
   if(id==="#scrGame")GameUI.fit();
-  if(id==="#scrHome"||id==="#scrLobby"||id==="#scrTournament"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
+  if(id==="#scrHome"||id==="#scrWinrate"||id==="#scrLobby"||id==="#scrTournament"||id==="#scrRoom"||id==="#scrDecks"||id==="#scrCodex"||id==="#scrShop"||id==="#scrVault"||id==="#scrCampaign"||id==="#scrDiy")Audio2.music("menu");
 }
 function openModal(id){$(id).hidden=false;}
 function closeModal(id){$(id).hidden=true;}
@@ -241,6 +241,8 @@ $("#btnCodex").addEventListener("click",()=>openCodex());
 $("#homeNick").addEventListener("click",()=>askNick());
 $("#homeSound").addEventListener("click",()=>{const on=!(Audio2.musicOn||Audio2.sfxOn);Audio2.setSfx(on);Audio2.setMusic(on);if(on)Audio2.music("menu");toast(on?"声音已开启":"声音已关闭",true);renderHome();});
 $("#btnRules").addEventListener("click",()=>openModal("#mRules"));
+$("#btnWinrate").addEventListener("click",()=>{show("#scrWinrate");WinrateUI.open();});
+$("#winrateBack").addEventListener("click",()=>{WinrateUI.stop();show("#scrHome");renderHome();});
 $("#btnShop").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderShop();show("#scrShop");});
 $("#btnVault").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderVault();show("#scrVault");});
 $("#btnCampaign").addEventListener("click",()=>{if(!Account.me){toast("请先登录",false);openAuth();return;}renderCampaign();show("#scrCampaign");});
@@ -1049,6 +1051,7 @@ const Net={
     s.io.on("reconnect_failed",()=>{if(this.gameOn)GameUI.notice("重连失败，请检查网络后刷新页面",false);});
     this.startHeartbeat();
     s.on("kicked",d=>{toast(d.reason||"连接已断开");this.leaveAll();});
+    s.on("room:kicked",d=>toast(d&&d.reason||"你已被房主移出房间",false,4000));
     s.on("profile:corrected",d=>{if(d&&d.nick){Me.nick=d.nick;renderHome();if(this.inLobby)renderLobby();}});
     s.on("lobby",d=>{this.lobby=d;renderLobby();});
     /* 段位结算（服务端判定，客户端只显示） */
@@ -1480,8 +1483,11 @@ function renderRoom(){
     const el=$("#seat"+i);
     if(!s){el.className="seat empty-seat";el.style.removeProperty("--hcr");el.innerHTML=`<div style="font-size:30px">＋</div><div>等待对手加入…</div><div class="small">把房间号 <b style="color:var(--gold2)">${V.esc(r.code)}</b> 发给朋友</div>`;return;}
     el.className="seat";el.style.setProperty("--hcr",V.heroRgb(s.hero));
-    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)}${isDiyHero(s.hero)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[s.hero]||{}).title||(C.PROFILES[s.hero]||{}).faction||"")}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}`;
+    el.innerHTML=`${i===r.you?`<span class="you">你</span>`:""}${s.host?`<span class="host">房主</span>`:""}${crest(s.hero)}<div><div class="nick${i===r.you?"":" reportable-name"}" ${i===r.you?"":`data-report-id="${V.esc(s.id)}" data-report-name="${V.esc(s.nick)} title="点击举报"`}>${V.esc(s.nick)}</div><div class="hn">${V.esc(s.hero)}${isDiyHero(s.hero)?' <i class="diy-tag">DIY</i>':""} · ${V.esc((C.HERO_INFO[s.hero]||{}).title||(C.PROFILES[s.hero]||{}).faction||"")}</div></div><div class="st${s.ready?" ready":""}">${s.ready?"已准备":"未准备"}</div>${s.connected?"":`<div class="off">连接中断…</div>`}${r.hostId===Net.myId&&i!==r.you&&!r.quick&&r.status!=="playing"?`<button type="button" class="btn btn-danger seat-kick" data-kick-id="${V.esc(s.id)}">踢出玩家</button>`:""}`;
   });
+  const kicked=r.hostId===Net.myId&&!r.quick&&Array.isArray(r.kicked)?r.kicked:[];
+  $("#roomKickHistory").hidden=!kicked.length;
+  $("#roomKickList").innerHTML=kicked.map(x=>`<div class="room-kick-entry"><span>${V.esc(x.nick)} · ${new Date(x.at).toLocaleString()}</span><button type="button" class="btn" data-unkick-id="${V.esc(x.id)}">解除踢出</button></div>`).join("");
   const me=r.seats[r.you];
   const both=r.seats.every(Boolean);
   $("#roomReady").textContent=me&&me.ready?"取消准备":"准备";
@@ -1503,6 +1509,15 @@ $("#roomReady").addEventListener("click",()=>{const r=Net.room;if(!r)return;cons
 $("#roomDeck").addEventListener("click",()=>openDecks(Me.hero));
 $("#roomHero").addEventListener("click",()=>pickHero(h=>{Me.hero=h;Net.profile();renderHome();}));
 $("#roomLeave").addEventListener("click",()=>{Net.socket&&Net.socket.emit("room:leave");});
+$("#scrRoom").addEventListener("click",e=>{
+  const kick=e.target.closest("[data-kick-id]"),unkick=e.target.closest("[data-unkick-id]");
+  const btn=kick||unkick,r=Net.room;if(!btn||!Net.socket||!r||r.hostId!==Net.myId||r.quick)return;
+  if(kick&&r.status==="playing")return;
+  btn.disabled=true;
+  Net.socket.timeout(4000).emit(kick?"room:kick":"room:unkick",{targetId:kick?btn.dataset.kickId:btn.dataset.unkickId},(err,res)=>{
+    if(err||!res||!res.ok){btn.disabled=false;toast(err?"操作无响应，请检查服务器是否已更新并重启":res&&res.error||"操作失败");}
+  });
+});
 $("#roomCodeBtn").addEventListener("click",async()=>{
   const r=Net.room;if(!r)return;
   const url=location.origin+location.pathname+"?room="+r.code;

@@ -1708,7 +1708,7 @@ class Game{
 function pubCard(c){
   const x={uid:c.uid,id:c.id,hero:c.hero,name:c.name,cost:c.cost,baseCost:c.baseCost,kind:c.kind,art:c.art,icon:c.icon,text:c.text,flavor:c.flavor||"",effect:c.effect,
     charge:c.charge,taunt:c.taunt,ignoreTaunt:c.ignoreTaunt,core:c.core,owner:c.owner,untargetable:c.untargetable,gun:c.gun,member:c.member,rarity:c.rarity,fx:c.fx,rep:c.rep||"",transfer:c.transfer||"",sealed:!!c.sealed,scrap:!!c.scrap,recycle:c.recycle||""};
-  if(c.kind==="unit"){x.attack=c.attack;x.health=c.health;x.maxHealth=c.maxHealth;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
+  if(c.kind==="unit"){x.attack=c.attack??c.atk;x.health=c.health??c.hp;x.maxHealth=c.maxHealth??c.hp;x.strikes=c.strikes;x.atkLeft=c.atkLeft;x.stun=c.stun;x.fresh=c.fresh;x.tempAtk=c.tempAtk||0;x.deathDmg=c.deathDmg||0;x.lifespan=c.lifespan||0;}
   else if(c.lifespan)x.lifespan=c.lifespan;
   return x;
 }
